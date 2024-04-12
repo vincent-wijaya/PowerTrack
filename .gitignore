@@ -1,0 +1,11 @@
+# Intellij stuff
+.idea
+*.iml
+
+# Node Stuff
+node_modules
+build
+npm-debug.log
+.nyc
+.env
+.DS_Store
