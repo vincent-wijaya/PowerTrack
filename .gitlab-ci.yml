@@ -1,4 +1,16 @@
-test-job1:
+stages:
+  - build
+  - test
+
+job_build:
+  stage: build
+  script:
+    - cd /energy-backend
+    - docker-compose -f compose.yaml build server
+
+
+job_test:
   stage: test
   script:
-    - echo "This job tests something"
+    - cd /energy-backend
+    - docker-compose -f compose.yaml run --rm server npm test
