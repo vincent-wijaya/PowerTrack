@@ -1,14 +1,13 @@
-import Headings from "@/components/header";
+import Headings from "@/app/template";
+import PageHeading from "@/components/pageHeading";
 
 export default function LoginPage() {
   return (
     <>
-    <Headings title="INDIVIDUAL REPORT"/>
+        <PageHeading title="Individual Report"/>
+
       <div className="flex flex-col-2">
-          <div>
-            {/* <InfoBox title="X Urgent Warnings" description="of all warnings" />*/}
-          </div>
-          
+        <div>{/* <InfoBox title="X Urgent Warnings" description="of all warnings" />*/}</div>
       </div>
     </>
   );

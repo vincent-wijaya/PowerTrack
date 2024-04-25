@@ -1,17 +1,13 @@
-import Headings from "@/components/header";
-
+import Headings from "@/app/template";
+import PageHeading from "@/components/pageHeading";
 
 export default function ReportsDashboard() {
   return (
     <>
-    <Headings title="REPORTS"/>
-      <div className="flex flex-col-2">
-          <div>
-            {/* <InfoBox title="X Urgent Warnings" description="of all warnings" />*/}
-          </div>
-          
+      <div className="flex flex-col">
+        <PageHeading title="Reports" />
+        <div>{/* <InfoBox title="X Urgent Warnings" description="of all warnings" />*/}</div>
       </div>
     </>
-  )
+  );
 }
-
