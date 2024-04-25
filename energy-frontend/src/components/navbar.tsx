@@ -1,4 +1,4 @@
-'use client'
+"use client";
 
 import ListMenu from "./listMenu";
 import HomeIcon from "./icons/homeIcon";
@@ -9,17 +9,15 @@ import LogoutIcon from "./icons/logoutIcon";
 import Home from "@/app/page";
 import { useState } from "react";
 
-
 interface InfoBoxProps {
-  isOpen: boolean
+  isOpen: boolean;
 }
 
 export default function Navbar({ isOpen }: InfoBoxProps) {
-  
   return (
     <>
       {!isOpen && ( // Only render the Navbar if isHidden is false
-        <div className="h-screen inline-flex flex-col justify-between items-start border-navbarbg bg-navbarbg gap-44">
+        <div className="h-screen inline-flex flex-col justify-between items-start border-navbarbg bg-navbarbg">
           {/* start of top of search bar */}
           <div className="flex flex-col items-start self-stretch">
             {/* start of top of profile */}

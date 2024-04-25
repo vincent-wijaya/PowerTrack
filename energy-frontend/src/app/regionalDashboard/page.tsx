@@ -1,15 +1,13 @@
-import Headings from "@/components/header";
-
+import Headings from "@/app/template";
+import PageHeading from "@/components/pageHeading";
 
 export default function regionalDashboard() {
   return (
     <>
-    <Headings title="REGIONAL DASHBOARD"/>
       <div className="flex flex-col-2">
-          <div>
-            {/* <InfoBox title="X Urgent Warnings" description="of all warnings" />*/}
-          </div>
-          
+        <PageHeading title="Region" />
+
+        <div>{/* <InfoBox title="X Urgent Warnings" description="of all warnings" />*/}</div>
       </div>
     </>
   );

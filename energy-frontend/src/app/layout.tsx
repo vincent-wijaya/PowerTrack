@@ -1,7 +1,6 @@
-
 import Navbar from "@/components/navbar";
 import InfoBox from "@/components/infoBox";
-import Header from "@/components/header";
+import Template from "@/app/template";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
@@ -18,13 +17,10 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-
   return (
     <html lang="en">
       <body className={inter.className + " bg-mainbg"}>
-        <div className="flex">
-          <main className="flex-grow">{children}</main>
-        </div>
+        <main className="flex-grow">{children}</main>
       </body>
     </html>
   );
