@@ -1,7 +1,7 @@
 import Headings from "@/app/template";
 import PageHeading from "@/components/pageHeading";
 
-export default function regionalDashboard() {
+export default function RegionalDashboard() {
   return (
     <>
       <div className="flex flex-col-2">
