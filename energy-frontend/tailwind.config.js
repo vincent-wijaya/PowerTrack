@@ -17,6 +17,7 @@ module.exports = {
         searchbarbg: '#1F1F22',
         lightgray: '#EFEFEF',
         gray: '#C0BFBD',
+        chartBorder:"#36434E",
       },
       fontFamily: {
         sans: ['Arial', 'Helvetica', 'sans-serif'],
