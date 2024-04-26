@@ -1,4 +1,4 @@
-const app = require('./app');
+import app from './app';
 const port = 3000;
 
 // Listen on port 3000
