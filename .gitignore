@@ -13,3 +13,8 @@ npm-debug.log
 # Vs code stuff
 .vscode
 .history/
+
+# Secrets
+dbpassword.txt
+
+dist
