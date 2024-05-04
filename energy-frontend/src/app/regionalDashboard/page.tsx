@@ -1,6 +1,7 @@
 import Headings from "@/app/template";
 import PageHeading from "@/components/pageHeading";
 
+
 export default function RegionalDashboard() {
   return (
     <>
