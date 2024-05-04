@@ -1,8 +1,7 @@
 import React from "react";
-import Headings from "@/app/template";
-import InfoBox from "@/components/infoBox";
 import PageHeading from "@/components/pageHeading";
 import { LineChart } from "@/components/lineChart";
+
 
 export default function WarningsPage() {
   // Example data for the LineChart component
@@ -19,6 +18,7 @@ export default function WarningsPage() {
 
   return (
     <>
+
       <div className="flex flex-col-2">
         <PageHeading title="Warnings" />
       </div>
@@ -40,7 +40,9 @@ export default function WarningsPage() {
             xAxisTitle={xAxisTitle}
           />
         </div>
-      </div>
-    </>
+  
+
+        </div>
+      </>
   );
 }
