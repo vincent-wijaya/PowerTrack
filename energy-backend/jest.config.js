@@ -5,10 +5,11 @@ module.exports = {
   ],
   preset: "ts-jest",
   testEnvironment: "node",
-  // Optional: Configure the TypeScript compiler
   globals: {
     "ts-jest": {
       tsconfig: "tsconfig.json",
     },
   },
+  verbose: true,
+  testTimeout: 10000,
 };

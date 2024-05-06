@@ -4,6 +4,8 @@ services:
       context: .
     environment:
       NODE_ENV: production
+      DATABASE_URI: ${DATABASE_URI:-postgres://postgres:password@db:5432/retailerEnergy}
+      TEST_DATABASE_CLUSTER: ${TEST_DATABASE_CLUSTER:-postgres://postgres:password@db:5432/}
       KAFKA_CLIENT_ID: PowerTrack_Retailer
       LOCAL_BROKER_IP: '127.0.0.1:9092'
     ports:
