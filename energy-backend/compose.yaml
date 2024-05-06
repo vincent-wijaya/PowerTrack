@@ -4,6 +4,8 @@ services:
       context: .
     environment:
       NODE_ENV: production
+      KAFKA_CLIENT_ID: PowerTrack_Retailer
+      LOCAL_BROKER_IP: '127.0.0.1:9092'
     ports:
       - 3000:3000
     depends_on:
