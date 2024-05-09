@@ -13,6 +13,7 @@ const sampleProfitMarginFetchData = {
   ],
 };
 
+
 export default function RegionalDashboard() {
   return (
     <>

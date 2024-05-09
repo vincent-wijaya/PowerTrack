@@ -1,3 +1,4 @@
+
 import Headings from "@/app/template";
 import PageHeading from "@/components/pageHeading";
 export default function LoginPage() {
@@ -11,5 +12,6 @@ export default function LoginPage() {
         </div>
       </>
     </div>
-  );
+  )
 }
+

@@ -1,7 +1,9 @@
 "use client"
 import React, { useState, useEffect } from 'react'
 import { MapContainer, TileLayer, GeoJSON } from "react-leaflet";
-import { Victoria } from '../data/victorian-suburbs'
+import { useMapEvents } from 'react-leaflet/hooks';
+import { VictorianSuburbs } from '../data/victorian-suburbs';
+import { GreaterVictoria } from '@/data/greater-victoria';
 import  fetchEnergyConsumption from '../api/energyConsumption';
 import "leaflet/dist/leaflet.css";
 import "leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css";
@@ -12,21 +14,39 @@ interface DataItem {
     [suburb: string]: number;
 }
 
+interface MyComponentProps {
+    zoomLevel: number;
+    setZoomLevel: (zoom: number) => void
+}
+
+function MyComponent(props: MyComponentProps) {
+    const { zoomLevel, setZoomLevel } = props;
+    const mapEvents = useMapEvents({
+        zoomend: () => {
+            let newZoomValue = mapEvents.getZoom();
+            setZoomLevel(newZoomValue)
+            console.log(zoomLevel)
+        },
+    });
+
+    console.log(zoomLevel);
+
+    return null
+}
+
 export default function Map() {    
-    const [hoveredSuburb, setHoveredSuburb] = useState('')
     const [data, setData] = useState<DataItem>({});
     const [geoJSONKey, setGeoJSONKey] = useState(0); // Add key state
+    const [zoomLevel, setZoomLevel] = useState(5)
     const bounds = new LatLngBounds(
         { lat: -37.5, lng: 140 }, // Southwest corner
         { lat: -39, lng: 148 } // Northeast corner
-    )
+    );
 
-    // This useEffect will update our 'data' by fetching from the backend api every 5 seconds
     useEffect(() => {
         const fetchData = async () => {
             try {
-                console.log('5 seconds')
-                const result = await fetchEnergyConsumption(); // update this later to match backend API
+                const result = await fetchEnergyConsumption();
                 if (result) {
                     const body = result;
                     setData(body);
@@ -38,18 +58,13 @@ export default function Map() {
             }
         };
 
-        // initial fetch to data
         fetchData();
 
-        // fetch data every 5 seconds
-        const intervalId = setInterval(fetchData, 5000)
+        const intervalId = setInterval(fetchData, 10000000000000000);
 
-        // clear the interval when  component is unmounted
-        return () => clearInterval(intervalId)
-
+        return () => clearInterval(intervalId);
     }, [data]);
 
-    // This makes sure that our geoJSON re-renders appropriately
     useEffect(() => {
         setGeoJSONKey((prevKey) => prevKey + 1);
     }, [data]);
@@ -61,9 +76,10 @@ export default function Map() {
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                     
                 />
+                <MyComponent zoomLevel={zoomLevel} setZoomLevel={setZoomLevel}/>
                 <GeoJSON
                     key = {geoJSONKey}
-                    data={Victoria}
+                    data={zoomLevel <= 7 ? GreaterVictoria : VictorianSuburbs}
                     onEachFeature={async (feature, layer: any) => {
                         // use suburb name to fetch energy consumption data
                         const suburbName = feature.properties["vic_loca_2"]
@@ -86,11 +102,6 @@ export default function Map() {
                                 fillOpacity: 0.7,
                             });
                         }
-                        
-                        layer.on({
-                            mouseover: () => setHoveredSuburb(feature.properties["vic_loca_2"]),
-                            mouseout: () => setHoveredSuburb('')
-                        });
                     }}
                 />              
             </MapContainer>
