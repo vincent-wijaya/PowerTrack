@@ -183,6 +183,42 @@ describe('GET /retailer/map', () => {
 describe('GET /retailer/map', () => {
   let sequelize: Sequelize;
   let appInstance: Application;
+  const suburbTestData = [
+    { id: 1, name: 'Test Suburb', postcode: 3000, state: 'Victoria', 'latitude': 100, 'longitude': 100 },
+    { id: 2, name: 'Test Suburb 2', postcode: 3001, state: 'Victoria', 'latitude': 100, 'longitude': 100 },
+  ];
+  const consumerTestData = [
+    { id: 1, street_address: '123 Test Street', high_priority: false, suburb_id: 1 },
+    { id: 2, street_address: '456 Test Street', high_priority: false, suburb_id: 1 },
+  ];
+  const consumerConsumptionTestData = [
+    { consumer_id: 1, date: new Date("2024-1-1T11:10:11"), amount: 1 },
+    { consumer_id: 1, date: new Date("2024-1-1T13:10:11"), amount: 1 },
+    { consumer_id: 1, date: new Date("2024-1-2T11:10:11"), amount: 1 },
+    { consumer_id: 1, date: new Date("2024-1-2T13:10:11"), amount: 1 },
+    { consumer_id: 1, date: new Date("2024-1-3T11:10:11"), amount: 1 },
+  ];
+  const suburbConsumptionTestData = [
+    { suburb_id: 1, date: new Date("2024-1-1T10:10:11"), amount: 2 },
+    { suburb_id: 1, date: new Date("2024-1-1T14:10:11"), amount: 2 },
+    { suburb_id: 1, date: new Date("2024-1-2T10:10:11"), amount: 2 },
+    { suburb_id: 1, date: new Date("2024-1-2T14:10:11"), amount: 2 },
+    { suburb_id: 1, date: new Date("2024-1-3T10:10:11"), amount: 2 },
+  ];
+  const spotPriceTestData = [
+    { date: new Date("2024-1-1T1:10:11"), amount: 3 }, // before all consumptions
+    { date: new Date("2024-1-1T13:30:11"), amount: 3 }, // between second consumer and suburb consumptions
+    { date: new Date("2024-1-2T12:10:11"), amount: 100 }, // after 3rd consumer and suburb consumptions This one shouldnt affect the price
+    { date: new Date("2024-1-2T12:30:11"), amount: 3 }, // before last two of both consumer and suburb consumptions
+    { date: new Date("2024-1-5T12:10:11"), amount: 3 }, // after all consumptions
+  ];
+  const sellingPriceTestData = [
+    { date: new Date("2024-1-1T1:10:11"), amount: 4 }, // before all consumptions
+    { date: new Date("2024-1-1T13:30:11"), amount: 4 }, // between second consumer and suburb consumptions
+    { date: new Date("2024-1-2T12:10:11"), amount: 100 }, // after 3rd consumer and suburb consumptions This one shouldnt affect the price
+    { date: new Date("2024-1-2T12:30:11"), amount: 4 }, // before last two of both consumer and suburb consumptions
+    { date: new Date("2024-1-5T12:10:11"), amount: 4 }, // after all consumptions
+  ];
 
   beforeAll(async () => {
     // Set up and connect to test database
@@ -190,35 +226,12 @@ describe('GET /retailer/map', () => {
     appInstance = app(sequelize);
     const { Suburb, Consumer, SuburbConsumption, ConsumerConsumption, SpotPrice, SellingPrice } = await appInstance.get("models")
     // Insert prerequesite data for tests
-    Suburb.bulkCreate([
-      { id: 1, name: 'Test Suburb', postcode: 3000, state: 'Victoria', 'latitude': 100, 'longitude': 100 },
-      { id: 2, name: 'Test Suburb 2', postcode: 3001, state: 'Victoria', 'latitude': 100, 'longitude': 100 },
-    ]);
-    Consumer.bulkCreate([
-      { id: 1, street_address: '123 Test Street', high_priority: false, suburb_id: 1 },
-      { id: 2, street_address: '456 Test Street', high_priority: false, suburb_id: 1 },
-    ]);
-    ConsumerConsumption.bulkCreate([
-      { consumer_id: 1, date: new Date("2024-1-1T11:10:11"), amount: 1 },
-      { consumer_id: 1, date: new Date("2024-1-1T13:10:11"), amount: 1 },
-      { consumer_id: 1, date: new Date("2024-1-2T11:10:11"), amount: 1 },
-      { consumer_id: 1, date: new Date("2024-1-2T13:10:11"), amount: 1 },
-      { consumer_id: 1, date: new Date("2024-1-3T11:10:11"), amount: 1 },
-    ])
-    SuburbConsumption.bulkCreate([
-      { suburb_id: 1, date: new Date("2024-1-1T10:10:11"), amount: 2 },
-      { suburb_id: 1, date: new Date("2024-1-1T14:10:11"), amount: 2 },
-      { suburb_id: 1, date: new Date("2024-1-2T10:10:11"), amount: 2 },
-      { suburb_id: 1, date: new Date("2024-1-2T14:10:11"), amount: 2 },
-      { suburb_id: 1, date: new Date("2024-1-3T10:10:11"), amount: 2 },
-    ])
-    SpotPrice.bulkCreate([
-      { date: new Date("2024-1-1T1:10:11"), amount: 3 }, // before all consumptions
-      { date: new Date("2024-1-1T13:30:11"), amount: 3 }, // between second consumer and suburb consumptions
-      { date: new Date("2024-1-2T12:10:11"), amount: 100 }, // after 3rd consumer and suburb consumptions This one shouldnt affect the price
-      { date: new Date("2024-1-2T12:30:11"), amount: 3 }, // before last two of both consumer and suburb consumptions
-      { date: new Date("2024-1-5T12:10:11"), amount: 3 }, // after all consumptions
-    ])
+    Suburb.bulkCreate(suburbTestData);
+    Consumer.bulkCreate(consumerTestData);
+    ConsumerConsumption.bulkCreate(consumerConsumptionTestData)
+    SuburbConsumption.bulkCreate(suburbConsumptionTestData)
+    SpotPrice.bulkCreate(spotPriceTestData)
+    SellingPrice.bulkCreate(sellingPriceTestData)
   });
 
   afterAll(async () => {
@@ -232,6 +245,21 @@ describe('GET /retailer/map', () => {
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({ profit: [] });
+  });
+  it('should return data for all suburbs', async () => {
+
+    const response = await request(appInstance).get('/retailer/map');
+
+    console.log(`API response status: ${response.status}`);
+    expect(response.status).toBe(200);
+    console.log(`API response: ${JSON.stringify(response.body)}`);
+
+    const expectedResults = []
+    expect(response.body)
+      .toEqual({
+        profit: expectedResults
+      }
+      );
   });
 
   it('should return all data for the suburb', async () => {
