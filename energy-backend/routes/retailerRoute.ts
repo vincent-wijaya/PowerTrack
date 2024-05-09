@@ -133,4 +133,9 @@ router.get('/consumption', async (req, res) => {
   });
 });
 
+router.get('/profit-margin', async (req, res) => {
+  const { suburb_id, consumer_id, start_date, end_date } = req.query;
+  // const { sequelize, SuburbConsumption, ConsumerConsumption } = req.app.get('models');
+});
+
 export default router;
