@@ -1,5 +1,6 @@
 "use client";
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -11,21 +12,7 @@ import {
   Legend,
 } from "chart.js";
 
-import { Line } from "react-chartjs-2";
-
-interface Props {
-  chartTitle: string;
-  xAxisLabels?: string[];
-  dataset1Label: string;
-  dataset1Data: number[];
-  dataset1Color?: string;
-  dataset2Label: string;
-  dataset2Data: number[];
-  dataset2Color?: string;
-  xAxisTitle: string;
-  yAxisTitle: string;
-}
-
+// Register Chart.js components
 ChartJS.register(
   CategoryScale,
   LinearScale,
@@ -36,18 +23,50 @@ ChartJS.register(
   Legend
 );
 
-export function LineChart({
+interface Dataset {
+  label: string;
+  data: number[];
+  borderColor: string;
+  backgroundColor: string;
+}
+
+interface Props {
+  chartTitle: string;
+  xAxisLabels?: string[];
+  datasets: Dataset[];
+  xAxisTitle: string;
+  yAxisTitle: string;
+}
+
+const LineChart: React.FC<Props> = ({
   chartTitle,
   xAxisLabels,
-  dataset1Label,
-  dataset1Data,
-  dataset1Color,
-  dataset2Label,
-  dataset2Data,
-  dataset2Color,
+  datasets,
   xAxisTitle,
   yAxisTitle,
-}: Props) {
+}) => {
+  const [chartData, setChartData] = useState({
+    labels: xAxisLabels,
+    datasets: datasets.map((dataset) => ({
+      label: dataset.label,
+      data: dataset.data,
+      borderColor: dataset.borderColor || "white",
+      backgroundColor: "white",
+    })),
+  });
+
+  useEffect(() => {
+    setChartData({
+      labels: xAxisLabels,
+      datasets: datasets.map((dataset) => ({
+        label: dataset.label,
+        data: dataset.data,
+        borderColor: dataset.borderColor || "red",
+        backgroundColor: "white",
+      })),
+    });
+  }, [xAxisLabels, datasets]);
+
   const options = {
     responsive: true,
     plugins: {
@@ -94,27 +113,12 @@ export function LineChart({
       },
     },
   };
-  const data = {
-    labels: xAxisLabels,
-    datasets: [
-      {
-        label: dataset1Label,
-        data: dataset1Data,
-        borderColor: dataset1Color,
-        backgroundColor: "white",
-      },
-      {
-        label: dataset2Label,
-        data: dataset2Data,
-        borderColor: dataset2Color,
-        backgroundColor: "white",
-      },
-    ],
-  };
 
   return (
     <div className="flex flex-grow">
-      <Line options={options} data={data} />
+      <Line options={options} data={chartData} />;
     </div>
   );
-}
+};
+
+export default LineChart;
