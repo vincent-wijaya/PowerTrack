@@ -60,7 +60,7 @@ router.get('/map', async (req, res) => {
 
 router.get('/consumption', async (req, res) => {
   // Retrieve energy consumption for a suburb or consumer over a period of time
-  const {suburb_id, consumer_id, start_date, end_date} = req.query;
+  const { suburb_id, consumer_id, start_date, end_date } = req.query;
   const { sequelize, SuburbConsumption, ConsumerConsumption } = req.app.get('models');
 
   let date_where_clause;
@@ -119,13 +119,13 @@ router.get('/consumption', async (req, res) => {
       group: ['suburb_id'],
     });
     consumptions = consumptions.map((x: any) => {
-        return {
-          suburb_id: x.suburb_id,
-          start_date: start_date,
-          end_date: end_date,
-          amount: x.amount
-        };
-      }
+      return {
+        suburb_id: x.suburb_id,
+        start_date: start_date,
+        end_date: end_date,
+        amount: x.amount
+      };
+    }
     );
   }
   res.send({
@@ -134,8 +134,46 @@ router.get('/consumption', async (req, res) => {
 });
 
 router.get('/profit-margin', async (req, res) => {
-  const { suburb_id, consumer_id, start_date, end_date } = req.query;
-  // const { sequelize, SuburbConsumption, ConsumerConsumption } = req.app.get('models');
+  const { start_date, end_date } = req.query;
+  const { SpotPrice, SellingPrice } = req.app.get('models');
+
+
+  let date_where_clause: any = {
+    [Op.ne]: null
+  }
+  if (start_date) {
+    date_where_clause[Op.gt] = new Date(String(start_date))
+  }
+  if (end_date) {
+    date_where_clause[Op.lte] = new Date(String(end_date))
+  }
+
+  let spotPrices = await SpotPrice.findAll({
+    where: {
+      date: date_where_clause
+    }
+  });
+  let sellingPrices = await SellingPrice.findAll({
+    where: {
+      date: date_where_clause
+    }
+  });
+
+  let prices: any = {}
+  spotPrices.forEach((price: any) => {
+    prices[price.date.toISOString()] = {date:price.date.toISOString(), spot_price:price.amount}
+  })
+  sellingPrices.forEach((price: any) => {
+    if (price.date.toISOString() in prices) {
+      prices[price.date.toISOString()].selling_price = price.amount
+    }
+    prices[price.date.toISOString()] = {date:price.date.toISOString(), selling_price:price.amount}
+  })
+
+
+  res.send({
+    profit: prices.values()
+  });
 });
 
 export default router;
