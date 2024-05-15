@@ -178,140 +178,133 @@ describe('GET /retailer/map', () => {
       }
       );
   });
-});
 
-describe('GET /retailer/map', () => {
-  let sequelize: Sequelize;
-  let appInstance: Application;
-  const suburbTestData = [
-    { id: 1, name: 'Test Suburb', postcode: 3000, state: 'Victoria', 'latitude': 100, 'longitude': 100 },
-    { id: 2, name: 'Test Suburb 2', postcode: 3001, state: 'Victoria', 'latitude': 100, 'longitude': 100 },
-  ];
-  const consumerTestData = [
-    { id: 1, street_address: '123 Test Street', high_priority: false, suburb_id: 1 },
-    { id: 2, street_address: '456 Test Street', high_priority: false, suburb_id: 1 },
-  ];
-  const consumerConsumptionTestData = [
-    { consumer_id: 1, date: new Date("2024-1-1T11:10:11"), amount: 1 },
-    { consumer_id: 1, date: new Date("2024-1-1T13:10:11"), amount: 1 },
-    { consumer_id: 1, date: new Date("2024-1-2T11:10:11"), amount: 1 },
-    { consumer_id: 1, date: new Date("2024-1-2T13:10:11"), amount: 1 },
-    { consumer_id: 1, date: new Date("2024-1-3T11:10:11"), amount: 1 },
-  ];
-  const suburbConsumptionTestData = [
-    { suburb_id: 1, date: new Date("2024-1-1T10:10:11"), amount: 2 },
-    { suburb_id: 1, date: new Date("2024-1-1T14:10:11"), amount: 2 },
-    { suburb_id: 1, date: new Date("2024-1-2T10:10:11"), amount: 2 },
-    { suburb_id: 1, date: new Date("2024-1-2T14:10:11"), amount: 2 },
-    { suburb_id: 1, date: new Date("2024-1-3T10:10:11"), amount: 2 },
-  ];
-  const spotPriceTestData = [
-    { date: new Date("2024-1-1T1:10:11"), amount: 3 }, // before all consumptions
-    { date: new Date("2024-1-1T13:30:11"), amount: 3 }, // between second consumer and suburb consumptions
-    { date: new Date("2024-1-2T12:10:11"), amount: 100 }, // after 3rd consumer and suburb consumptions This one shouldnt affect the price
-    { date: new Date("2024-1-2T12:30:11"), amount: 3 }, // before last two of both consumer and suburb consumptions
-    { date: new Date("2024-1-5T12:10:11"), amount: 3 }, // after all consumptions
-  ];
-  const sellingPriceTestData = [
-    { date: new Date("2024-1-1T1:10:11"), amount: 4 }, // before all consumptions
-    { date: new Date("2024-1-1T13:30:11"), amount: 4 }, // between second consumer and suburb consumptions
-    { date: new Date("2024-1-2T12:10:11"), amount: 100 }, // after 3rd consumer and suburb consumptions This one shouldnt affect the price
-    { date: new Date("2024-1-2T12:30:11"), amount: 4 }, // before last two of both consumer and suburb consumptions
-    { date: new Date("2024-1-5T12:10:11"), amount: 4 }, // after all consumptions
-  ];
+  describe('GET /retailer/profit-margin', () => {
+    let sequelize: Sequelize;
+    let appInstance: Application;
+    const spotPriceTestData = [
+      { date: new Date("2024-01-01T11:00:00"), amount: 3 },
+      { date: new Date("2024-01-02T11:00:00"), amount: 3 },
+      { date: new Date("2024-01-03T11:10:00"), amount: 3 },
+      { date: new Date("2024-01-04T11:10:00"), amount: 3 },
+      { date: new Date("2024-01-05T11:10:00"), amount: 3 },
+    ];
+    const sellingPriceTestData = [
+      { date: new Date("2024-01-01T11:10:00"), amount: 2 },
+      { date: new Date("2024-01-02T11:10:00"), amount: 2 },
+      { date: new Date("2024-01-03T11:10:00"), amount: 2 },
+      { date: new Date("2024-01-04T11:00:00"), amount: 2 },
+      { date: new Date("2024-01-05T11:00:00"), amount: 2 },
+    ];
 
-  beforeAll(async () => {
-    // Set up and connect to test database
-    sequelize = await connectToTestDb();
-    appInstance = app(sequelize);
-    const { Suburb, Consumer, SuburbConsumption, ConsumerConsumption, SpotPrice, SellingPrice } = await appInstance.get("models")
-    // Insert prerequesite data for tests
-    Suburb.bulkCreate(suburbTestData);
-    Consumer.bulkCreate(consumerTestData);
-    ConsumerConsumption.bulkCreate(consumerConsumptionTestData)
-    SuburbConsumption.bulkCreate(suburbConsumptionTestData)
-    SpotPrice.bulkCreate(spotPriceTestData)
-    SellingPrice.bulkCreate(sellingPriceTestData)
+    const startDate = new Date("2024-01-01T11:10:00")
+    const endDate = new Date("2024-01-05T11:00:00")
+
+    beforeAll(async () => {
+      // Set up and connect to test database
+      sequelize = await connectToTestDb();
+      appInstance = app(sequelize);
+      const { SpotPrice, SellingPrice } = await appInstance.get("models")
+      // Insert prerequesite data for tests
+      SpotPrice.bulkCreate(spotPriceTestData)
+      SellingPrice.bulkCreate(sellingPriceTestData)
+    });
+
+    afterAll(async () => {
+      // Drop the test database
+      await sequelize.close();
+      await dropTestDb(sequelize);
+    });
+
+    it('should return all data', async () => {
+      const response = await request(appInstance).get('/retailer/profit_margin');
+
+      let expectedProfits: { [id: string]: { date: string, selling_price?: number, spot_price?: number } } = {}
+      sellingPriceTestData.forEach(price => {
+        expectedProfits[price.date.toISOString()] = { date: price.date.toISOString(), selling_price: price.amount }
+      });
+      spotPriceTestData.forEach(price => {
+        if (price.date.toISOString() in expectedProfits) {
+          expectedProfits[price.date.toISOString()].spot_price = price.amount
+        } else {
+          expectedProfits[price.date.toISOString()] = { date: price.date.toISOString(), spot_price: price.amount }
+        }
+      });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ profit: Object.values(expectedProfits) });
+    });
+
+    it('should return all data after the start date', async () => {
+      const response = await request(appInstance).get(`/retailer/profit_margin?start_date=${startDate.toISOString()}`);
+
+      let expectedProfits: { [id: string]: { date: string, selling_price?: number, spot_price?: number } } = {}
+      sellingPriceTestData.filter(price => price.date > startDate)// filter to only after start date
+        .forEach(price => {
+          expectedProfits[price.date.toISOString()] = { date: price.date.toISOString(), selling_price: price.amount }
+        });
+      spotPriceTestData.filter(price => price.date > startDate)// filter to only after start date
+        .forEach(price => {
+          if (price.date.toISOString() in expectedProfits) {
+            expectedProfits[price.date.toISOString()].spot_price = price.amount
+          } else {
+            expectedProfits[price.date.toISOString()] = { date: price.date.toISOString(), spot_price: price.amount }
+          }
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ profit: Object.values(expectedProfits) });
+    });
+
+    it('should return all data between the start date and end date', async () => {
+      const response = await request(appInstance).get(`/retailer/profit_margin?start_date=${startDate.toISOString()}&end_date=${endDate.toISOString()}`);
+
+      let expectedProfits: { [id: string]: { date: string, selling_price?: number, spot_price?: number } } = {}
+      sellingPriceTestData.filter(price => price.date > startDate && price.date <= endDate)// filter to after start date and before end date
+        .forEach(price => {
+          expectedProfits[price.date.toISOString()] = { date: price.date.toISOString(), selling_price: price.amount }
+        });
+      spotPriceTestData.filter(price => price.date > startDate && price.date <= endDate) // filter to after start date and before end date
+        .forEach(price => {
+          if (price.date.toISOString() in expectedProfits) {
+            expectedProfits[price.date.toISOString()].spot_price = price.amount
+          } else {
+            expectedProfits[price.date.toISOString()] = { date: price.date.toISOString(), spot_price: price.amount }
+          }
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toEqual({ profit: Object.values(expectedProfits) });
+
+    });
+
+    // it('should return data for both suburbs', async () => {
+    //   // Insert sample data into the database
+    //   const SuburbConsumption = appInstance.get("models").SuburbConsumption;
+
+    //   const suburbConsumptionData = await SuburbConsumption.bulkCreate([
+    //     { suburb_id: 1, date: '2024-04-17T09:00:00Z', amount: 1000 },
+    //     { suburb_id: 2, date: '2024-04-17T09:00:00Z', amount: 1100 },
+    //   ]).catch((err: any) => console.log(err));
+
+    //   const response = await request(appInstance).get('/retailer/map');
+
+    //   console.log(`API response status: ${response.status}`);
+    //   expect(response.status).toBe(200);
+    //   console.log(`API response: ${JSON.stringify(response.body)}`);
+    //   expect(response.body)
+    //     .toEqual({
+    //       energy: suburbConsumptionData.map((x: typeof SuburbConsumption) => 
+    //         {
+    //           return {
+    //             suburb_id: x.suburb_id,
+    //             consumption: x.amount,
+    //             timestamp: x.date.toISOString(),
+    //           }
+    //         }),
+    //     }
+    //   );
+    // });
   });
 
-  afterAll(async () => {
-    // Drop the test database
-    await sequelize.close();
-    await dropTestDb(sequelize);
-  });
-
-  it('should return no data', async () => {
-    const response = await request(appInstance).get('/retailer/profit_margin');
-
-    expect(response.status).toBe(200);
-    expect(response.body).toEqual({ profit: [] });
-  });
-  it('should return data for all suburbs', async () => {
-
-    const response = await request(appInstance).get('/retailer/map');
-
-    console.log(`API response status: ${response.status}`);
-    expect(response.status).toBe(200);
-    console.log(`API response: ${JSON.stringify(response.body)}`);
-
-    const expectedResults = []
-    expect(response.body)
-      .toEqual({
-        profit: expectedResults
-      }
-      );
-  });
-
-  it('should return all data for the suburb', async () => {
-
-  });
-  it('should return data between dates for the suburb', async () => {
-
-  });
-  it('should return data after end date for the suburb', async () => {
-
-  });
-  it('should return all data for the consumer', async () => {
-
-  });
-  it('should return data between dates for the consumer', async () => {
-
-  });
-  it('should return data after the end date for the consumer', async () => {
-
-  });
-  it('should return error for wrong suburb', async () => {
-
-  });
-  it('should return error for wrong consumer', async () => {
-
-  });
-
-  // it('should return data for both suburbs', async () => {
-  //   // Insert sample data into the database
-  //   const SuburbConsumption = appInstance.get("models").SuburbConsumption;
-
-  //   const suburbConsumptionData = await SuburbConsumption.bulkCreate([
-  //     { suburb_id: 1, date: '2024-04-17T09:00:00Z', amount: 1000 },
-  //     { suburb_id: 2, date: '2024-04-17T09:00:00Z', amount: 1100 },
-  //   ]).catch((err: any) => console.log(err));
-
-  //   const response = await request(appInstance).get('/retailer/map');
-
-  //   console.log(`API response status: ${response.status}`);
-  //   expect(response.status).toBe(200);
-  //   console.log(`API response: ${JSON.stringify(response.body)}`);
-  //   expect(response.body)
-  //     .toEqual({
-  //       energy: suburbConsumptionData.map((x: typeof SuburbConsumption) => 
-  //         {
-  //           return {
-  //             suburb_id: x.suburb_id,
-  //             consumption: x.amount,
-  //             timestamp: x.date.toISOString(),
-  //           }
-  //         }),
-  //     }
-  //   );
-  // });
 });
