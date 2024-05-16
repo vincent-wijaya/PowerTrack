@@ -5,7 +5,7 @@ import Link from "next/link";
 interface TableProps {
   columns: string[];
   data: any[]; // Data should be an array of objects
-  link: string;
+  link: string | null;
 }
 
 export default function Table({ columns, data, link }: TableProps) {
