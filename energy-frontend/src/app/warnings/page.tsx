@@ -17,7 +17,7 @@ export default function WarningsPage() {
       <div className="flex flex-col-2">
         <PageHeading title="Warnings" />
       </div>
-      <Table columns={headers} data={data}/>
+      <Table columns={headers} data={data} link={true}/>
     </>
   );
 }
