@@ -5,7 +5,7 @@ const router = express.Router();
 
 router.get('/map', async (req, res) => {
   // Retrieve the last energy consumption record (kW) of each suburb. Optionally limit the area of the map to the bounding box defined by 2 coordinate points (top-left and bottom-right).
-  const {lat1, long1, lat2, long2} = req.query;
+  const { lat1, long1, lat2, long2 } = req.query;
   let whereClause;
 
   // Get relevant suburbs
@@ -133,7 +133,7 @@ router.get('/consumption', async (req, res) => {
   });
 });
 
-router.get('/profit-margin', async (req, res) => {
+router.get('/profitMargin', async (req, res) => {
   const { start_date, end_date } = req.query;
   const { SpotPrice, SellingPrice } = req.app.get('models');
 
@@ -148,31 +148,38 @@ router.get('/profit-margin', async (req, res) => {
     date_where_clause[Op.lte] = new Date(String(end_date))
   }
 
-  let spotPrices = await SpotPrice.findAll({
-    where: {
-      date: date_where_clause
-    }
-  });
   let sellingPrices = await SellingPrice.findAll({
     where: {
       date: date_where_clause
     }
   });
 
+  let spotPrices = await SpotPrice.findAll({
+    where: {
+      date: date_where_clause
+    }
+  });
+
+  console.log(sellingPrices)
+  console.log(spotPrices)
   let prices: any = {}
   spotPrices.forEach((price: any) => {
-    prices[price.date.toISOString()] = {date:price.date.toISOString(), spot_price:price.amount}
+    prices[price.date.toISOString()] = { date: price.date.toISOString(), spot_price: Number(price.amount) }
   })
   sellingPrices.forEach((price: any) => {
-    if (price.date.toISOString() in prices) {
-      prices[price.date.toISOString()].selling_price = price.amount
+    if (prices[price.date.toISOString()]) {
+      prices[price.date.toISOString()].selling_price = Number(price.amount)
+    } else {
+      prices[price.date.toISOString()] = { date: price.date.toISOString(), selling_price: Number(price.amount) }
     }
-    prices[price.date.toISOString()] = {date:price.date.toISOString(), selling_price:price.amount}
   })
 
+  console.log(prices)
+  prices = Object.values(prices)
+  prices.sort((a: any, b: any) => { return (new Date(a.date)).valueOf() - (new Date(b.date)).valueOf() })
 
-  res.send({
-    profit: prices.values()
+  res.status(200).send({
+    profit: prices
   });
 });
 
