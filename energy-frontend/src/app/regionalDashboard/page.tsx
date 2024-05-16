@@ -8,7 +8,7 @@ const sampleProfitMarginFetchData = {
       start_date: "2024-04-17T09:06:41Z",
       end_date: "2024-04-17T09:06:41Z",
       buy_price: 10,
-      sell_price: 300,
+      sell_price: 3,
     },
   ],
 };
