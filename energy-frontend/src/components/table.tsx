@@ -24,7 +24,7 @@ export default function Table({ columns, data, link }: TableProps) {
         ))}
         </tr>
       </thead>
-      <tbody className="items-start flex-shrink-0 self-stretch">
+      <tbody className="items-start flex-shrink-0 self-stretch bg-itembg">
         {data.map((row, rowIndex) => (
           <tr key={rowIndex} className="flex items-start flex-shrink-0 self-stretch">
             {columns.map((column, columnIndex) => (
