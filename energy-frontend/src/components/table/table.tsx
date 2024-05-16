@@ -1,12 +1,15 @@
 import React from "react";
+import Router from 'next/router'
+import Link from "next/link";
 
 interface TableProps {
   columns: string[];
   data: any[]; // Data should be an array of objects
-  link: boolean;
+  link: string;
 }
 
 export default function Table({ columns, data, link }: TableProps) {
+  
   // Check if link is true, if so, add 'Action' header
   const updatedColumns = link ? [...columns, "Action"] : columns;
 
@@ -43,7 +46,9 @@ export default function Table({ columns, data, link }: TableProps) {
                 key={`action-${rowIndex}`}
               >
                 <div className="font-inter text-white text-nowrap">
-                    <a href="some link"> View </a>
+                    <Link href={{ pathname: `${link}`, query: { user_id: `${row[columns[0].toLowerCase()]}` } }}>
+                    View
+                    </Link>
                    {/*{row[columns[0].toLowerCase()]} {/* Displaying the same text as the first column  */}
                 </div>
               </td>
