@@ -1,0 +1,34 @@
+services:
+  server:
+    build:
+      context: .
+    environment:
+      NODE_ENV: development
+      DATABASE_URI: ${DATABASE_URI:-postgres://postgres:password@db:5432/retailerEnergy}
+      TEST_DATABASE_CLUSTER: ${TEST_DATABASE_CLUSTER:-postgres://postgres:password@db:5432/}
+      KAFKA_CLIENT_ID: ${KAFKA_CLIENT_ID:-PowerTrack_Retailer}
+      LOCAL_BROKER_IP: ${LOCAL_BROKER_IP:-'127.0.0.1:9092'}
+      DB_SETUP_FILE: ${DB_SETUP_FILE:-dbSetupInfo.json}
+    ports:
+      - 3000:3000
+      - 9229:9229
+    command: >
+      sh -c "npm run database && npm run debug"
+    depends_on:
+      db:
+        condition: service_healthy
+  db:
+    image: timescale/timescaledb-ha:pg16
+    restart: always
+    ports:
+      - 5432:5432
+    environment:
+      TIMESCALEDB_TELEMETRY: off
+      POSTGRES_USER: postgres
+      POSTGRES_DB: retailerEnergy
+      POSTGRES_PASSWORD: password
+    healthcheck:
+      test: [ "CMD", "pg_isready" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
