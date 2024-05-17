@@ -23,13 +23,14 @@ router.get('/map', async (req, res) => {
   }
 
   // Get all suburbs within the bounding box
-  let suburbs = await req.app.get("models").Suburb.findAll({
-    where: whereClause,
+  let suburbs = await req.app.get('models').Suburb.findAll({
+    where: whereClause
   });
   console.log(`Suburbs: ${suburbs}`);
 
   // Get the latest timestamp for each suburb
-  let latestConsumptions = await req.app.get("models").sequelize.query(`
+  let latestConsumptions = await req.app.get('models').sequelize.query(
+    `
     SELECT * FROM (
       SELECT 
         *, 
@@ -40,10 +41,12 @@ router.get('/map', async (req, res) => {
         suburb_id IN (:suburbIds)
     ) AS latest
     WHERE rn = 1;
-  `, {
-    replacements: { suburbIds: suburbs.map((suburb: any) => suburb.id) },
-    type: req.app.get("models").sequelize.QueryTypes.SELECT
-  });
+  `,
+    {
+      replacements: { suburbIds: suburbs.map((suburb: any) => suburb.id) },
+      type: req.app.get('models').sequelize.QueryTypes.SELECT
+    }
+  );
 
   // Return the energy consumption for each suburb
   res.status(200).send({
@@ -51,12 +54,11 @@ router.get('/map', async (req, res) => {
       return {
         suburb_id: consumption.suburb_id,
         consumption: consumption.amount,
-        timestamp: latestConsumptions[0].date,
+        timestamp: latestConsumptions[0].date
       };
-    }),
+    })
   });
 });
-
 
 router.get('/consumption', async (req, res) => {
   // Retrieve energy consumption for a suburb or consumer over a period of time
@@ -85,9 +87,8 @@ router.get('/consumption', async (req, res) => {
   let consumptions;
 
   if (suburb_id && consumer_id) {
-    return res.status(400).send("Cannot specify both suburb_id and consumer_id");
-  }
-  else if (suburb_id) {
+    return res.status(400).send('Cannot specify both suburb_id and consumer_id');
+  } else if (suburb_id) {
     consumptions = await SuburbConsumption.findAll({
       where: {
         suburb_id: suburb_id,
@@ -104,19 +105,16 @@ router.get('/consumption', async (req, res) => {
   } else {
     // Return nation-wide totals
     consumptions = await SuburbConsumption.findAll({
-      attributes: [
-        'suburb_id',
-        [sequelize.fn('SUM', sequelize.col('amount')), 'amount'],
-      ],
+      attributes: ['suburb_id', [sequelize.fn('SUM', sequelize.col('amount')), 'amount']],
       where: {
         date: {
           [Op.between]: [
             start_date ? new Date(String(start_date)) : new Date('1970-01-01T00:00:00Z'),
-            end_date ? new Date(String(end_date)) : new Date('9999-01-01T00:00:00Z'),
-          ],
-        },
+            end_date ? new Date(String(end_date)) : new Date('9999-01-01T00:00:00Z')
+          ]
+        }
       },
-      group: ['suburb_id'],
+      group: ['suburb_id']
     });
     consumptions = consumptions.map((x: any) => {
       return {
@@ -125,8 +123,7 @@ router.get('/consumption', async (req, res) => {
         end_date: end_date,
         amount: x.amount
       };
-    }
-    );
+    });
   }
   res.send({
     energy: consumptions
@@ -137,15 +134,21 @@ router.get('/profitMargin', async (req, res) => {
   const { start_date, end_date } = req.query;
   const { SpotPrice, SellingPrice } = req.app.get('models');
 
+  if (
+    (start_date && isNaN(new Date(String(start_date)).getTime())) ||
+    (end_date && isNaN(new Date(String(end_date)).getTime()))
+  ) {
+    return res.status(400).send('Invalid date format. Provide dates in ISO string format.');
+  }
 
   let date_where_clause: any = {
     [Op.ne]: null
-  }
+  };
   if (start_date) {
-    date_where_clause[Op.gt] = new Date(String(start_date))
+    date_where_clause[Op.gt] = new Date(String(start_date));
   }
   if (end_date) {
-    date_where_clause[Op.lte] = new Date(String(end_date))
+    date_where_clause[Op.lte] = new Date(String(end_date));
   }
 
   let sellingPrices = await SellingPrice.findAll({
@@ -160,26 +163,25 @@ router.get('/profitMargin', async (req, res) => {
     }
   });
 
-  console.log(sellingPrices)
-  console.log(spotPrices)
-  let prices: any = {}
-  spotPrices.forEach((price: any) => {
-    prices[price.date.toISOString()] = { date: price.date.toISOString(), spot_price: Number(price.amount) }
-  })
-  sellingPrices.forEach((price: any) => {
-    if (prices[price.date.toISOString()]) {
-      prices[price.date.toISOString()].selling_price = Number(price.amount)
-    } else {
-      prices[price.date.toISOString()] = { date: price.date.toISOString(), selling_price: Number(price.amount) }
-    }
-  })
+  spotPrices.sort((a: any, b: any) => {
+    return new Date(a.date).valueOf() - new Date(b.date).valueOf();
+  });
+  sellingPrices.sort((a: any, b: any) => {
+    return new Date(a.date).valueOf() - new Date(b.date).valueOf();
+  });
 
-  console.log(prices)
-  prices = Object.values(prices)
-  prices.sort((a: any, b: any) => { return (new Date(a.date)).valueOf() - (new Date(b.date)).valueOf() })
+  spotPrices = spotPrices.map((spotPrice: any) => ({
+    date: spotPrice.date.toISOString(),
+    amount: Number(spotPrice.amount)
+  }));
+  sellingPrices = sellingPrices.map((sellingPrice: any) => ({
+    date: sellingPrice.date.toISOString(),
+    amount: Number(sellingPrice.amount)
+  }));
 
-  res.status(200).send({
-    profit: prices
+  return res.status(200).send({
+    spot_prices: spotPrices,
+    selling_prices: sellingPrices
   });
 });
 

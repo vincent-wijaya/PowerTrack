@@ -7,19 +7,20 @@ import useSWR from "swr";
 import { POLLING_RATE } from "@/config";
 
 export default function ProfitMargin() {
-  const { data } = useSWR("http://localhost:3000/retailer/profitMargin", fetcher, { refreshInterval: POLLING_RATE });
+  const url = process.env.NEXT_PUBLIC_API_URL;
+  const { data } = useSWR(`${url}/retailer/profitMargin`, fetcher, {
+    refreshInterval: POLLING_RATE,
+  });
   const [profitMargin, setProfitMargin] = useState(0);
 
   useEffect(() => {
     if (!data) return;
-
-    const records: { date: string; spot_price?: number; selling_price?: number }[] = data.profit;
-    const lastSpotPrice = records.filter((record) => record.spot_price).at(-1)?.spot_price;
-    const lastSellPrice = records.filter((record) => record.selling_price).at(-1)?.selling_price;
-    if (lastSpotPrice === undefined || lastSellPrice === undefined) {
+    const lastSpotPrice = data.spot_prices.at(-1)?.amount;
+    const lastSellingPrice = data.selling_prices.at(-1)?.amount;
+    if (lastSpotPrice === undefined || lastSellingPrice === undefined) {
       setProfitMargin(0);
     } else {
-      setProfitMargin(Math.round(((lastSellPrice - lastSpotPrice) / lastSellPrice) * 100));
+      setProfitMargin(Math.round(((lastSellingPrice - lastSpotPrice) / lastSellingPrice) * 100));
     }
   }, [data]);
 

@@ -1,10 +1,18 @@
-import React from 'react';
+import React from "react";
 
 const ReportsIcon: React.FC = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none">
-        <path d="M12 22C17.3552 22 21.7272 17.7905 21.9877 12.4999C22.0013 12.2241 21.7761 12 21.5 12H12.5C12.2239 12 12 11.7761 12 11.5V2.5C12 2.22386 11.7759 1.9987 11.5001 2.01228C6.20948 2.27276 2 6.64479 2 12C2 17.5228 6.47715 22 12 22Z" stroke="#C8BCF6" stroke-width="1.5"/>
-        <path d="M21.9846 9.49991C21.7367 5.47997 18.52 2.26332 14.5001 2.01538C14.2245 1.99838 14 2.22386 14 2.5V9.5C14 9.77614 14.2239 10 14.5 10H21.5C21.7761 10 22.0016 9.77553 21.9846 9.49991Z" stroke="#C8BCF6" stroke-width="1.5"/>
-    </svg>
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+    <path
+      stroke="#C8BCF6"
+      strokeWidth="1.5"
+      d="M12 22c5.355 0 9.727-4.21 9.988-9.5a.481.481 0 00-.488-.5h-9a.5.5 0 01-.5-.5v-9a.481.481 0 00-.5-.488C6.21 2.272 2 6.645 2 12c0 5.523 4.477 10 10 10z"
+    ></path>
+    <path
+      stroke="#C8BCF6"
+      strokeWidth="1.5"
+      d="M21.985 9.5A8.001 8.001 0 0014.5 2.015a.477.477 0 00-.5.485v7a.5.5 0 00.5.5h7a.477.477 0 00.485-.5z"
+    ></path>
+  </svg>
 );
 
 export default ReportsIcon;
