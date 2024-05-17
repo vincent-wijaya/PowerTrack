@@ -10,9 +10,15 @@ import "leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility
 import { LatLngBounds } from 'leaflet';
   
 
-interface DataItem {
-    [suburb: string]: number;
-}
+interface EnergyData {
+    suburb_id: number;
+    amount: number;
+    date: string; // or Date if you want to handle it as a Date object
+  }
+  
+  interface DataItem {
+    energy: EnergyData[];
+  }
 
 interface MyComponentProps {
     zoomLevel: number;
@@ -34,8 +40,30 @@ function MyComponent(props: MyComponentProps) {
     return null
 }
 
+function getColorBasedOnConsumption(consumption: number | undefined): string {
+    if (consumption == null) {
+        return 'black'
+    }
+
+    const minConsumption = 0; // Minimum possible consumption value
+    const maxConsumption = 1000; // Maximum possible consumption value
+
+    // Clamp consumption value between min and max
+    const clampedConsumption = Math.max(minConsumption, Math.min(consumption, maxConsumption));
+
+    // Calculate the interpolation factor (0 to 1)
+    const factor = (clampedConsumption - minConsumption) / (maxConsumption - minConsumption);
+
+    // Interpolate between blue and red
+    const red = Math.round(255 * factor);
+    const blue = Math.round(255 * (1 - factor));
+    
+    return `rgb(${red}, 0, ${blue})`;
+}
+
+
 export default function Map() {    
-    const [data, setData] = useState<DataItem>({});
+    const [data, setData] = useState<DataItem>({ energy: [] });
     const [geoJSONKey, setGeoJSONKey] = useState(0); // Add key state
     const [zoomLevel, setZoomLevel] = useState(5)
     const bounds = new LatLngBounds(
@@ -48,7 +76,7 @@ export default function Map() {
             try {
                 const result = await fetchEnergyConsumption();
                 if (result) {
-                    const body = result;
+                    const body = result as DataItem;
                     setData(body);
                 } else {
                     console.error('Failed to fetch data:', result);
@@ -60,7 +88,7 @@ export default function Map() {
 
         fetchData();
 
-        const intervalId = setInterval(fetchData, 10000000000000000);
+        const intervalId = setInterval(fetchData, 5);
 
         return () => clearInterval(intervalId);
     }, [data]);
@@ -82,23 +110,25 @@ export default function Map() {
                     data={zoomLevel <= 7 ? GreaterVictoria : VictorianSuburbs}
                     onEachFeature={async (feature, layer: any) => {
                         // use suburb name to fetch energy consumption data
-                        const suburbName = feature.properties["vic_loca_2"]
-                        const energyConsumption = data[suburbName]
+                        const suburbId = feature.properties["loc_pid"];
+                        const energyData = data.energy.find((item) => `VIC${item.suburb_id}` === suburbId);
+                        const energyConsumption = energyData?.amount
+                        const color = getColorBasedOnConsumption(energyConsumption)
 
                         if (energyConsumption !== undefined) {
                             layer.setStyle({
-                                fillColor: 'red',
+                                fillColor: color,
                                 weight: 1,
                                 opacity: 1,
-                                color: 'red',
+                                color: color,
                                 fillOpacity: 0.7,
                             });
                         } else {
                             layer.setStyle({
-                                fillColor: 'blue',
+                                fillColor: color,
                                 weight: 1,
                                 opacity: 1,
-                                color: 'blue',
+                                color: color,
                                 fillOpacity: 0.7,
                             });
                         }

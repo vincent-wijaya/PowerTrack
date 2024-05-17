@@ -19,7 +19,7 @@ export default function Template({ children }: TemplateProps) {
   return (
     <div className="flex h-screen overflow-hidden">
       <Navbar isOpen={isNavbarOpen}/>
-      <div className="w-full"> {/* Adjust the margin-left according to the navbar width */}
+      <div className="flex flex-col w-full"> {/* Adjust the margin-left according to the navbar width */}
         <div className="flex justify-between items-center py-6 px-10 bg-gray-800">
           <div className="text-xl text-white">POWER TRACK</div>
           <Profile click={toggleNavbar} />
