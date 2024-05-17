@@ -143,22 +143,22 @@
         "name": "energy_generation",
         "values": [
             {
-                "generator_id": 1,
+                "energy_generator_id": 1,
                 "date": "2024-04-17T09:00:00Z",
                 "amount": 1000
             },
             {
-                "generator_id": 1,
+                "energy_generator_id": 1,
                 "date": "2024-04-17T09:05:00Z",
                 "amount": 1100
             },
             {
-                "generator_id": 1,
+                "energy_generator_id": 1,
                 "date": "2024-04-17T09:10:00Z",
                 "amount": 1200
             },
             {
-                "generator_id": 1,
+                "energy_generator_id": 1,
                 "date": "2024-04-17T09:15:00Z",
                 "amount": 1300
             }
