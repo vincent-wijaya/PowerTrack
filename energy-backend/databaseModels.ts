@@ -290,8 +290,8 @@ export const defineModels = (sequelize: Sequelize) => {
   Reports.belongsTo(Consumer, { foreignKey: { name: "consumer_id", allowNull: true } })
 
   /* Link goal and warning type
-  * One to One relation */
-  GoalType.hasOne(WarningType, { foreignKey: { name: "goal_type_id", allowNull: false } })
+  * Many to One relation */
+  GoalType.hasMany(WarningType, { foreignKey: { name: "goal_type_id", allowNull: false } })
   WarningType.belongsTo(GoalType, { foreignKey: { name: "goal_type_id", allowNull: false } })
 
   return {
