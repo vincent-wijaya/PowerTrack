@@ -1,6 +1,8 @@
 import React from "react";
 import Router from 'next/router'
 import Link from "next/link";
+import { use } from 'next/navigation';
+
 
 interface TableProps {
   columns: string[];
@@ -46,7 +48,7 @@ export default function Table({ columns, data, link }: TableProps) {
                 key={`action-${rowIndex}`}
               >
                 <div className="font-inter text-white text-nowrap">
-                    <Link href={{ pathname: `${link}`, query: { user_id: `${row[columns[0].toLowerCase()]}` } }}>
+                    <Link href={`${link}/${row[columns[0].toLowerCase()]}` }>
                     View
                     </Link>
                    {/*{row[columns[0].toLowerCase()]} {/* Displaying the same text as the first column  */}
