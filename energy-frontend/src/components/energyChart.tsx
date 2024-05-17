@@ -51,8 +51,8 @@ function EnergyChart() {
   };
 
   return (
-    <div>
-      <div className="flex justify-center items-center w-screen h-screen">
+    <div className="h-full w-full">
+      <div className="justify-center items-center w-screen h-screen">
         <div className="w-1/2 h-1/2 drop-shadow-md border-2 border-chartBorder">
           <Dropdown
             onChange={handleTimeRangeChange}

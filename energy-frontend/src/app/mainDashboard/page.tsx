@@ -3,7 +3,9 @@ import Headings from "@/app/template";
 import PageHeading from "@/components/pageHeading";
 import InfoBox from "@/components/infoBox";
 import Map from "@/components/map"
-import UserTable from "@/components/table/userTable"
+import WarningTable from "@/components/table/warningTable"
+import EnergyChat from "@/components/energyChart"
+import EnergyChart from "@/components/energyChart";
 
 export default function MainDashboard() {
   return (
@@ -21,7 +23,12 @@ export default function MainDashboard() {
               <Map />
             </div> 
             <div className="h-1/3 gap-2 py-10">
-              <UserTable/>
+              <WarningTable/>
+            </div> 
+          </div>
+          <div className="gap-8 py-10">
+            <div className="h-1/3 mt-8 p-4 bg-itembg border border-stroke rounded-lg">
+              <EnergyChart />
             </div> 
           </div>
         </div>

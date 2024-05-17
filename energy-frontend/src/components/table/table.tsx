@@ -1,8 +1,5 @@
 import React from "react";
-import Router from 'next/router'
-import Link from "next/link";
-import { use } from 'next/navigation';
-
+import Link from "next/link"
 
 interface TableProps {
   columns: string[];

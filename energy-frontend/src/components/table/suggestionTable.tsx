@@ -4,8 +4,8 @@ import Table from "./table";
 
 type DataItem = {
   id: number;
-  priority: string;
-  address: string;
+  description: string;
+  location: string;
 };
 
 
@@ -14,11 +14,11 @@ async function fetchHeadersAndData(): Promise<{ headers: string[], data: DataIte
   return new Promise((resolve) => {
     setTimeout(() => {
       resolve({
-        headers: ["id", "priority", "address"],
+        headers: ["id", "Description", "Location"],
         data: [
-          { id: 1, priority: "High", address: "54, Dawes Road" },
-          { id: 2, priority: "High", address: "6 Sunnsyside Road" },
-          { id: 3, priority: "Low", address: "Central" }
+          { id: 1, description: "power outage", location: "54, Dawes Road" },
+          { id: 2, description: "power outage", location: "6 Sunnsyside Road" },
+          { id: 3, description: "power outage", location: "Central" }
         ]
       });
     }, 1000); // Simulating network delay
@@ -26,7 +26,7 @@ async function fetchHeadersAndData(): Promise<{ headers: string[], data: DataIte
 }
 
 
-export default function UserTable() {
+export default function SuggestionTable() {
   const [headers, setHeaders] = useState<string[]>([]);
   const [data, setData] = useState<DataItem[]>([]);
 

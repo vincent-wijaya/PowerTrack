@@ -4,10 +4,10 @@ import RegionalTable from "@/components/table/regionalTable";
 import UserTable from "@/components/table/userTable";
 
 
-export default function LiveViews() {
+export default function LiveViewDashboard() {
   return (
       <>
-        <PageHeading title="Live View Dashboard" />
+        <PageHeading title="Live View Dashboard"/>
         <div className="gap-8">
             <div className="py-8">
                 <RegionalTable/>
