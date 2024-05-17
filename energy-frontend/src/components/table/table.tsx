@@ -21,7 +21,7 @@ export default function Table({ columns, data, link }: TableProps) {
         <tr className="flex items-start flex-shrink-0 self-stretch">
         {updatedColumns.map((column, columnIndex) => (
           <th
-            className="flex p-16 items-start gap-8 flex-1 self-stretch border-stroke border-r-2 border-b-2"
+            className="flex p-4 items-start gap-8 flex-1 self-stretch border-stroke border-r-2 border-b-2"
             key={columnIndex}
           >
             <div className="font-inter text-white text-nowrap">{column}</div>
@@ -37,7 +37,7 @@ export default function Table({ columns, data, link }: TableProps) {
                 className="p-16 items-start gap-8 flex-1 self-stretch border-stroke border-r-2 border-b-2"
                 key={columnIndex}
               >
-                <div className="font-inter text-white text-nowrap">
+                <div className="font-inter text-white">
                   {row[column.toLowerCase()]} {/* Assuming data keys match columns */}
                 </div>
               </td>
@@ -47,7 +47,7 @@ export default function Table({ columns, data, link }: TableProps) {
                 className="p-16 items-start gap-8 flex-1 self-stretch border-stroke border-r-2 border-b-2 bg-purple"
                 key={`action-${rowIndex}`}
               >
-                <div className="font-inter text-white text-nowrap">
+                <div className="font-inter text-white">
                     <Link href={`${link}/${row[columns[0].toLowerCase()]}` }>
                     View
                     </Link>

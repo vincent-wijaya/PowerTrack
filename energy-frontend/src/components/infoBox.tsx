@@ -3,7 +3,7 @@ interface InfoBoxProps {
     description: string;
 }
 export default function InfoBox({ title, description }: InfoBoxProps) {
-    return <div className="flex flex-col justify-center items-center p-24 gap-7 flex-shrink-0 w-full bg-itembg border border-stroke rounded-lg">
+    return <div className="flex flex-col justify-center items-center p-2 gap-7  w-full bg-itembg border border-stroke rounded-lg">
             <div className="flex flex-col justify-center flex-1 items-center">
             <h1 className="text-white text-center font-inter font-semibold text-3xl leading-12">
                 {title}
