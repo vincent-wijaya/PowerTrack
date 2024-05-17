@@ -184,31 +184,31 @@ describe('GET /retailer/profitMargin', () => {
   let sequelize: Sequelize;
   let appInstance: Application;
   const spotPriceTestData = [
-    { date: new Date("2024-01-01T11:00:00"), amount: 3 },
-    { date: new Date("2024-01-02T11:00:00"), amount: 3 },
-    { date: new Date("2024-01-03T11:10:00"), amount: 3 },
-    { date: new Date("2024-01-04T11:10:00"), amount: 3 },
-    { date: new Date("2024-01-05T11:10:00"), amount: 3 },
+    { date: new Date('2024-01-01T11:00:00'), amount: 3 },
+    { date: new Date('2024-01-02T11:00:00'), amount: 3 },
+    { date: new Date('2024-01-03T11:10:00'), amount: 3 },
+    { date: new Date('2024-01-04T11:10:00'), amount: 3 },
+    { date: new Date('2024-01-05T11:10:00'), amount: 3 }
   ];
   const sellingPriceTestData = [
-    { date: new Date("2024-01-01T11:10:00"), amount: 2 },
-    { date: new Date("2024-01-02T11:10:00"), amount: 2 },
-    { date: new Date("2024-01-03T11:10:00"), amount: 2 },
-    { date: new Date("2024-01-04T11:00:00"), amount: 2 },
-    { date: new Date("2024-01-05T11:00:00"), amount: 2 },
+    { date: new Date('2024-01-01T11:10:00'), amount: 2 },
+    { date: new Date('2024-01-02T11:10:00'), amount: 2 },
+    { date: new Date('2024-01-03T11:10:00'), amount: 2 },
+    { date: new Date('2024-01-04T11:00:00'), amount: 2 },
+    { date: new Date('2024-01-05T11:00:00'), amount: 2 }
   ];
 
-  const startDate = new Date("2024-01-01T11:10:00")
-  const endDate = new Date("2024-01-05T11:00:00")
+  const startDate = new Date('2024-01-01T11:10:00');
+  const endDate = new Date('2024-01-05T11:00:00');
 
   beforeAll(async () => {
     // Set up and connect to test database
     sequelize = await connectToTestDb();
     appInstance = app(sequelize);
-    const { SpotPrice, SellingPrice } = await appInstance.get("models")
+    const { SpotPrice, SellingPrice } = await appInstance.get('models');
     // Insert prerequesite data for tests
-    SpotPrice.bulkCreate(spotPriceTestData)
-    SellingPrice.bulkCreate(sellingPriceTestData)
+    await SpotPrice.bulkCreate(spotPriceTestData);
+    await SellingPrice.bulkCreate(sellingPriceTestData);
   });
 
   afterAll(async () => {
@@ -220,71 +220,67 @@ describe('GET /retailer/profitMargin', () => {
   it('should return all data', async () => {
     const response = await request(appInstance).get('/retailer/profitMargin');
 
-    let expectedProfits: { [id: string]: { date: string, selling_price?: number, spot_price?: number } } = {}
-    sellingPriceTestData.forEach(price => {
-      expectedProfits[price.date.toISOString()] = { date: price.date.toISOString(), selling_price: price.amount }
-    });
-    spotPriceTestData.forEach(price => {
-      if (expectedProfits[price.date.toISOString()]) {
-        expectedProfits[price.date.toISOString()].spot_price = price.amount
-      } else {
-        expectedProfits[price.date.toISOString()] = { date: price.date.toISOString(), spot_price: price.amount }
-      }
-    });
-    let sortedProfits:{ date: string, selling_price?: number, spot_price?: number }[] =  Array.from(Object.values(expectedProfits))
+    let expectedSellingPrice = sellingPriceTestData.map((data) => ({
+      date: data.date.toISOString(),
+      amount: data.amount
+    }));
+    expectedSellingPrice.sort((a: any, b: any) => new Date(a.date).valueOf() - new Date(b.date).valueOf());
 
-    console.log(sortedProfits)
-    sortedProfits.sort((a: any, b: any) => { return (new Date(a.date)).valueOf() - (new Date(b.date)).valueOf()})
-    console.log(response.body)
-    console.log(sortedProfits)
+    let expectedSpotPrice = spotPriceTestData.map((data) => ({
+      date: data.date.toISOString(),
+      amount: data.amount
+    }));
+    expectedSpotPrice.sort((a: any, b: any) => new Date(a.date).valueOf() - new Date(b.date).valueOf());
+
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ profit: sortedProfits });
+    expect(response.body).toEqual({ selling_prices: expectedSellingPrice, spot_prices: expectedSpotPrice });
   });
 
   it('should return all data after the start date', async () => {
     const response = await request(appInstance).get(`/retailer/profitMargin?start_date=${startDate.toISOString()}`);
 
-    let expectedProfits: { [id: string]: { date: string, selling_price?: number, spot_price?: number } } = {}
-    sellingPriceTestData.filter(price => price.date > startDate)// filter to only after start date
-      .forEach(price => {
-        expectedProfits[price.date.toISOString()] = { date: price.date.toISOString(), selling_price: price.amount }
-      });
-    spotPriceTestData.filter(price => price.date > startDate)// filter to only after start date
-      .forEach(price => {
-        if (expectedProfits[price.date.toISOString()]) {
-          expectedProfits[price.date.toISOString()].spot_price = price.amount
-        } else {
-          expectedProfits[price.date.toISOString()] = { date: price.date.toISOString(), spot_price: price.amount }
-        }
-      });
-    let sortedProfits: any = Object.values(expectedProfits)
+    let expectedSellingPrice = sellingPriceTestData
+      .filter((price) => price.date > startDate) // filter to after start date
+      .map((data) => ({
+        date: data.date.toISOString(),
+        amount: data.amount
+      }));
+    expectedSellingPrice.sort((a: any, b: any) => new Date(a.date).valueOf() - new Date(b.date).valueOf());
 
-    sortedProfits.sort((a: any, b: any) => { return (new Date(a.date)).valueOf() - (new Date(b.date)).valueOf()})
+    let expectedSpotPrice = spotPriceTestData
+      .filter((price) => price.date > startDate) // filter to after start date
+      .map((data) => ({
+        date: data.date.toISOString(),
+        amount: data.amount
+      }));
+    expectedSpotPrice.sort((a: any, b: any) => new Date(a.date).valueOf() - new Date(b.date).valueOf());
+
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ profit: sortedProfits });
+    expect(response.body).toEqual({ selling_prices: expectedSellingPrice, spot_prices: expectedSpotPrice });
   });
 
   it('should return all data between the start date and end date', async () => {
-    const response = await request(appInstance).get(`/retailer/profitMargin?start_date=${startDate.toISOString()}&end_date=${endDate.toISOString()}`);
+    const response = await request(appInstance).get(
+      `/retailer/profitMargin?start_date=${startDate.toISOString()}&end_date=${endDate.toISOString()}`
+    );
 
-    let expectedProfits: { [id: string]: { date: string, selling_price?: number, spot_price?: number } } = {}
-    sellingPriceTestData.filter(price => price.date > startDate && price.date <= endDate)// filter to after start date and before end date
-      .forEach(price => {
-        expectedProfits[price.date.toISOString()] = { date: price.date.toISOString(), selling_price: price.amount }
-      });
-    spotPriceTestData.filter(price => price.date > startDate && price.date <= endDate) // filter to after start date and before end date
-      .forEach(price => {
-        if (expectedProfits[price.date.toISOString()]) {
-          expectedProfits[price.date.toISOString()].spot_price = price.amount
-        } else {
-          expectedProfits[price.date.toISOString()] = { date: price.date.toISOString(), spot_price: price.amount }
-        }
-      });
-    let sortedProfits: any = Object.values(expectedProfits)
+    let expectedSellingPrice = sellingPriceTestData
+      .filter((price) => price.date > startDate && price.date <= endDate) // filter to after start date and before end date
+      .map((data) => ({
+        date: data.date.toISOString(),
+        amount: data.amount
+      }));
+    expectedSellingPrice.sort((a: any, b: any) => new Date(a.date).valueOf() - new Date(b.date).valueOf());
 
-    sortedProfits.sort((a: any, b: any) => { return (new Date(a.date)).valueOf() - (new Date(b.date)).valueOf()})
+    let expectedSpotPrice = spotPriceTestData
+      .filter((price) => price.date > startDate && price.date <= endDate) // filter to after start date and before end date
+      .map((data) => ({
+        date: data.date.toISOString(),
+        amount: data.amount
+      }));
+    expectedSpotPrice.sort((a: any, b: any) => new Date(a.date).valueOf() - new Date(b.date).valueOf());
+
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ profit: sortedProfits });
-
+    expect(response.body).toEqual({ selling_prices: expectedSellingPrice, spot_prices: expectedSpotPrice });
   });
 });
