@@ -6,7 +6,7 @@ import { GreaterVictoria } from '../../public/data/greater-victoria';
 import  fetchEnergyConsumption from '../api/energyConsumption';
 import "leaflet/dist/leaflet.css";
 import "leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css";
-import { LatLngBounds } from 'leaflet';
+import { LatLngBounds, map } from 'leaflet';
 import { Feature, FeatureCollection } from 'geojson';
   
 
@@ -139,8 +139,8 @@ export default function Map() {
                     key = {geoJSONKey}
                     data={zoomLevel <= 7 ? GreaterVictoria : victorianSuburbs} // Conditionally set data based on zoom level
                     onEachFeature={(feature, layer: any) => {
-                        console.log("Feature is:", feature)
                         const energyData = feature.properties["amount"];
+                        const suburbName = feature.properties["name"]
                         if (energyData) {
                             const fillColor = getColorBasedOnConsumption(energyData);
                             layer.setStyle({
@@ -152,7 +152,11 @@ export default function Map() {
                             });
     
                             // Add popup with amount value
-                            layer.bindPopup(`Suburb ID: <br>Amount: ${energyData}`);
+                            if (energyData > 0){
+                                layer.bindPopup(`<a href="regionalDashboard/${suburbName}">${suburbName}</a> <br>Energy: ${energyData}`);
+                            } else {
+                                layer.bindPopup(`<a href="regionalDashboard/${suburbName}">${suburbName}</a> <br>Power Outage!`)
+                            }
                         } else {
                             layer.setStyle({
                                 fillColor: 'black',
@@ -163,7 +167,7 @@ export default function Map() {
                             });
     
                             // Add popup with default message
-                            layer.bindPopup(`Suburb ID: <br>No energy data available`);
+                            layer.bindPopup(`Area: ${suburbName} <br>No energy data available`);
                             }
                         }
                     }
