@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import Table from "./table";
 
 type DataItem = {
-  id: number;
+  warning_id: number;
   description: string;
   location: string;
 };
@@ -16,7 +16,7 @@ async function fetchHeadersAndData(): Promise<{ headers: string[], data: DataIte
       resolve({
         headers: ["Warning ID", "Description", "Location"],
         data: [
-          { id: 3, description: "power outage", location: "Hawthorn" }
+          { warning_id: 3, description: "power outage", location: "Hawthorn" }
         ]
       });
     }, 1000); // Simulating network delay
