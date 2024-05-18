@@ -2,18 +2,18 @@
 import React, { useState, useEffect } from 'react'
 import { MapContainer, TileLayer, GeoJSON } from "react-leaflet";
 import { useMapEvents } from 'react-leaflet/hooks';
-import { VictorianSuburbs } from '../data/victorian-suburbs';
-import { GreaterVictoria } from '@/data/greater-victoria';
+import { GreaterVictoria } from '../../public/data/greater-victoria';
 import  fetchEnergyConsumption from '../api/energyConsumption';
 import "leaflet/dist/leaflet.css";
 import "leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css";
 import { LatLngBounds } from 'leaflet';
+import { Feature, FeatureCollection } from 'geojson';
   
 
 interface EnergyData {
     suburb_id: number;
     amount: number;
-    date: string; // or Date if you want to handle it as a Date object
+    date: string; 
   }
   
   interface DataItem {
@@ -31,12 +31,8 @@ function MyComponent(props: MyComponentProps) {
         zoomend: () => {
             let newZoomValue = mapEvents.getZoom();
             setZoomLevel(newZoomValue)
-            console.log(zoomLevel)
         },
     });
-
-    console.log(zoomLevel);
-
     return null
 }
 
@@ -64,6 +60,11 @@ function getColorBasedOnConsumption(consumption: number | undefined): string {
 
 export default function Map() {    
     const [data, setData] = useState<DataItem>({ energy: [] });
+    const [victorianSuburbs, setVictorianSuburbs] = useState<FeatureCollection<any, any>>({
+        type: "FeatureCollection",
+        features: []
+    });
+
     const [geoJSONKey, setGeoJSONKey] = useState(0); // Add key state
     const [zoomLevel, setZoomLevel] = useState(5)
     const bounds = new LatLngBounds(
@@ -78,6 +79,35 @@ export default function Map() {
                 if (result) {
                     const body = result as DataItem;
                     setData(body);
+
+                    const geoJSONPromises = body.energy.map(async (item) => {
+                        const response = await fetch(`/data/suburbs/${item.suburb_id}.json`);
+                        if (!response.ok) {
+                            throw new Error(`Failed to fetch GeoJSON for suburb_id: ${item.suburb_id}`);
+                        }
+                        const geoJSON: Feature = await response.json();
+                        return { geoJSON, amount: item.amount };
+                    });
+
+                    const geoJSONResults = await Promise.all(geoJSONPromises);
+                    
+                    const features = geoJSONResults.map(result => {
+                        // Add the energy amount as a property to the feature
+                        result.geoJSON.properties = {
+                            ...result.geoJSON.properties,
+                            amount: result.amount,
+                        };
+                        return result.geoJSON;
+                    });
+
+                    const featureCollection: FeatureCollection = {
+                        type: "FeatureCollection",
+                        features: features,
+                    }
+
+                    setVictorianSuburbs(featureCollection)
+                    console.log("Vic suburbs", victorianSuburbs)
+
                 } else {
                     console.error('Failed to fetch data:', result);
                 }
@@ -88,14 +118,14 @@ export default function Map() {
 
         fetchData();
 
-        const intervalId = setInterval(fetchData, 5);
-
+        const intervalId = setInterval(fetchData, 5000); // Fetch data every 50 seconds
         return () => clearInterval(intervalId);
-    }, [data]);
+    }, [victorianSuburbs]);
 
     useEffect(() => {
         setGeoJSONKey((prevKey) => prevKey + 1);
-    }, [data]);
+    }, [victorianSuburbs]);
+
 
     return (
             <MapContainer style={{height:'100%'}} scrollWheelZoom={true} bounds={bounds}>
@@ -107,32 +137,36 @@ export default function Map() {
                 <MyComponent zoomLevel={zoomLevel} setZoomLevel={setZoomLevel}/>
                 <GeoJSON
                     key = {geoJSONKey}
-                    data={zoomLevel <= 7 ? GreaterVictoria : VictorianSuburbs}
-                    onEachFeature={async (feature, layer: any) => {
-                        // use suburb name to fetch energy consumption data
-                        const suburbId = feature.properties["loc_pid"];
-                        const energyData = data.energy.find((item) => `VIC${item.suburb_id}` === suburbId);
-                        const energyConsumption = energyData?.amount
-                        const color = getColorBasedOnConsumption(energyConsumption)
-
-                        if (energyConsumption !== undefined) {
+                    data={zoomLevel <= 7 ? GreaterVictoria : victorianSuburbs} // Conditionally set data based on zoom level
+                    onEachFeature={(feature, layer: any) => {
+                        console.log("Feature is:", feature)
+                        const energyData = feature.properties["amount"];
+                        if (energyData) {
+                            const fillColor = getColorBasedOnConsumption(energyData);
                             layer.setStyle({
-                                fillColor: color,
+                                fillColor: fillColor,
                                 weight: 1,
                                 opacity: 1,
-                                color: color,
+                                color: fillColor,
                                 fillOpacity: 0.7,
                             });
+    
+                            // Add popup with amount value
+                            layer.bindPopup(`Suburb ID: <br>Amount: ${energyData}`);
                         } else {
                             layer.setStyle({
-                                fillColor: color,
+                                fillColor: 'black',
                                 weight: 1,
                                 opacity: 1,
-                                color: color,
+                                color: 'black',
                                 fillOpacity: 0.7,
                             });
+    
+                            // Add popup with default message
+                            layer.bindPopup(`Suburb ID: <br>No energy data available`);
+                            }
                         }
-                    }}
+                    }
                 />              
             </MapContainer>
     )
