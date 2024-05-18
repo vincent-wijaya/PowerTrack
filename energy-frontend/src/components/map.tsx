@@ -1,13 +1,14 @@
 "use client"
 import React, { useState, useEffect } from 'react'
-import { MapContainer, TileLayer, GeoJSON } from "react-leaflet";
+import { MapContainer, TileLayer, GeoJSON, Marker, Popup } from "react-leaflet";
 import { useMapEvents } from 'react-leaflet/hooks';
 import { GreaterVictoria } from '../../public/data/greater-victoria';
 import  fetchEnergyConsumption from '../api/energyConsumption';
 import "leaflet/dist/leaflet.css";
 import "leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css";
-import { LatLngBounds, map } from 'leaflet';
+import { LatLng, LatLngBounds } from 'leaflet';
 import { Feature, FeatureCollection } from 'geojson';
+import {OutageIcon} from './icons/outageIcon';
   
 
 interface EnergyData {
@@ -27,6 +28,7 @@ interface MyComponentProps {
 
 function MyComponent(props: MyComponentProps) {
     const { zoomLevel, setZoomLevel } = props;
+    setZoomLevel(8)
     const mapEvents = useMapEvents({
         zoomend: () => {
             let newZoomValue = mapEvents.getZoom();
@@ -59,11 +61,11 @@ function getColorBasedOnConsumption(consumption: number | undefined): string {
 
 
 export default function Map() {    
-    const [data, setData] = useState<DataItem>({ energy: [] });
     const [victorianSuburbs, setVictorianSuburbs] = useState<FeatureCollection<any, any>>({
         type: "FeatureCollection",
         features: []
     });
+    const [powerOutageCoords, setPowerOutageCoords] = useState<LatLng[]>([])
 
     const [geoJSONKey, setGeoJSONKey] = useState(0); // Add key state
     const [zoomLevel, setZoomLevel] = useState(5)
@@ -78,8 +80,6 @@ export default function Map() {
                 const result = await fetchEnergyConsumption();
                 if (result) {
                     const body = result as DataItem;
-                    setData(body);
-
                     const geoJSONPromises = body.energy.map(async (item) => {
                         const response = await fetch(`/data/suburbs/${item.suburb_id}.json`);
                         if (!response.ok) {
@@ -106,7 +106,6 @@ export default function Map() {
                     }
 
                     setVictorianSuburbs(featureCollection)
-                    console.log("Vic suburbs", victorianSuburbs)
 
                 } else {
                     console.error('Failed to fetch data:', result);
@@ -128,7 +127,7 @@ export default function Map() {
 
 
     return (
-            <MapContainer style={{height:'100%'}} scrollWheelZoom={true} bounds={bounds}>
+            <MapContainer style={{height:'100%'}} zoom={10} scrollWheelZoom={true} bounds={bounds} center={new LatLng(-37.0483, 143.7354)}>
                 <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                     url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -140,8 +139,10 @@ export default function Map() {
                     data={zoomLevel <= 7 ? GreaterVictoria : victorianSuburbs} // Conditionally set data based on zoom level
                     onEachFeature={(feature, layer: any) => {
                         const energyData = feature.properties["amount"];
-                        const suburbName = feature.properties["name"]
-                        if (energyData) {
+                        const suburbName = feature.properties["name"];
+                        const coordinates = layer.getBounds().getCenter(); // Get the center coordinates of the feature
+                        console.log(coordinates)
+                        if (energyData >= 0) {
                             const fillColor = getColorBasedOnConsumption(energyData);
                             layer.setStyle({
                                 fillColor: fillColor,
@@ -156,7 +157,9 @@ export default function Map() {
                                 layer.bindPopup(`<a href="regionalDashboard/${suburbName}">${suburbName}</a> <br>Energy: ${energyData}`);
                             } else {
                                 layer.bindPopup(`<a href="regionalDashboard/${suburbName}">${suburbName}</a> <br>Power Outage!`)
+                                setPowerOutageCoords((prevCoords) => [...prevCoords, coordinates]);
                             }
+                            
                         } else {
                             layer.setStyle({
                                 fillColor: 'black',
@@ -171,7 +174,13 @@ export default function Map() {
                             }
                         }
                     }
-                />              
+                    
+                />       
+                {powerOutageCoords.map((coord, index) => (
+                    <Marker key={index} position={coord} icon={OutageIcon}>
+                        <Popup>Power Outage!</Popup>
+                    </Marker>
+                ))}
             </MapContainer>
     )
 }
