@@ -8,7 +8,7 @@ export default function InfoBox({ title, description }: InfoBoxProps) {
             <h1 className="text-white text-center font-inter font-semibold text-2xl leading-12">
                 {title}
             </h1>
-            <p className="text-white text-center font-inter text-xl leading-9">
+            <p className="text-white text-center font-inter text-sm">
                 {description}
             </p>
             </div>

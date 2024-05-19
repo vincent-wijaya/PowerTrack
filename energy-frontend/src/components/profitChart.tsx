@@ -3,12 +3,11 @@ import React, { useEffect, useState } from "react";
 import Dropdown from "./dropDownFilter"; // Adjust the path based on your folder structure
 import LineChart from "./lineChart";
 
-function ProfitChart() {
+function ProfitChart(props: { className?: string }) {
   const [profitData, setProfitData] = useState<number[]>([]);
   const [spotPriceData, setSpotPriceData] = useState<number[]>([]);
   const [sellingPriceData, setSellingPriceData] = useState<number[]>([]);
-  const [selectedTimeRange, setSelectedTimeRange] =
-    useState<string>("last_year");
+  const [selectedTimeRange, setSelectedTimeRange] = useState<string>("last_year");
 
   const generateData = () => {
     const newData = Math.floor(Math.random() * (200 - 50 + 1)) + 50;
@@ -51,44 +50,38 @@ function ProfitChart() {
   };
 
   return (
-    <div>
-      <div className="h-full w-full">
-        <div className="justify-center items-center">
-          <div className="drop-shadow-md border-chartBorder ">
-            <Dropdown
-              onChange={handleTimeRangeChange}
-              chartTitle={"Profit Analysis"}
-            />
-            <LineChart
-              chartTitle=""
-              xAxisLabels={profitData.map((_, index) => `Day ${index + 1}`)}
-              datasets={[
-                {
-                  label: "Profit",
-                  data: profitData,
-                  borderColor: "purple",
-                  backgroundColor: "white",
-                },
-                {
-                  label: "Spot Price",
-                  data: spotPriceData,
-                  borderColor: "red",
-                  backgroundColor: "white",
-                },
-                {
-                  label: "Selling Price",
-                  data: sellingPriceData,
-                  borderColor: "blue",
-                  backgroundColor: "white",
-                },
-              ]}
-              xAxisTitle="Day"
-              yAxisTitle="Value (AUD)"
-            />
-          </div>
+    <div className={`bg-itembg border border-stroke rounded-lg p-4 ${props.className ? props.className : ""}`}>
+      <div className="justify-center items-center">
+        <div className="drop-shadow-md border-chartBorder ">
+          <Dropdown onChange={handleTimeRangeChange} chartTitle={"Profit Analysis"} />
+          <LineChart
+            chartTitle=""
+            xAxisLabels={profitData.map((_, index) => `Day ${index + 1}`)}
+            datasets={[
+              {
+                label: "Profit",
+                data: profitData,
+                borderColor: "purple",
+                backgroundColor: "white",
+              },
+              {
+                label: "Spot Price",
+                data: spotPriceData,
+                borderColor: "red",
+                backgroundColor: "white",
+              },
+              {
+                label: "Selling Price",
+                data: sellingPriceData,
+                borderColor: "blue",
+                backgroundColor: "white",
+              },
+            ]}
+            xAxisTitle="Day"
+            yAxisTitle="Value (AUD)"
+          />
         </div>
       </div>
-      <div className="mt-4 mx-auto w-1/2"></div>
     </div>
   );
 }

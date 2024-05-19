@@ -31,7 +31,7 @@ export default function Table({ columns, data, link }: TableProps) {
           <tr key={rowIndex} className="flex items-start flex-shrink-0 self-stretch">
             {columns.map((column, columnIndex) => (
               <td
-                className="p-16 items-start gap-8 flex-1 self-stretch border-stroke border-r-2 border-b-2"
+                className="px-3 py-8 items-start gap-8 flex-1 self-stretch border-stroke border-r-2 border-b-2"
                 key={columnIndex}
               >
                 <div className="font-inter text-white">
@@ -41,7 +41,7 @@ export default function Table({ columns, data, link }: TableProps) {
             ))}
             {link && (
               <td
-                className="p-16 items-start gap-8 flex-1 self-stretch border-stroke border-r-2 border-b-2 bg-purple"
+                className="px-3 py-8 items-start gap-8 flex-1 self-stretch border-stroke border-r-2 border-b-2 bg-purple"
                 key={`action-${rowIndex}`}
               >
                 <div className="font-inter text-white">
