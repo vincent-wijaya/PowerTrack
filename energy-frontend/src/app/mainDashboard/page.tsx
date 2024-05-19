@@ -25,8 +25,8 @@ export default function MainDashboard() {
             </div> 
           </div>
           <div className="gap-8 py-10">
-            <div className="h-1/3 mt-8 p-4 bg-itembg border border-stroke rounded-lg">
-              <EnergyChart />
+            <div className=" ml-8 p-4 bg-itembg border border-stroke rounded-lg">
+              <EnergyChart /> 
             </div> 
           </div>
         </div>

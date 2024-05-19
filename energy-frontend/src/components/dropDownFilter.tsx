@@ -20,12 +20,11 @@ const Dropdown: React.FC<DropdownProps> = ({ onChange, chartTitle }) => {
   };
 
   return (
-    <div className="flex w-full py-4 px-2">
-      <p className="w-2/5 text-white">{chartTitle}</p>
-      <div className="w-2/5"></div>
+    <div className="flex w-full py-4 px-2 justify-between">
+      <p className=" text-white font-semibold">{chartTitle}</p>
       <select
         onChange={handleChange}
-        className="flex w-1/5 bg-mainbg border-2 border-chartBorder text-white hover:border-gray-500 rounded shadow leading-tight focus:outline-none focus:shadow-outline"
+        className="flex bg-mainbg border-2 border-chartBorder text-white hover:border-gray-500 rounded shadow leading-tight focus:outline-none focus:shadow-outline"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
