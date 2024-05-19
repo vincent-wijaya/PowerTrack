@@ -52,38 +52,40 @@ function ProfitChart() {
 
   return (
     <div>
-      <div className="flex justify-center items-center w-screen h-screen">
-        <div className="w-1/2 h-1/2 drop-shadow-md border-2 border-chartBorder">
-          <Dropdown
-            onChange={handleTimeRangeChange}
-            chartTitle={"Profit Analysis"}
-          />
-          <LineChart
-            chartTitle=""
-            xAxisLabels={profitData.map((_, index) => `Day ${index + 1}`)}
-            datasets={[
-              {
-                label: "Profit",
-                data: profitData,
-                borderColor: "purple",
-                backgroundColor: "white",
-              },
-              {
-                label: "Spot Price",
-                data: spotPriceData,
-                borderColor: "red",
-                backgroundColor: "white",
-              },
-              {
-                label: "Selling Price",
-                data: sellingPriceData,
-                borderColor: "blue",
-                backgroundColor: "white",
-              },
-            ]}
-            xAxisTitle="Day"
-            yAxisTitle="Value (AUD)"
-          />
+      <div className="h-full w-full">
+        <div className="justify-center items-center">
+          <div className="drop-shadow-md border-chartBorder ">
+            <Dropdown
+              onChange={handleTimeRangeChange}
+              chartTitle={"Profit Analysis"}
+            />
+            <LineChart
+              chartTitle=""
+              xAxisLabels={profitData.map((_, index) => `Day ${index + 1}`)}
+              datasets={[
+                {
+                  label: "Profit",
+                  data: profitData,
+                  borderColor: "purple",
+                  backgroundColor: "white",
+                },
+                {
+                  label: "Spot Price",
+                  data: spotPriceData,
+                  borderColor: "red",
+                  backgroundColor: "white",
+                },
+                {
+                  label: "Selling Price",
+                  data: sellingPriceData,
+                  borderColor: "blue",
+                  backgroundColor: "white",
+                },
+              ]}
+              xAxisTitle="Day"
+              yAxisTitle="Value (AUD)"
+            />
+          </div>
         </div>
       </div>
       <div className="mt-4 mx-auto w-1/2"></div>

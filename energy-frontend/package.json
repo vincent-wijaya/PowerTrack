@@ -21,6 +21,7 @@
     "react-chartjs-2": "^5.2.0",
     "react-dom": "^18.2.0",
     "react-leaflet": "^4.2.1",
+    "simplex-noise": "^4.0.1",
     "swr": "^2.2.5"
   },
   "devDependencies": {
