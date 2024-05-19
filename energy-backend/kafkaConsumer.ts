@@ -1,7 +1,6 @@
-import { ForeignKeyConstraintError } from 'sequelize';
-import { ConsumerConsumption, EnergyGeneration, SellingPrice, SpotPrice, SuburbConsumption } from './databaseModels';
+import { ForeignKeyConstraintError, Sequelize } from 'sequelize';
+import setupDatabase from './setup_database';
 import { Kafka, KafkaMessage } from 'kafkajs';
-
 const kafka = new Kafka({
     clientId: process.env.KAFKA_CLIENT_ID!,
     brokers: [process.env.LOCAL_BROKER_IP!]
@@ -14,7 +13,7 @@ const kafka = new Kafka({
  * Gracefully fails if the suburb entry does not exist
  * @param message The message to read and insert
  */
-async function readSuburbMessages(message: KafkaMessage) {
+async function readSuburbMessages(sequelize: Sequelize, message: KafkaMessage) {
     if (!message.key || !message.value) {
         throw new Error("Message contained a null key or value")
     }
@@ -22,10 +21,10 @@ async function readSuburbMessages(message: KafkaMessage) {
     const value = Number.parseInt(message.value.toString())
     const timestamp = new Date(Number.parseInt(message.timestamp) * 1000)
     try {
-        await SuburbConsumption.create({
-            "suburb_id": key,
-            "date": timestamp,
-            "amount": value
+        await sequelize.models.suburb_consumption.create({
+            suburb_id: key,
+            date: timestamp,
+            amount: value
         })
         console.info(`Created consumption entry for suburb ${key}`)
     } catch (error) {
@@ -44,7 +43,7 @@ async function readSuburbMessages(message: KafkaMessage) {
  * Gracefully fails if the generator entry does not exist
  * @param message The message to read and insert
  */
-async function readGeneratorMessages(message: KafkaMessage) {
+async function readGeneratorMessages(sequelize: Sequelize, message: KafkaMessage) {
     if (!message.key || !message.value) {
         throw new Error("Message contained a null key or value")
     }
@@ -52,10 +51,10 @@ async function readGeneratorMessages(message: KafkaMessage) {
     const value = Number.parseInt(message.value.toString())
     const timestamp = new Date(Number.parseInt(message.timestamp) * 1000)
     try {
-        await EnergyGeneration.create({
-            "energy_generator_id": key,
-            "date": timestamp,
-            "amount": value
+        await sequelize.models.energy_generation.create({
+            energy_generator_id: key,
+            date: timestamp,
+            amount: value
         })
         console.info(`Created production entry for generator ${key}`)
     } catch (error) {
@@ -76,7 +75,7 @@ async function readGeneratorMessages(message: KafkaMessage) {
  * Gracefully fails if the consumer entry does not exist
  * @param message The message to read and insert
  */
-async function readConsumerMessages(message: KafkaMessage) {
+async function readConsumerMessages(sequelize: Sequelize, message: KafkaMessage) {
     if (!message.key || !message.value) {
         throw new Error("Message contained a null key or value")
     }
@@ -84,10 +83,10 @@ async function readConsumerMessages(message: KafkaMessage) {
     const value = Number.parseInt(message.value.toString())
     const timestamp = new Date(Number.parseInt(message.timestamp) * 1000)
     try {
-        await ConsumerConsumption.create({
-            "consumer_id": key,
-            "date": timestamp,
-            "amount": value
+        await sequelize.models.consumer_consumption.create({
+            consumer_id: key,
+            date: timestamp,
+            amount: value
         })
         console.info(`Created production entry for consumer ${key}`)
     } catch (error) {
@@ -107,14 +106,14 @@ async function readConsumerMessages(message: KafkaMessage) {
  * Does not handle any errors from writing data into the database
  * @param message The spot price message from kafka
  */
-async function readSpotPriceMessages(message: KafkaMessage) {
+async function readSpotPriceMessages(sequelize: Sequelize, message: KafkaMessage) {
     if (!message.key || !message.value) {
         throw new Error("Message contained a null key or value")
     }
     const timestamp = new Date(Number.parseInt(message.key.toString()) * 1000)
     const value = Number.parseInt(message.value.toString())
 
-    await SpotPrice.create({
+    await sequelize.models.spot_price.create({
         date: timestamp,
         amount: value
     })
@@ -126,50 +125,68 @@ async function readSpotPriceMessages(message: KafkaMessage) {
  * Does not handle any errors from writing data into the database
  * @param message The selling price message from kafka
  */
-async function readSellingPriceMessages(message: KafkaMessage) {
+async function readSellingPriceMessages(sequelize: Sequelize, message: KafkaMessage) {
     if (!message.key || !message.value) {
         throw new Error("Message contained a null key or value")
     }
     const timestamp = new Date(Number.parseInt(message.key.toString()) * 1000)
     const value = Number.parseInt(message.value.toString())
 
-    await SellingPrice.create({
+    await sequelize.models.selling_price.create({
         date: timestamp,
         amount: value
     })
 }
-
-async function importEvents() {
+/**
+ * Setup consumers for each of the 5 kafka topics
+ * Uses a given sequelize object in order to connect to the database
+ * 
+ * @param sequelize sequelize database connection object
+ */
+async function importEvents(sequelize: Sequelize) {
 
     // Setup consumer for energy generation events
     const generatorConsumer = kafka.consumer({ groupId: 'generatorReaders' })
     await generatorConsumer.connect()
         .then(() => generatorConsumer.subscribe({ topics: ["generatorProduction"] }))
-    generatorConsumer.run({ eachMessage: async ({ message }) => { readGeneratorMessages(message) }, }) //dont await to avoid blocking
+    generatorConsumer.run({ eachMessage: async ({ message }) => { readGeneratorMessages(sequelize, message) }, }) //dont await to avoid blocking
 
     // Setup consumer for suburb consumption events
     const suburbConsumer = kafka.consumer({ groupId: 'suburbReaders' })
     await suburbConsumer.connect()
         .then(() => suburbConsumer.subscribe({ topics: ["suburbConsumption"] }))
-    suburbConsumer.run({ eachMessage: async ({ message }) => readSuburbMessages(message), }) //dont await to avoid blocking
+    suburbConsumer.run({ eachMessage: async ({ message }) => readSuburbMessages(sequelize, message), }) //dont await to avoid blocking
 
     // Setup consumer for consumer consumption events (i know its a confusing name)
     const consumerConsumer = kafka.consumer({ groupId: 'consumerReaders' })
     await consumerConsumer.connect()
         .then(() => consumerConsumer.subscribe({ topics: ["consumerConsumption"] }))
-    consumerConsumer.run({ eachMessage: async ({ message }) => readConsumerMessages(message) }) //dont await to avoid blocking
+    consumerConsumer.run({ eachMessage: async ({ message }) => readConsumerMessages(sequelize, message) }) //dont await to avoid blocking
 
     // Setup consumer for spot price events
     const spotPriceConsumer = kafka.consumer({ groupId: 'spotPriceReaders' })
     await spotPriceConsumer.connect()
         .then(() => spotPriceConsumer.subscribe({ topics: ["spotPrice"] }))
-    spotPriceConsumer.run({ eachMessage: async ({ message }) => readSpotPriceMessages(message) }) //dont await to avoid blocking
+    spotPriceConsumer.run({ eachMessage: async ({ message }) => readSpotPriceMessages(sequelize, message) }) //dont await to avoid blocking
 
     // Setup consumer for selling price events 
     const sellingPriceConsumer = kafka.consumer({ groupId: 'sellingPriceReaders' })
     await sellingPriceConsumer.connect()
         .then(() => sellingPriceConsumer.subscribe({ topics: ["sellingPrice"] }))
-    sellingPriceConsumer.run({ eachMessage: async ({ message }) => readSellingPriceMessages(message) }) //dont await to avoid blocking
+    sellingPriceConsumer.run({ eachMessage: async ({ message }) => readSellingPriceMessages(sequelize, message) }) //dont await to avoid blocking
 }
 
-importEvents()
+if (require.main === module) {
+    const sequelize = new Sequelize(process.env.DATABASE_URI!,
+        {
+            dialect: 'postgres',
+            protocol: 'postgres',
+            define: { timestamps: false }, // remove created and updated timestamps from models
+            dialectOptions: {}
+        })
+
+    // Execute the following if this file is run from the command line
+    setupDatabase(sequelize) //setup the database
+        .then(() => importEvents(sequelize)) // start importing events
+}
+export default importEvents
