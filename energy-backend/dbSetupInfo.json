@@ -62083,32 +62083,38 @@
             {
                 "id": 0,
                 "category": "contract",
-                "description": "I want to prioritise supplying power for specific consumers I have a contract with"
+                "description": "I want to prioritise supplying power for specific consumers I have a contract with",
+                "target_type": "retailer"
             },
             {
                 "id": 1,
                 "category": "profit",
-                "description": "I want to sell most/all of the energy I buy. Sell energy for more than I bought it for."
+                "description": "I want to sell most/all of the energy I buy. Sell energy for more than I bought it for.",
+                "target_type": "retailer"
             },
             {
                 "id": 2,
                 "category": "up_time",
-                "description": "The power should be up for as much time as possible. There should be little to no power outages."
+                "description": "The power should be up for as much time as possible. There should be little to no power outages.",
+                "target_type": "retailer"
             },
             {
                 "id": 3,
                 "category": "micro_grid",
-                "description": "I want areas to be self-sufficient, i.e. consume energy from generators within the same area. I want areas to be less dependent on generators in other areas."
+                "description": "I want areas to be self-sufficient, i.e. consume energy from generators within the same area. I want areas to be less dependent on generators in other areas.",
+                "target_type": "retailer"
             },
             {
                 "id": 4,
                 "category": "green_energy",
-                "description": "I want the majority of my energy to come from environmentally-friendly sources."
+                "description": "I want the majority of my energy to come from environmentally-friendly sources.",
+                "target_type": "consumer"
             },
             {
                 "id": 5,
                 "category": "low_expense",
-                "description": "I want to spend less money on energy."
+                "description": "I want to spend less money on energy.",
+                "target_type": "consumer"
             }
         ]
     },
@@ -62119,55 +62125,73 @@
                 "id": 0,
                 "category": "outage_hp",
                 "goal_type_id": 0,
-                "suggestion_description": "Energy outage for high priority consumer"
+                "description": "Energy outage for high priority consumer",
+                "trigger_greater_than": false,
+                "target": 0
             },
             {
                 "id": 1,
                 "category": "low_usage",
                 "goal_type_id": 1,
-                "suggestion_description": "Too much unused energy in the grid"
+                "description": "Too much unused energy in the grid",
+                "trigger_greater_than": false,
+                "target": 0.5
             },
             {
                 "id": 2,
                 "category": "high_usage",
                 "goal_type_id": 1,
-                "suggestion_description": "Too much energy used in the gri"
+                "description": "Too much energy used in the grid",
+                "trigger_greater_than": true,
+                "target": 0.85
             },
             {
                 "id": 3,
                 "category": "high_price",
                 "goal_type_id": 1,
-                "suggestion_description": "Energy spot price is very high."
+                "description": "Energy spot price is very high.",
+                "trigger_greater_than": true,
+                "target": 0.8
             },
             {
                 "id": 4,
                 "category": "unplanned_outage",
                 "goal_type_id": 2,
-                "suggestion_description": "There is an unplanned power outage."
+                "description": "There is an unplanned power outage.",
+                "trigger_greater_than": false,
+                "target": 0
             },
             {
                 "id": 5,
                 "category": "hightly_dependent_area",
                 "goal_type_id": 3,
-                "suggestion_description": "An area is very highly dependent on energy sources in other areas."
+                "description": "An area is very highly dependent on energy sources in other areas.",
+                "trigger_greater_than": false,
+                "target": 0.2
             },
             {
                 "id": 6,
                 "category": "fossil_fuels",
                 "goal_type_id": 4,
-                "suggestion_description": "High usage of energy from fossil fuel sources"
+                "description": "High usage of energy from fossil fuel sources",
+                "trigger_greater_than": true,
+                "target": 0.5
             },
             {
                 "id": 7,
                 "category": "high_cost",
                 "goal_type_id": 5,
-                "suggestion_description": "Cost of energy is high right now."
+                "description": "Cost of energy is high right now.",
+                "trigger_greater_than": true,
+                "target": 0.5
             },
             {
                 "id": 8,
                 "category": "high_usage",
                 "goal_type_id": 5,
-                "suggestion_description": "Consumer has been using a lot of energy recently."
+                "description": "Consumer has been using a lot of energy recently.",
+                "trigger_greater_than": true,
+                "target": 0.5
             }
         ]
     },

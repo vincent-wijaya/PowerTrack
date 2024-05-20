@@ -222,6 +222,10 @@ export const defineModels = (sequelize: Sequelize) => {
       description: {
         type: DataTypes.TEXT,
         allowNull: false
+      },
+      target_type: {
+        type: DataTypes.ENUM('retailer', 'consumer'),
+        allowNull: false
       }
     }, { freezeTableName: true })
   const Goal = sequelize.define("goal",
@@ -264,12 +268,19 @@ export const defineModels = (sequelize: Sequelize) => {
         type: DataTypes.TEXT,
         allowNull: false
       },
-      suggestion_description: {
+      description: {
         type: DataTypes.TEXT,
         allowNull: false
+      },
+      trigger_greater_than: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false
+      },
+      target: {
+        type: DataTypes.DECIMAL,
+        allowNull: false
       }
-    }
-  )
+    }, { freezeTableName: true })
   /* Link goal type to entity goal
   * One to many relation */
   GoalType.hasMany(Goal, { foreignKey: { name: "goal_id", allowNull: false } })

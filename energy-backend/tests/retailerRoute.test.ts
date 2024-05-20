@@ -180,6 +180,111 @@ describe('GET /retailer/map', () => {
     );
   });
 });
+
+
+describe('GET /retailer/warnings - category outage_hp', () => {
+  let sequelize: Sequelize;
+  let appInstance: Application;
+
+  const highPriorityConsumerAddress = '10 Test Street Melbourne Victoria 3000';
+
+  beforeAll(async () => {
+    // Set up and connect to test database
+    sequelize = await connectToTestDb();
+    appInstance = app(sequelize);
+
+    // Insert prerequesite data for tests
+    await appInstance.get("models").Suburb.bulkCreate([
+      { id: 1, name: 'Test Suburb', postcode: 3000, state: 'Victoria', 'latitude': 100, 'longitude': 100 },
+      { id: 2, name: 'Test Suburb 2', postcode: 3001, state: 'Victoria', 'latitude': 100, 'longitude': 100 },
+    ]);
+    await appInstance.get("models").Consumer.bulkCreate([
+      {
+        id: 1,
+        street_address: highPriorityConsumerAddress,
+        high_priority: true,
+        suburb_id: 1,
+      },
+      {
+        id: 2,
+        street_address: highPriorityConsumerAddress,
+        high_priority: true,
+        suburb_id: 2,
+      },
+    ]);
+    await appInstance.get("models").ConsumerConsumption.bulkCreate([
+      {
+        consumer_id: 1,
+        date: '2024-04-17T09:00:00Z',
+        amount: 10,
+      },
+      {
+        consumer_id: 2,
+        date: '2024-04-17T09:00:00Z',
+        amount: 0,
+      },
+    ]);
+    await appInstance.get("models").GoalType.create({
+      id: 3,
+      category: 'contract',
+      description: 'I want to prioritise supplying power for specific consumers I have a contract with',
+      target_type: 'retailer',
+    });
+    await appInstance.get("models").WarningType.create({
+      id: 1,
+      goal_type_id: 3,
+      category: 'outage_hp',
+      description: 'Energy outage for high priority consumer',
+      trigger_greater_than: false,
+      target: 0,
+    });
+  });
+
+  afterAll(async () => {
+    // Drop the test database
+    await sequelize.close();
+    await dropTestDb(sequelize);
+  });
+
+  it('should not return an outage_hp warning', async () => {
+    const response = await request(appInstance).get('/retailer/warnings?suburb_id=1');
+
+    console.log(`API response status: ${response.status}`);
+    expect(response.status).toBe(200);
+
+    console.log(`API response: ${JSON.stringify(response.body)}`);
+    let relevantWarnings = response.body.warnings.filter((warning: any) => warning.category === 'outage_hp');
+    expect(relevantWarnings).toEqual([]);
+  });
+
+  it('should return an outage_hp warning', async () => {
+    const response = await request(appInstance).get('/retailer/warnings?suburb_id=2');
+
+    console.log(`API response status: ${response.status}`);
+    expect(response.status).toBe(200);
+    console.log(`API response: ${JSON.stringify(response.body)}`);
+    let relevantWarnings = response.body.warnings.filter((warning: any) => warning.category === 'outage_hp');
+    expect(relevantWarnings.length).toBe(1);
+    expect(relevantWarnings[0].data).toEqual({
+      consumer_id: 2,
+      street_address: highPriorityConsumerAddress,
+    });
+  });
+
+  it('should return an outage_hp warning (with no suburb or consumer provided', async () => {
+    const response = await request(appInstance).get('/retailer/warnings');
+
+    console.log(`API response status: ${response.status}`);
+    expect(response.status).toBe(200);
+    console.log(`API response: ${JSON.stringify(response.body)}`);
+    let relevantWarnings = response.body.warnings.filter((warning: any) => warning.category === 'outage_hp');
+    expect(relevantWarnings.length).toBe(1);
+    expect(relevantWarnings[0].data).toEqual({
+      consumer_id: 2,
+      street_address: highPriorityConsumerAddress,
+    });
+  });
+});
 describe('GET /retailer/consumers', () => {
   let sequelize: Sequelize;
   let appInstance: Application;
