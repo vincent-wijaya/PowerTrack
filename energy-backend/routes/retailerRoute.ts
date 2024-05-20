@@ -134,6 +134,84 @@ router.get('/consumption', async (req, res) => {
 });
 
 
+router.get('/warnings', async (req, res) => {
+  // Retrieve warnings for a suburb
+  const {suburb_id, consumer_id} = req.query;
+  const { Consumer, ConsumerConsumption, GoalType, WarningType } = req.app.get('models');
+
+  // Get goal types
+  const goalTarget: string = consumer_id ? 'consumer' : 'retailer';
+  const goalTypes = await GoalType.findAll({
+    where: {
+      target_type: goalTarget
+    }
+  });
+  if (goalTypes.length === 0) {
+    return res.status(501).send("No goal types found");
+  }
+
+  // Get warning types
+  const warningTypes = await Promise.all(
+    goalTypes.map(async (goalType: any) => {
+      return await goalType.getWarning_types();
+    })
+  ).then((result) => result.flat());
+  if (warningTypes.length === 0) {
+    return res.status(501).send("No warning types found");
+  }
+
+  // Iterate through each warning type
+  let warnings: any[] = [];
+  for (const warningType of warningTypes) {
+    switch (warningType.category) {
+      // Add a case for each warning type
+      // Check for each type of warning whether the warning should be triggered
+      // If triggered, add the warning data to the warnings array
+      case 'outage_hp':
+        // Get high priority consumers
+        const whereClause: any = {
+          where: {
+            high_priority: true
+          }
+        };
+        if (suburb_id) {
+          whereClause.where.suburb_id = suburb_id;
+        }
+        const consumers = await Consumer.findAll(whereClause);
+        
+        // Check if any of the high priority consumers have an outage
+        // Check if their last consumption data is 0
+        for (const consumer of consumers) {
+          const consumption = await ConsumerConsumption.findOne({
+            where: {
+              consumer_id: consumer.id
+            },
+            order: [['date', 'DESC']]
+          });
+          if (consumption && Number(consumption.amount) === 0) {
+            warnings.push({
+              category: warningType.category,
+              description: warningType.description,
+              data: {
+                consumer_id: Number(consumer.id),
+                street_address: consumer.street_address,
+              },
+              suggestion: `Prioritise re-establishing energy for priority consumer at address ${consumer.street_address}.`
+            });
+          }
+        }
+        break;
+      default:
+        console.log(`Unsupported warning category: ${warningType.category}`);
+    }
+  }
+
+  res.send({
+    warnings: warnings
+  });
+})
+
+
 router.get('/consumers', async (req, res) => {
   // Retrieve consumers by suburb_id or consumer by consumer_id or all consumers
   const { suburb_id, consumer_id } = req.query;
