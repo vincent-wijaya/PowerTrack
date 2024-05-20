@@ -133,4 +133,83 @@ router.get('/consumption', async (req, res) => {
   });
 });
 
+
+router.get('/consumers', async (req, res) => {
+  // Retrieve consumers by suburb_id or consumer by consumer_id or all consumers
+  const { suburb_id, consumer_id } = req.query;
+  const { Consumer, Suburb } = req.app.get('models');
+
+  let consumers;
+
+  if (suburb_id && consumer_id) {
+    return res.status(400).send("Cannot specify both suburb_id and consumer_id");
+  } else if (suburb_id) {
+    // Return consumers by suburb_id
+    consumers = await Consumer.findAll({
+      where: {
+        suburb_id: suburb_id,
+      },
+      include: [{
+        model: Suburb,
+        attributes: ['name', 'postcode'] // Include name and post_code attributes
+      }]
+    });
+  } else if (consumer_id) {
+    // Return specific consumer
+    consumers = await Consumer.findAll({
+      where: {
+        id: consumer_id,
+      },
+      include: [{
+        model: Suburb,
+        attributes: ['name', 'postcode'] // Include name and post_code attributes
+      }]
+    });
+  } else {
+    // Return all consumers
+    consumers = await Consumer.findAll({
+      include: [{
+        model: Suburb,
+        attributes: ['name', 'postcode'] // Include name and post_code attributes
+      }]
+    });
+  }
+
+  // Transform response to the desired format
+  const formattedConsumers = consumers.map((consumer:any) => {
+    return{
+    id: consumer.id,
+    high_priority: consumer.high_priority,
+    address: consumer.street_address,
+    suburb_id: consumer.suburb_id,
+    suburb_name: consumer.suburb.name,
+    suburb_post_code: consumer.suburb.postcode
+    }
+    
+  });
+
+  res.send({
+    consumers: formattedConsumers
+  });
+});
+
+
+
+router.get('/suburbs', async (req, res) => {
+  const { sequelize, Suburb } = req.app.get('models');
+
+  try {
+    const suburbs = await Suburb.findAll();
+    res.send({
+      suburbs: suburbs
+    });
+  } catch (error) {
+    res.status(500).send({
+      error: 'An error occurred while fetching suburbs'
+    });
+  }
+});
+
+
+
 export default router;
