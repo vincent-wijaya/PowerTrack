@@ -2,17 +2,16 @@
 import React, { useEffect, useState } from "react";
 import Dropdown from "./dropDownFilter"; // Adjust the path based on your folder structure
 import LineChart from "./lineChart";
-
+type ChartEntry = {
+  x: Date, y: number
+}
 function EnergyChart(props: { className?: string }) {
-  const [consumptionData, setConsumptionData] = useState<number[]>([]);
-  const [generationData, setGenerationData] = useState<number[]>([]);
-  const [additionalData, setAdditionalData] = useState<number[]>([]);
+  const [consumptionData, setConsumptionData] = useState<ChartEntry[]>([]);
+  const [generationData, setGenerationData] = useState<ChartEntry[]>([]);
   const [selectedTimeRange, setSelectedTimeRange] = useState<string>("last_year");
 
-  const generateData = () => {
-    const newData = Math.floor(Math.random() * (200 - 50 + 1)) + 50;
-    return newData;
-  };
+  const generateData = (): ChartEntry => ({ x: new Date(), y: Math.floor(Math.random() * (200 - 50 + 1)) + 50 });
+
 
   const fetchData = async () => {
     // Logic to fetch data based on selectedTimeRange
@@ -22,22 +21,15 @@ function EnergyChart(props: { className?: string }) {
   useEffect(() => {
     const interval1 = setInterval(() => {
       setConsumptionData((prevData) => [...prevData, generateData()]);
-    }, 50000);
+    }, 10000);
     return () => clearInterval(interval1);
   }, []);
 
   useEffect(() => {
     const interval2 = setInterval(() => {
       setGenerationData((prevData) => [...prevData, generateData()]);
-    }, 50000);
+    }, 10000);
     return () => clearInterval(interval2);
-  }, []);
-
-  useEffect(() => {
-    const interval3 = setInterval(() => {
-      setAdditionalData((prevData) => [...prevData, generateData()]);
-    }, 50000);
-    return () => clearInterval(interval3);
   }, []);
 
   useEffect(() => {
