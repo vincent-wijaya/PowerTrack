@@ -1,6 +1,7 @@
 import { ForeignKeyConstraintError, Sequelize } from 'sequelize';
 import setupDatabase from './setup_database';
 import { Kafka, KafkaMessage } from 'kafkajs';
+import { defineModels } from './databaseModels';
 const kafka = new Kafka({
     clientId: process.env.KAFKA_CLIENT_ID!,
     brokers: [process.env.LOCAL_BROKER_IP!]
@@ -186,7 +187,7 @@ if (require.main === module) {
         })
 
     // Execute the following if this file is run from the command line
-    setupDatabase(sequelize) //setup the database
-        .then(() => importEvents(sequelize)) // start importing events
+    defineModels(sequelize) //setup the database
+    importEvents(sequelize) // start importing events
 }
 export default importEvents
