@@ -5,6 +5,7 @@ import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
   TimeScale,
+  TimeUnit,
   LinearScale,
   PointElement,
   LineElement,
@@ -85,7 +86,7 @@ const LineChart: React.FC<Props> = ({
       x: {
         type: "time" as const,
         time: {
-          round:"second"
+          round:"second" as TimeUnit
         },
         title: {
           display: true,
