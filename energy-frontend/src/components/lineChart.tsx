@@ -84,6 +84,9 @@ const LineChart: React.FC<Props> = ({
     scales: {
       x: {
         type: "time" as const,
+        time: {
+          round:"second"
+        },
         title: {
           display: true,
           text: xAxisTitle,
