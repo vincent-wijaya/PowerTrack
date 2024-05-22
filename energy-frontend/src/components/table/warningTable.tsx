@@ -16,7 +16,7 @@ async function fetchHeadersAndData(): Promise<{ headers: string[], data: DataIte
       resolve({
         headers: ["Warning ID", "Description", "Location"],
         data: [
-          { warning_id: 3, description: "power outage", location: "Hawthorn" }
+          { warning_id: 3, description: "power outage", location: "Campbelltown" }
         ]
       });
     }, 1000); // Simulating network delay
