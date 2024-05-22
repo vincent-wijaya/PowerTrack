@@ -2,48 +2,41 @@
 import React, { useEffect, useState } from "react";
 import Dropdown from "./dropDownFilter"; // Adjust the path based on your folder structure
 import LineChart from "./lineChart";
-
+type ChartEntry = {
+  x: Date, y: number
+}
 function ProfitChart(props: { className?: string }) {
-  const [profitData, setProfitData] = useState<number[]>([]);
-  const [spotPriceData, setSpotPriceData] = useState<number[]>([]);
-  const [sellingPriceData, setSellingPriceData] = useState<number[]>([]);
+  const [profitData, setProfitData] = useState<ChartEntry[]>([]);
+  const [spotPriceData, setSpotPriceData] = useState<ChartEntry[]>([]);
+  const [sellingPriceData, setSellingPriceData] = useState<ChartEntry[]>([]);
   const [selectedTimeRange, setSelectedTimeRange] = useState<string>("last_year");
-
-  const generateData = () => {
-    const newData = Math.floor(Math.random() * (200 - 50 + 1)) + 50;
-    return newData;
-  };
-
-  const fetchData = async () => {
-    // Logic to fetch data based on selectedTimeRange
-    // Adjust the fetching logic based on the selected time range
-  };
-
-  useEffect(() => {
-    const interval1 = setInterval(() => {
-      setProfitData((prevData) => [...prevData, generateData()]);
-    }, 50000);
-    return () => clearInterval(interval1);
-  }, []);
+  let timestamps = { spot: undefined, sell: undefined }
 
   useEffect(() => {
     const interval2 = setInterval(() => {
-      setSpotPriceData((prevData) => [...prevData, generateData()]);
-    }, 50000);
+      fetch("http://localhost:3001/retailer/profitMargin")
+        .then(response => response.json())
+        .then(res => {
+          console.log(res)
+          if (res.spot_prices.length === 0 || res.selling_prices.length === 0) {
+            return
+          }
+          let selling = res.selling_prices.pop()
+          let spot = res.spot_prices.pop()
+
+          if (selling.date === timestamps.sell && spot.date === timestamps.spot) {
+            return // we have already compared these two so we skip
+          }
+          timestamps.spot = spot.date
+          timestamps.sell = selling.date
+          setSpotPriceData((prevData) => [...prevData, { x: new Date(spot.date), y: spot.amount }]);
+          setSellingPriceData((prevData) => [...prevData, { x: new Date(selling.date), y: selling.amount }]);
+          setProfitData((prevData) => [...prevData, { x: new Date(spot.date), y: selling.amount - spot.amount }]);
+        })
+        .catch(reason => console.log(reason))
+    }, 5000);
     return () => clearInterval(interval2);
   }, []);
-
-  useEffect(() => {
-    const interval3 = setInterval(() => {
-      setSellingPriceData((prevData) => [...prevData, generateData()]);
-    }, 50000);
-    return () => clearInterval(interval3);
-  }, []);
-
-  useEffect(() => {
-    // Fetch data when selectedTimeRange changes
-    fetchData();
-  }, [selectedTimeRange]);
 
   const handleTimeRangeChange = (value: string) => {
     setSelectedTimeRange(value);
