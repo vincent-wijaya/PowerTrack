@@ -37,5 +37,3 @@ RUN npm run build
 # Run the application as a non-root user.
 USER node
 
-# Start the application.
-CMD npm run start

@@ -11,6 +11,8 @@ services:
       DB_SETUP_FILE: ${DB_SETUP_FILE:-dbSetupInfo.json}
     ports:
       - 3000:3000
+    command: >
+      sh -c "npm run database && npm run start"
     depends_on:
       db:
         condition: service_healthy

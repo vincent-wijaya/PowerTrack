@@ -88,6 +88,11 @@ if (require.main === module) {
     () => {
       try {
         const data = JSON.parse(fs.readFileSync(DB_SETUP_FILE, 'utf8'));
+
+        if (process.env.NODE_ENV === "development") {
+          const debugData = JSON.parse(fs.readFileSync("debug" + DB_SETUP_FILE, 'utf8'));
+          data.push(...debugData)
+        }
         loadDatabaseJSON(sequelize, data) // load data from json into the database
       } catch (e: any) {
         if (e instanceof SyntaxError) {
