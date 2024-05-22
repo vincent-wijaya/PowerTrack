@@ -57,7 +57,6 @@ router.get('/map', async (req, res) => {
   });
 });
 
-
 router.get('/consumption', async (req, res) => {
   // Retrieve energy consumption for a suburb or consumer over a period of time
   const {suburb_id, consumer_id, start_date, end_date} = req.query;
@@ -133,6 +132,60 @@ router.get('/consumption', async (req, res) => {
   });
 });
 
+router.get('/profitMargin', async (req, res) => {
+  const { start_date, end_date } = req.query;
+  const { SpotPrice, SellingPrice } = req.app.get('models');
+
+  if (
+    (start_date && isNaN(new Date(String(start_date)).getTime())) ||
+    (end_date && isNaN(new Date(String(end_date)).getTime()))
+  ) {
+    return res.status(400).send('Invalid date format. Provide dates in ISO string format.');
+  }
+
+  let date_where_clause: any = {
+    [Op.ne]: null
+  };
+  if (start_date) {
+    date_where_clause[Op.gt] = new Date(String(start_date));
+  }
+  if (end_date) {
+    date_where_clause[Op.lte] = new Date(String(end_date));
+  }
+
+  let sellingPrices = await SellingPrice.findAll({
+    where: {
+      date: date_where_clause
+    }
+  });
+
+  let spotPrices = await SpotPrice.findAll({
+    where: {
+      date: date_where_clause
+    }
+  });
+
+  spotPrices.sort((a: any, b: any) => {
+    return new Date(a.date).valueOf() - new Date(b.date).valueOf();
+  });
+  sellingPrices.sort((a: any, b: any) => {
+    return new Date(a.date).valueOf() - new Date(b.date).valueOf();
+  });
+
+  spotPrices = spotPrices.map((spotPrice: any) => ({
+    date: spotPrice.date.toISOString(),
+    amount: Number(spotPrice.amount)
+  }));
+  sellingPrices = sellingPrices.map((sellingPrice: any) => ({
+    date: sellingPrice.date.toISOString(),
+    amount: Number(sellingPrice.amount)
+  }));
+
+  return res.status(200).send({
+    spot_prices: spotPrices,
+    selling_prices: sellingPrices
+  });
+});
 
 router.get('/warnings', async (req, res) => {
   // Retrieve warnings for a suburb
@@ -211,7 +264,6 @@ router.get('/warnings', async (req, res) => {
   });
 })
 
-
 router.get('/consumers', async (req, res) => {
   // Retrieve consumers by suburb_id or consumer by consumer_id or all consumers
   const { suburb_id, consumer_id } = req.query;
@@ -271,8 +323,6 @@ router.get('/consumers', async (req, res) => {
   });
 });
 
-
-
 router.get('/suburbs', async (req, res) => {
   const { sequelize, Suburb } = req.app.get('models');
 
@@ -287,7 +337,5 @@ router.get('/suburbs', async (req, res) => {
     });
   }
 });
-
-
 
 export default router;
