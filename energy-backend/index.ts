@@ -1,7 +1,7 @@
 import { Sequelize } from 'sequelize';
 import app from './app';
 
-const port = 3000;
+const port = 3001;
 const sequelize = new Sequelize(process.env.DATABASE_URI!,
   {
     dialect: 'postgres',
