@@ -14,8 +14,8 @@ export default function MainDashboard() {
         <div className="flex flex-col gap-3">
           <div className="flex justify-between gap-3 h-[128px]">
             <InfoBox title="48%" description="of green energy goal met" />
-            <InfoBox title="3 Warnings" description="" />
-            <InfoBox title="3 Suggestions" description="" />
+            <InfoBox title="1 Warnings" description="" />
+            <InfoBox title="1 Suggestions" description="" />
           </div>
           <Map className="h-[400px]" />
           <WarningTable />

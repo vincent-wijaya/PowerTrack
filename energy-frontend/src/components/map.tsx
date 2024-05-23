@@ -53,11 +53,12 @@ function getColorBasedOnConsumption(consumption: number | undefined): string {
   // Calculate the interpolation factor (0 to 1)
   const factor = (clampedConsumption - minConsumption) / (maxConsumption - minConsumption);
 
-  // Interpolate between blue and red
-  const red = Math.round(255 * factor);
-  const blue = Math.round(255 * (1 - factor));
+  // Interpolate between yellow (255, 255, 0) and deep purple (75, 0, 130)
+  const red = Math.round(255 + factor * (75 - 255));
+  const green = Math.round(255 + factor * (0 - 255));
+  const blue = Math.round(0 + factor * (130 - 0));
 
-  return `rgb(${red}, 0, ${blue})`;
+  return `rgb(${red}, ${green}, ${blue})`;
 }
 
 export default function Map(props: {className?: string}) {
@@ -144,7 +145,7 @@ export default function Map(props: {className?: string}) {
           const energyData = feature.properties["amount"];
           const suburbName = feature.properties["name"];
           const coordinates = layer.getBounds().getCenter(); // Get the center coordinates of the feature
-          // console.log(coordinates)
+
           if (energyData >= 0) {
             const fillColor = getColorBasedOnConsumption(energyData);
             layer.setStyle({
@@ -160,6 +161,13 @@ export default function Map(props: {className?: string}) {
               layer.bindPopup(`<a href="regionalDashboard/${suburbName}">${suburbName}</a> <br>Energy: ${energyData}`);
             } else {
               layer.bindPopup(`<a href="regionalDashboard/${suburbName}">${suburbName}</a> <br>Power Outage!`);
+              layer.setStyle({
+                fillColor: "red",
+                weight: 1,
+                opacity: 1,
+                color: "red",
+                fillOpacity: 0.7,
+              });
               setPowerOutageCoords((prevCoords) => [...prevCoords, coordinates]);
             }
           } else {
