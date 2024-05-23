@@ -19,7 +19,7 @@ type ProfitMarginFetchType = {
 
 export default function RegionalDashboard({ params }: { params: { id: string } }) {
   const { data: profitMarginFetch }: { data: ProfitMarginFetchType } = useSWR(
-    `${process.env.NEXT_PUBLIC_API_URL}/retailer/profitMargin`,
+    `http://54.197.122.32:3000/retailer/profitMargin`,
     fetcher,
     {
       refreshInterval: POLLING_RATE,

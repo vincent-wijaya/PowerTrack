@@ -14,7 +14,7 @@ function ProfitChart(props: { className?: string }) {
 
   useEffect(() => {
     const interval2 = setInterval(() => {
-      fetch("http://localhost:3001/retailer/profitMargin")
+      fetch("http://54.197.122.32:3000/retailer/profitMargin")
         .then(response => response.json())
         .then(res => {
           console.log(res)
