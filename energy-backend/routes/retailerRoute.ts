@@ -190,7 +190,7 @@ router.get('/profitMargin', async (req, res) => {
 router.get('/warnings', async (req, res) => {
   // Retrieve warnings for a suburb
   const {suburb_id, consumer_id} = req.query;
-  const { Consumer, ConsumerConsumption, GoalType, WarningType } = req.app.get('models');
+  const { Consumer, ConsumerConsumption, GoalType, SellingPrice, WarningType } = req.app.get('models');
 
   // Get goal types
   const goalTarget: string = consumer_id ? 'consumer' : 'retailer';
@@ -252,6 +252,23 @@ router.get('/warnings', async (req, res) => {
               suggestion: `Prioritise re-establishing energy for priority consumer at address ${consumer.street_address}.`
             });
           }
+        }
+        break;
+      case 'high_cost':
+        // Get the latest selling price
+        const sellingPrice = await SellingPrice.findOne({
+          order: [['date', 'DESC']]
+        });
+
+        if (sellingPrice.amount >= warningType.target) {
+          warnings.push({
+            category: warningType.category,
+            description: warningType.description,
+            data: {
+              energy_cost: sellingPrice.amount
+            },
+            suggestion: `Energy cost is at $${sellingPrice.amount}/kWh, so use less energy to save money.`
+          });
         }
         break;
       default:
