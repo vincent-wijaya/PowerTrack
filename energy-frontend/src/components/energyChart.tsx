@@ -1,14 +1,14 @@
-"use client";
-import React, { useEffect, useState } from "react";
-import Dropdown from "./dropDownFilter"; // Adjust the path based on your folder structure
-import LineChart from "./lineChart";
+'use client';
+import React, { useEffect, useState } from 'react';
+import Dropdown from './dropDownFilter'; // Adjust the path based on your folder structure
+import LineChart from './lineChart';
 
 function EnergyChart() {
   const [consumptionData, setConsumptionData] = useState<number[]>([]);
   const [generationData, setGenerationData] = useState<number[]>([]);
   const [additionalData, setAdditionalData] = useState<number[]>([]);
   const [selectedTimeRange, setSelectedTimeRange] =
-    useState<string>("last_year");
+    useState<string>('last_year');
 
   const generateData = () => {
     const newData = Math.floor(Math.random() * (200 - 50 + 1)) + 50;
@@ -56,23 +56,23 @@ function EnergyChart() {
         <div className="w-1/2 h-1/2 drop-shadow-md border-2 border-chartBorder">
           <Dropdown
             onChange={handleTimeRangeChange}
-            chartTitle={"Energy Consumption/Generation"}
+            chartTitle={'Energy Consumption/Generation'}
           />
           <LineChart
             chartTitle=""
             xAxisLabels={consumptionData.map((_, index) => `Day ${index + 1}`)}
             datasets={[
               {
-                label: "Energy Consumption",
+                label: 'Energy Consumption',
                 data: consumptionData,
-                borderColor: "red",
-                backgroundColor: "white",
+                borderColor: 'red',
+                backgroundColor: 'white',
               },
               {
-                label: "Energy Generation",
+                label: 'Energy Generation',
                 data: generationData,
-                borderColor: "blue",
-                backgroundColor: "white",
+                borderColor: 'blue',
+                backgroundColor: 'white',
               },
             ]}
             xAxisTitle="Day"
