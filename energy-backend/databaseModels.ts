@@ -1,6 +1,5 @@
 import { Sequelize, DataTypes } from 'sequelize';
 
-
 export const defineModels = (sequelize: Sequelize) => {
   // Setup models to apply and represent the database schema. All properties are non-nullable,
   // and the only nullable foreign keys exist in the entity_goal and report tables.
@@ -8,302 +7,371 @@ export const defineModels = (sequelize: Sequelize) => {
 
   // Create suburb related tables
   // Properties defined from the schema document
-  const Suburb = sequelize.define("suburb", //set the name of the table
+  const Suburb = sequelize.define(
+    'suburb', //set the name of the table
     {
-      id: { // Name of the property
+      id: {
+        // Name of the property
         primaryKey: true, // Mark this property as a primary key
         type: DataTypes.BIGINT, // The datatype
-        allowNull: false // Stop it from being null
+        allowNull: false, // Stop it from being null
       },
       name: {
         type: DataTypes.TEXT,
-        allowNull: false
+        allowNull: false,
       },
       postcode: {
         type: DataTypes.INTEGER,
-        allowNull: false
+        allowNull: false,
       },
       state: {
         type: DataTypes.TEXT,
-        allowNull: false
+        allowNull: false,
       },
       latitude: {
         type: DataTypes.DECIMAL,
-        allowNull: false
+        allowNull: false,
       },
       longitude: {
         type: DataTypes.DECIMAL,
-        allowNull: false
-      }
-    }, { freezeTableName: true }) //This stops sequelize from changing the table name from what we specified
-  const SuburbConsumption = sequelize.define("suburb_consumption",
+        allowNull: false,
+      },
+    },
+    { freezeTableName: true }
+  ); //This stops sequelize from changing the table name from what we specified
+  const SuburbConsumption = sequelize.define(
+    'suburb_consumption',
     {
       amount: {
         type: DataTypes.DECIMAL,
-        allowNull: false
+        allowNull: false,
       },
       date: {
         primaryKey: true,
         type: DataTypes.DATE,
-        allowNull: false
+        allowNull: false,
       },
       suburb_id: {
         primaryKey: true,
         type: DataTypes.BIGINT,
-        allowNull: false
-      }
-    }, { freezeTableName: true })
+        allowNull: false,
+      },
+    },
+    { freezeTableName: true }
+  );
 
   // Link suburb to suburb consumption
   // One to many relation
   Suburb.hasMany(SuburbConsumption, {
-    foreignKey: { name: "suburb_id", allowNull: false }
-  })
+    foreignKey: { name: 'suburb_id', allowNull: false },
+  });
   SuburbConsumption.belongsTo(Suburb, {
-    foreignKey: { name: "suburb_id", allowNull: false }
-  })
-
+    foreignKey: { name: 'suburb_id', allowNull: false },
+  });
 
   // Create consumer related tables
   // Properties defined from the schema document
-  const SellingPrice = sequelize.define("selling_price",
+  const SellingPrice = sequelize.define(
+    'selling_price',
     {
       date: {
         primaryKey: true,
         type: DataTypes.DATE,
         allowNull: false,
-        unique: true
+        unique: true,
       },
       amount: {
         type: DataTypes.DECIMAL,
-        allowNull: false
-      }
-    }, { freezeTableName: true })
-  const Consumer = sequelize.define("consumer",
+        allowNull: false,
+      },
+    },
+    { freezeTableName: true }
+  );
+  const Consumer = sequelize.define(
+    'consumer',
     {
       id: {
         primaryKey: true,
         type: DataTypes.BIGINT,
-        allowNull: false
+        allowNull: false,
       },
       street_address: {
         type: DataTypes.TEXT,
-        allowNull: false
+        allowNull: false,
       },
       high_priority: {
         type: DataTypes.BOOLEAN,
-        allowNull: false
-      }
-    }, { freezeTableName: true })
-  const ConsumerConsumption = sequelize.define("consumer_consumption",
+        allowNull: false,
+      },
+    },
+    { freezeTableName: true }
+  );
+  const ConsumerConsumption = sequelize.define(
+    'consumer_consumption',
     {
       amount: {
         type: DataTypes.DECIMAL,
-        allowNull: false
+        allowNull: false,
       },
       date: {
         type: DataTypes.DATE,
         allowNull: false,
-        primaryKey: true
+        primaryKey: true,
       },
       consumer_id: {
         primaryKey: true,
         type: DataTypes.INTEGER,
-        allowNull: false
-      }
-    }, { freezeTableName: true })
+        allowNull: false,
+      },
+    },
+    { freezeTableName: true }
+  );
 
   // Link consumer to consumer consumption
   // One to many relation
   Consumer.hasMany(ConsumerConsumption, {
-    foreignKey: { name: "consumer_id", allowNull: false }
-  })
+    foreignKey: { name: 'consumer_id', allowNull: false },
+  });
   ConsumerConsumption.belongsTo(Consumer, {
-    foreignKey: { name: "consumer_id", allowNull: false }
-  })
+    foreignKey: { name: 'consumer_id', allowNull: false },
+  });
 
   // Link consumer to suburb
   // Many to one relation
   Suburb.hasMany(Consumer, {
-    foreignKey: { name: "suburb_id", allowNull: false }
-  })
+    foreignKey: { name: 'suburb_id', allowNull: false },
+  });
   Consumer.belongsTo(Suburb, {
-    foreignKey: { name: "suburb_id", allowNull: false }
-  })
+    foreignKey: { name: 'suburb_id', allowNull: false },
+  });
 
   // Create generator related tables
   // Properties defined from the schema document
-  const SpotPrice = sequelize.define("spot_price",
+  const SpotPrice = sequelize.define(
+    'spot_price',
     {
       date: {
         primaryKey: true,
         type: DataTypes.DATE,
         allowNull: false,
-        unique: true
+        unique: true,
       },
       amount: {
         type: DataTypes.DECIMAL,
-        allowNull: false
-      }
-    }, { freezeTableName: true })
-  const GeneratorType = sequelize.define("generator_type",
+        allowNull: false,
+      },
+    },
+    { freezeTableName: true }
+  );
+  const GeneratorType = sequelize.define(
+    'generator_type',
     {
       id: {
         primaryKey: true,
         type: DataTypes.BIGINT,
-        allowNull: false
+        allowNull: false,
       },
       category: {
         type: DataTypes.TEXT,
         unique: true,
-        allowNull: false
+        allowNull: false,
       },
       renewable: {
         type: DataTypes.BOOLEAN,
-        allowNull: false
-      }
-    }, { freezeTableName: true })
-  const EnergyGenerator = sequelize.define("energy_generator",
+        allowNull: false,
+      },
+    },
+    { freezeTableName: true }
+  );
+  const EnergyGenerator = sequelize.define(
+    'energy_generator',
     {
       id: {
         primaryKey: true,
         type: DataTypes.BIGINT,
-        allowNull: false
+        allowNull: false,
       },
       name: {
         type: DataTypes.TEXT,
-        allowNull: false
-      }
-    }, { freezeTableName: true })
-  const EnergyGeneration = sequelize.define("energy_generation",
+        allowNull: false,
+      },
+    },
+    { freezeTableName: true }
+  );
+  const EnergyGeneration = sequelize.define(
+    'energy_generation',
     {
       amount: {
         type: DataTypes.DECIMAL,
-        allowNull: false
+        allowNull: false,
       },
       date: {
         type: DataTypes.DATE,
         allowNull: false,
-        primaryKey: true
+        primaryKey: true,
       },
       energy_generator_id: {
         primaryKey: true,
         type: DataTypes.INTEGER,
-        allowNull: false
-      }
-    }, { freezeTableName: true })
+        allowNull: false,
+      },
+    },
+    { freezeTableName: true }
+  );
 
   // Link GeneratorType to EnergyGenerator
   // One to many relation
-  GeneratorType.hasMany(EnergyGenerator, { foreignKey: { name: "generator_type_id", allowNull: false } })
-  EnergyGenerator.belongsTo(GeneratorType, { foreignKey: { name: "generator_type_id", allowNull: false } })
+  GeneratorType.hasMany(EnergyGenerator, {
+    foreignKey: { name: 'generator_type_id', allowNull: false },
+  });
+  EnergyGenerator.belongsTo(GeneratorType, {
+    foreignKey: { name: 'generator_type_id', allowNull: false },
+  });
   // Link EnergyGenerator to EnergyGeneration
   // One to many relation
-  EnergyGenerator.hasMany(EnergyGeneration, { foreignKey: { name: "energy_generator_id", allowNull: false } })
-  EnergyGeneration.belongsTo(EnergyGenerator, { foreignKey: { name: "energy_generator_id", allowNull: false } })
+  EnergyGenerator.hasMany(EnergyGeneration, {
+    foreignKey: { name: 'energy_generator_id', allowNull: false },
+  });
+  EnergyGeneration.belongsTo(EnergyGenerator, {
+    foreignKey: { name: 'energy_generator_id', allowNull: false },
+  });
   // Link suburb to energy generator
   // One to many relation
-  Suburb.hasMany(EnergyGenerator, { foreignKey: { name: "suburb_id", allowNull: false } })
-  EnergyGenerator.belongsTo(Suburb, { foreignKey: { name: "suburb_id", allowNull: false } })
+  Suburb.hasMany(EnergyGenerator, {
+    foreignKey: { name: 'suburb_id', allowNull: false },
+  });
+  EnergyGenerator.belongsTo(Suburb, {
+    foreignKey: { name: 'suburb_id', allowNull: false },
+  });
 
   // Create goal and report related tables
   // Properties defined from the schema document
-  const GoalType = sequelize.define("goal_type",
+  const GoalType = sequelize.define(
+    'goal_type',
     {
       id: {
         primaryKey: true,
         type: DataTypes.BIGINT,
-        allowNull: false
+        allowNull: false,
       },
       category: {
         type: DataTypes.TEXT,
-        allowNull: false
+        allowNull: false,
       },
       description: {
         type: DataTypes.TEXT,
-        allowNull: false
+        allowNull: false,
       },
       target_type: {
         type: DataTypes.ENUM('retailer', 'consumer'),
-        allowNull: false
-      }
-    }, { freezeTableName: true })
-  const Goal = sequelize.define("goal",
+        allowNull: false,
+      },
+    },
+    { freezeTableName: true }
+  );
+  const Goal = sequelize.define(
+    'goal',
     {
       id: {
         primaryKey: true,
         type: DataTypes.BIGINT,
-        allowNull: false
+        allowNull: false,
       },
       target: {
         type: DataTypes.DECIMAL,
-        allowNull: false
-      }
-    }, { freezeTableName: true })
-  const Reports = sequelize.define("report",
+        allowNull: false,
+      },
+    },
+    { freezeTableName: true }
+  );
+  const Reports = sequelize.define(
+    'report',
     {
       id: {
         primaryKey: true,
         type: DataTypes.BIGINT,
-        allowNull: false
+        allowNull: false,
       },
       start_date: {
         type: DataTypes.DATE,
-        allowNull: false
+        allowNull: false,
       },
       end_date: {
         type: DataTypes.DATE,
-        allowNull: false
-      }
-    }, { freezeTableName: true })
+        allowNull: false,
+      },
+    },
+    { freezeTableName: true }
+  );
 
-  const WarningType = sequelize.define("warning_type",
+  const WarningType = sequelize.define(
+    'warning_type',
     {
       id: {
         primaryKey: true,
         type: DataTypes.BIGINT,
-        allowNull: false
+        allowNull: false,
       },
       category: {
         type: DataTypes.TEXT,
-        allowNull: false
+        allowNull: false,
       },
       description: {
         type: DataTypes.TEXT,
-        allowNull: false
+        allowNull: false,
       },
       trigger_greater_than: {
         type: DataTypes.BOOLEAN,
-        allowNull: false
+        allowNull: false,
       },
       target: {
         type: DataTypes.DECIMAL,
-        allowNull: false
-      }
-    }, { freezeTableName: true })
+        allowNull: false,
+      },
+    },
+    { freezeTableName: true }
+  );
   /* Link goal type to entity goal
-  * One to many relation */
-  GoalType.hasMany(Goal, { foreignKey: { name: "goal_id", allowNull: false } })
-  Goal.belongsTo(GoalType, { foreignKey: { name: "goal_id", allowNull: false } })
+   * One to many relation */
+  GoalType.hasMany(Goal, { foreignKey: { name: 'goal_id', allowNull: false } });
+  Goal.belongsTo(GoalType, {
+    foreignKey: { name: 'goal_id', allowNull: false },
+  });
   /* Link consumer to entity goal
-  * One to many relation */
-  Consumer.hasMany(Goal, { foreignKey: { name: "consumer_id", allowNull: true } })
-  Goal.belongsTo(Consumer, { foreignKey: { name: "consumer_id", allowNull: true } })
+   * One to many relation */
+  Consumer.hasMany(Goal, {
+    foreignKey: { name: 'consumer_id', allowNull: true },
+  });
+  Goal.belongsTo(Consumer, {
+    foreignKey: { name: 'consumer_id', allowNull: true },
+  });
   /* Link suburb to report
-  * One to many relation
-  * Nulls are allowed */
-  Suburb.hasMany(Reports, { foreignKey: { name: "suburb_id", allowNull: true } })
-  Reports.belongsTo(Suburb, { foreignKey: { name: "suburb_id", allowNull: true } })
+   * One to many relation
+   * Nulls are allowed */
+  Suburb.hasMany(Reports, {
+    foreignKey: { name: 'suburb_id', allowNull: true },
+  });
+  Reports.belongsTo(Suburb, {
+    foreignKey: { name: 'suburb_id', allowNull: true },
+  });
   /* Link consumer to report
-  * One to many relation
-  * Nulls are allowed */
-  Consumer.hasMany(Reports, { foreignKey: { name: "consumer_id", allowNull: true } })
-  Reports.belongsTo(Consumer, { foreignKey: { name: "consumer_id", allowNull: true } })
+   * One to many relation
+   * Nulls are allowed */
+  Consumer.hasMany(Reports, {
+    foreignKey: { name: 'consumer_id', allowNull: true },
+  });
+  Reports.belongsTo(Consumer, {
+    foreignKey: { name: 'consumer_id', allowNull: true },
+  });
 
   /* Link goal and warning type
-  * Many to One relation */
-  GoalType.hasMany(WarningType, { foreignKey: { name: "goal_type_id", allowNull: false } })
-  WarningType.belongsTo(GoalType, { foreignKey: { name: "goal_type_id", allowNull: false } })
+   * Many to One relation */
+  GoalType.hasMany(WarningType, {
+    foreignKey: { name: 'goal_type_id', allowNull: false },
+  });
+  WarningType.belongsTo(GoalType, {
+    foreignKey: { name: 'goal_type_id', allowNull: false },
+  });
 
   return {
     sequelize,
@@ -320,5 +388,5 @@ export const defineModels = (sequelize: Sequelize) => {
     Goal,
     Reports,
     WarningType,
-  }
-}
+  };
+};

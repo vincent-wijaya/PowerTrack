@@ -5,31 +5,32 @@ const router = express.Router();
 
 router.get('/map', async (req, res) => {
   // Retrieve the last energy consumption record (kW) of each suburb. Optionally limit the area of the map to the bounding box defined by 2 coordinate points (top-left and bottom-right).
-  const {lat1, long1, lat2, long2} = req.query;
+  const { lat1, long1, lat2, long2 } = req.query;
   let whereClause;
 
   // Get relevant suburbs
   if (lat1 && long1 && lat2 && long2) {
     whereClause = {
       latitude: {
-        [Op.between]: [lat1, lat2]
+        [Op.between]: [lat1, lat2],
       },
       longitude: {
-        [Op.between]: [long1, long2]
-      }
+        [Op.between]: [long1, long2],
+      },
     };
   } else {
     whereClause = {};
   }
 
   // Get all suburbs within the bounding box
-  let suburbs = await req.app.get("models").Suburb.findAll({
+  let suburbs = await req.app.get('models').Suburb.findAll({
     where: whereClause,
   });
   console.log(`Suburbs: ${suburbs}`);
 
   // Get the latest timestamp for each suburb
-  let latestConsumptions = await req.app.get("models").sequelize.query(`
+  let latestConsumptions = await req.app.get('models').sequelize.query(
+    `
     SELECT * FROM (
       SELECT 
         *, 
@@ -40,10 +41,12 @@ router.get('/map', async (req, res) => {
         suburb_id IN (:suburbIds)
     ) AS latest
     WHERE rn = 1;
-  `, {
-    replacements: { suburbIds: suburbs.map((suburb: any) => suburb.id) },
-    type: req.app.get("models").sequelize.QueryTypes.SELECT
-  });
+  `,
+    {
+      replacements: { suburbIds: suburbs.map((suburb: any) => suburb.id) },
+      type: req.app.get('models').sequelize.QueryTypes.SELECT,
+    }
+  );
 
   // Return the energy consumption for each suburb
   res.status(200).send({
@@ -59,46 +62,48 @@ router.get('/map', async (req, res) => {
 
 router.get('/consumption', async (req, res) => {
   // Retrieve energy consumption for a suburb or consumer over a period of time
-  const {suburb_id, consumer_id, start_date, end_date} = req.query;
-  const { sequelize, SuburbConsumption, ConsumerConsumption } = req.app.get('models');
+  const { suburb_id, consumer_id, start_date, end_date } = req.query;
+  const { sequelize, SuburbConsumption, ConsumerConsumption } =
+    req.app.get('models');
 
   let date_where_clause;
   if (start_date !== undefined && end_date !== undefined) {
     date_where_clause = {
-      [Op.between]: [new Date(String(start_date)), new Date(String(end_date))]
+      [Op.between]: [new Date(String(start_date)), new Date(String(end_date))],
     };
   } else if (start_date !== undefined) {
     date_where_clause = {
-      [Op.gte]: new Date(String(start_date))
+      [Op.gte]: new Date(String(start_date)),
     };
   } else if (end_date !== undefined) {
     date_where_clause = {
-      [Op.lte]: new Date(String(end_date))
+      [Op.lte]: new Date(String(end_date)),
     };
   } else {
     date_where_clause = {
-      [Op.ne]: null
+      [Op.ne]: null,
     };
   }
 
   let consumptions;
 
   if (suburb_id && consumer_id) {
-    return res.status(400).send("Cannot specify both suburb_id and consumer_id");
-  }
-  else if (suburb_id) {
+    return res
+      .status(400)
+      .send('Cannot specify both suburb_id and consumer_id');
+  } else if (suburb_id) {
     consumptions = await SuburbConsumption.findAll({
       where: {
         suburb_id: suburb_id,
-        date: date_where_clause
-      }
+        date: date_where_clause,
+      },
     });
   } else if (consumer_id) {
     consumptions = await ConsumerConsumption.findAll({
       where: {
         consumer_id: consumer_id,
-        date: date_where_clause
-      }
+        date: date_where_clause,
+      },
     });
   } else {
     // Return nation-wide totals
@@ -110,25 +115,28 @@ router.get('/consumption', async (req, res) => {
       where: {
         date: {
           [Op.between]: [
-            start_date ? new Date(String(start_date)) : new Date('1970-01-01T00:00:00Z'),
-            end_date ? new Date(String(end_date)) : new Date('9999-01-01T00:00:00Z'),
+            start_date
+              ? new Date(String(start_date))
+              : new Date('1970-01-01T00:00:00Z'),
+            end_date
+              ? new Date(String(end_date))
+              : new Date('9999-01-01T00:00:00Z'),
           ],
         },
       },
       group: ['suburb_id'],
     });
     consumptions = consumptions.map((x: any) => {
-        return {
-          suburb_id: x.suburb_id,
-          start_date: start_date,
-          end_date: end_date,
-          amount: x.amount
-        };
-      }
-    );
+      return {
+        suburb_id: x.suburb_id,
+        start_date: start_date,
+        end_date: end_date,
+        amount: x.amount,
+      };
+    });
   }
   res.send({
-    energy: consumptions
+    energy: consumptions,
   });
 });
 
@@ -140,11 +148,13 @@ router.get('/profitMargin', async (req, res) => {
     (start_date && isNaN(new Date(String(start_date)).getTime())) ||
     (end_date && isNaN(new Date(String(end_date)).getTime()))
   ) {
-    return res.status(400).send('Invalid date format. Provide dates in ISO string format.');
+    return res
+      .status(400)
+      .send('Invalid date format. Provide dates in ISO string format.');
   }
 
   let date_where_clause: any = {
-    [Op.ne]: null
+    [Op.ne]: null,
   };
   if (start_date) {
     date_where_clause[Op.gt] = new Date(String(start_date));
@@ -155,14 +165,14 @@ router.get('/profitMargin', async (req, res) => {
 
   let sellingPrices = await SellingPrice.findAll({
     where: {
-      date: date_where_clause
-    }
+      date: date_where_clause,
+    },
   });
 
   let spotPrices = await SpotPrice.findAll({
     where: {
-      date: date_where_clause
-    }
+      date: date_where_clause,
+    },
   });
 
   spotPrices.sort((a: any, b: any) => {
@@ -174,33 +184,34 @@ router.get('/profitMargin', async (req, res) => {
 
   spotPrices = spotPrices.map((spotPrice: any) => ({
     date: spotPrice.date.toISOString(),
-    amount: Number(spotPrice.amount)
+    amount: Number(spotPrice.amount),
   }));
   sellingPrices = sellingPrices.map((sellingPrice: any) => ({
     date: sellingPrice.date.toISOString(),
-    amount: Number(sellingPrice.amount)
+    amount: Number(sellingPrice.amount),
   }));
 
   return res.status(200).send({
     spot_prices: spotPrices,
-    selling_prices: sellingPrices
+    selling_prices: sellingPrices,
   });
 });
 
 router.get('/warnings', async (req, res) => {
   // Retrieve warnings for a suburb
-  const {suburb_id, consumer_id} = req.query;
-  const { Consumer, ConsumerConsumption, GoalType, SellingPrice, WarningType } = req.app.get('models');
+  const { suburb_id, consumer_id } = req.query;
+  const { Consumer, ConsumerConsumption, GoalType, SellingPrice, WarningType } =
+    req.app.get('models');
 
   // Get goal types
   const goalTarget: string = consumer_id ? 'consumer' : 'retailer';
   const goalTypes = await GoalType.findAll({
     where: {
-      target_type: goalTarget
-    }
+      target_type: goalTarget,
+    },
   });
   if (goalTypes.length === 0) {
-    return res.status(501).send("No goal types found");
+    return res.status(501).send('No goal types found');
   }
 
   // Get warning types
@@ -210,7 +221,7 @@ router.get('/warnings', async (req, res) => {
     })
   ).then((result) => result.flat());
   if (warningTypes.length === 0) {
-    return res.status(501).send("No warning types found");
+    return res.status(501).send('No warning types found');
   }
 
   // Iterate through each warning type
@@ -224,22 +235,22 @@ router.get('/warnings', async (req, res) => {
         // Get high priority consumers
         const whereClause: any = {
           where: {
-            high_priority: true
-          }
+            high_priority: true,
+          },
         };
         if (suburb_id) {
           whereClause.where.suburb_id = suburb_id;
         }
         const consumers = await Consumer.findAll(whereClause);
-        
+
         // Check if any of the high priority consumers have an outage
         // Check if their last consumption data is 0
         for (const consumer of consumers) {
           const consumption = await ConsumerConsumption.findOne({
             where: {
-              consumer_id: consumer.id
+              consumer_id: consumer.id,
             },
-            order: [['date', 'DESC']]
+            order: [['date', 'DESC']],
           });
           if (consumption && Number(consumption.amount) === 0) {
             warnings.push({
@@ -249,7 +260,7 @@ router.get('/warnings', async (req, res) => {
                 consumer_id: Number(consumer.id),
                 street_address: consumer.street_address,
               },
-              suggestion: `Prioritise re-establishing energy for priority consumer at address ${consumer.street_address}.`
+              suggestion: `Prioritise re-establishing energy for priority consumer at address ${consumer.street_address}.`,
             });
           }
         }
@@ -257,7 +268,7 @@ router.get('/warnings', async (req, res) => {
       case 'high_cost':
         // Get the latest selling price
         const sellingPrice = await SellingPrice.findOne({
-          order: [['date', 'DESC']]
+          order: [['date', 'DESC']],
         });
 
         if (sellingPrice.amount >= warningType.target) {
@@ -265,9 +276,9 @@ router.get('/warnings', async (req, res) => {
             category: warningType.category,
             description: warningType.description,
             data: {
-              energy_cost: sellingPrice.amount
+              energy_cost: sellingPrice.amount,
             },
-            suggestion: `Energy cost is at $${sellingPrice.amount}/kWh, so use less energy to save money.`
+            suggestion: `Energy cost is at $${sellingPrice.amount}/kWh, so use less energy to save money.`,
           });
         }
         break;
@@ -277,9 +288,9 @@ router.get('/warnings', async (req, res) => {
   }
 
   res.send({
-    warnings: warnings
+    warnings: warnings,
   });
-})
+});
 
 router.get('/consumers', async (req, res) => {
   // Retrieve consumers by suburb_id or consumer by consumer_id or all consumers
@@ -289,17 +300,21 @@ router.get('/consumers', async (req, res) => {
   let consumers;
 
   if (suburb_id && consumer_id) {
-    return res.status(400).send("Cannot specify both suburb_id and consumer_id");
+    return res
+      .status(400)
+      .send('Cannot specify both suburb_id and consumer_id');
   } else if (suburb_id) {
     // Return consumers by suburb_id
     consumers = await Consumer.findAll({
       where: {
         suburb_id: suburb_id,
       },
-      include: [{
-        model: Suburb,
-        attributes: ['name', 'postcode'] // Include name and post_code attributes
-      }]
+      include: [
+        {
+          model: Suburb,
+          attributes: ['name', 'postcode'], // Include name and post_code attributes
+        },
+      ],
     });
   } else if (consumer_id) {
     // Return specific consumer
@@ -307,36 +322,39 @@ router.get('/consumers', async (req, res) => {
       where: {
         id: consumer_id,
       },
-      include: [{
-        model: Suburb,
-        attributes: ['name', 'postcode'] // Include name and post_code attributes
-      }]
+      include: [
+        {
+          model: Suburb,
+          attributes: ['name', 'postcode'], // Include name and post_code attributes
+        },
+      ],
     });
   } else {
     // Return all consumers
     consumers = await Consumer.findAll({
-      include: [{
-        model: Suburb,
-        attributes: ['name', 'postcode'] // Include name and post_code attributes
-      }]
+      include: [
+        {
+          model: Suburb,
+          attributes: ['name', 'postcode'], // Include name and post_code attributes
+        },
+      ],
     });
   }
 
   // Transform response to the desired format
-  const formattedConsumers = consumers.map((consumer:any) => {
-    return{
-    id: consumer.id,
-    high_priority: consumer.high_priority,
-    address: consumer.street_address,
-    suburb_id: consumer.suburb_id,
-    suburb_name: consumer.suburb.name,
-    suburb_post_code: consumer.suburb.postcode
-    }
-    
+  const formattedConsumers = consumers.map((consumer: any) => {
+    return {
+      id: consumer.id,
+      high_priority: consumer.high_priority,
+      address: consumer.street_address,
+      suburb_id: consumer.suburb_id,
+      suburb_name: consumer.suburb.name,
+      suburb_post_code: consumer.suburb.postcode,
+    };
   });
 
   res.send({
-    consumers: formattedConsumers
+    consumers: formattedConsumers,
   });
 });
 
@@ -346,11 +364,11 @@ router.get('/suburbs', async (req, res) => {
   try {
     const suburbs = await Suburb.findAll();
     res.send({
-      suburbs: suburbs
+      suburbs: suburbs,
     });
   } catch (error) {
     res.status(500).send({
-      error: 'An error occurred while fetching suburbs'
+      error: 'An error occurred while fetching suburbs',
     });
   }
 });

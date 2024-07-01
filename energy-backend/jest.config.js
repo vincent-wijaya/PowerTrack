@@ -1,13 +1,11 @@
 module.exports = {
   // Only include TypeScript test files
-  testMatch: [
-    "**/*.test.ts"
-  ],
-  preset: "ts-jest",
-  testEnvironment: "node",
+  testMatch: ['**/*.test.ts'],
+  preset: 'ts-jest',
+  testEnvironment: 'node',
   globals: {
-    "ts-jest": {
-      tsconfig: "tsconfig.json",
+    'ts-jest': {
+      tsconfig: 'tsconfig.json',
     },
   },
   verbose: true,
