@@ -14,38 +14,32 @@ describe('GET /retailer/consumption', () => {
     appInstance = app(sequelize);
 
     // Insert prerequesite data for tests
-    await appInstance
-      .get('models')
-      .Suburb.create({
-        id: 1,
-        name: 'Test Suburb',
-        postcode: 3000,
-        state: 'Victoria',
-        latitude: 0,
-        longitude: 0,
-      });
+    await appInstance.get('models').Suburb.create({
+      id: 1,
+      name: 'Test Suburb',
+      postcode: 3000,
+      state: 'Victoria',
+      latitude: 0,
+      longitude: 0,
+    });
     await appInstance.get('models').SuburbConsumption.bulkCreate([
       { suburb_id: 1, date: '2024-04-17T09:00:00Z', amount: 1000 },
       { suburb_id: 1, date: '2024-04-17T09:05:00Z', amount: 1100 },
       { suburb_id: 1, date: '2024-04-17T09:10:00Z', amount: 1200 },
       { suburb_id: 1, date: '2024-04-17T09:15:00Z', amount: 1300 },
     ]);
-    await appInstance
-      .get('models')
-      .SellingPrice.create({
-        id: 1,
-        date: '2024-04-01T09:00:00Z',
-        amount: 0.25,
-      });
-    await appInstance
-      .get('models')
-      .Consumer.create({
-        id: 1,
-        street_address: '10 Test Street Melbourne Victoria 3000',
-        high_priority: false,
-        selling_price_id: 1,
-        suburb_id: 1,
-      });
+    await appInstance.get('models').SellingPrice.create({
+      id: 1,
+      date: '2024-04-01T09:00:00Z',
+      amount: 0.25,
+    });
+    await appInstance.get('models').Consumer.create({
+      id: 1,
+      street_address: '10 Test Street Melbourne Victoria 3000',
+      high_priority: false,
+      selling_price_id: 1,
+      suburb_id: 1,
+    });
     await appInstance.get('models').ConsumerConsumption.bulkCreate([
       { consumer_id: 1, date: '2024-04-17T09:00:00Z', amount: 1000 },
       { consumer_id: 1, date: '2024-04-17T09:05:00Z', amount: 1100 },
@@ -514,16 +508,14 @@ describe('GET /retailer/warnings - category high_cost', () => {
     appInstance = app(sequelize);
 
     // Insert prerequesite data for tests
-    await appInstance
-      .get('models')
-      .Suburb.create({
-        id: 1,
-        name: 'Test Suburb',
-        postcode: 3000,
-        state: 'Victoria',
-        latitude: 100,
-        longitude: 100,
-      });
+    await appInstance.get('models').Suburb.create({
+      id: 1,
+      name: 'Test Suburb',
+      postcode: 3000,
+      state: 'Victoria',
+      latitude: 100,
+      longitude: 100,
+    });
     await appInstance.get('models').Consumer.create({
       id: 1,
       street_address: address1,
