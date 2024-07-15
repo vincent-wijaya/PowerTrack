@@ -57,7 +57,7 @@ export default function RegionalDashboard({ params }: { params: { id: string } }
 
       <EnergyChart />
       <ProfitChart />
-      <WarningTable />
+      <WarningTable id={20453}/>
     </div>
   );
 }
