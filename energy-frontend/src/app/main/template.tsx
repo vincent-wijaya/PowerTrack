@@ -1,8 +1,8 @@
 "use client";
 
 import React, { ReactNode, useState } from "react";
-import Profile from "../components/profile";
-import Navbar from "../components/navbar";
+import Profile from "../../components/profile";
+import Navbar from "../../components/navbar";
 
 interface TemplateProps {
   children: ReactNode;
@@ -12,7 +12,6 @@ export default function Template({ children }: TemplateProps) {
   const [isNavbarOpen, setIsNavbarOpen] = useState(false);
 
   const toggleNavbar = () => {
-    console.log("clicked");
     setIsNavbarOpen((prev) => !prev);
   };
 

@@ -1,3 +1,9 @@
 export default function LoginPage() {
-  return <div>Login page</div>;
+  return (
+    <>
+      <div className="bg-background">
+        hello
+      </div>
+    </>
+  )
 }
