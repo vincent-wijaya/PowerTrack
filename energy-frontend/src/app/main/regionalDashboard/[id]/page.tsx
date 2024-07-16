@@ -1,6 +1,5 @@
 'use client'
 
-import Headings from "@/app/template";
 import EnergyChart from "@/components/energyChart";
 import InfoBox from "@/components/infoBox";
 import PageHeading from "@/components/pageHeading";
