@@ -1,5 +1,5 @@
-import PageHeading from "@/components/pageHeading";
-import ProfitMargin from "@/components/profitMargin";
+import PageHeading from '@/components/pageHeading';
+import ProfitMargin from '@/components/profitMargin';
 
 export default async function RegionalDashboard() {
   return (

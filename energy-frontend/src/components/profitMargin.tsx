@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { useEffect, useMemo, useState } from "react";
-import InfoBox from "./infoBox";
-import { fetcher } from "@/utils";
-import useSWR from "swr";
-import { POLLING_RATE } from "@/config";
+import { useEffect, useMemo, useState } from 'react';
+import InfoBox from './infoBox';
+import { fetcher } from '@/utils';
+import useSWR from 'swr';
+import { POLLING_RATE } from '@/config';
 
 export default function ProfitMargin() {
   const url = process.env.NEXT_PUBLIC_API_URL;
@@ -20,13 +20,17 @@ export default function ProfitMargin() {
     if (lastSpotPrice === undefined || lastSellingPrice === undefined) {
       setProfitMargin(0);
     } else {
-      setProfitMargin(Math.round(((lastSellingPrice - lastSpotPrice) / lastSellingPrice) * 100));
+      setProfitMargin(
+        Math.round(
+          ((lastSellingPrice - lastSpotPrice) / lastSellingPrice) * 100
+        )
+      );
     }
   }, [data]);
 
   return (
     <InfoBox
-      title={profitMargin?.toString() + "%"}
+      title={profitMargin?.toString() + '%'}
       description="Current Profit Margin"
       textColour={getTextColour(profitMargin)}
     />
@@ -35,10 +39,10 @@ export default function ProfitMargin() {
 
 function getTextColour(profitMargin: number) {
   if (profitMargin >= 50) {
-    return "text-[#B2FBA5]";
+    return 'text-[#B2FBA5]';
   } else if (profitMargin >= 0 && profitMargin < 50) {
-    return "text-[#FFA500]";
+    return 'text-[#FFA500]';
   } else {
-    return "text-[#FF6961]";
+    return 'text-[#FF6961]';
   }
 }
