@@ -2,7 +2,7 @@ import { Application } from 'express';
 import { Sequelize } from 'sequelize';
 import request from 'supertest';
 import app from '../app';
-import { connectToTestDb, dropTestDb } from "./testDb";
+import { connectToTestDb, dropTestDb } from './testDb';
 
 // Test the example route
 describe('GET /', () => {
@@ -23,8 +23,8 @@ describe('GET /', () => {
     await sequelize.close();
     await dropTestDb(sequelize);
   });
-  
-  it('should return \'Hello World!\'', async () => {
+
+  it("should return 'Hello World!'", async () => {
     const response = await request(appInstance).get('/');
 
     expect(response.status).toBe(200);

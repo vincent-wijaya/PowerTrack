@@ -1,14 +1,14 @@
-"use client";
-import React, { useEffect, useState } from "react";
-import Dropdown from "./dropDownFilter"; // Adjust the path based on your folder structure
-import LineChart from "./lineChart";
+'use client';
+import React, { useEffect, useState } from 'react';
+import Dropdown from './dropDownFilter'; // Adjust the path based on your folder structure
+import LineChart from './lineChart';
 
 function ProfitChart() {
   const [profitData, setProfitData] = useState<number[]>([]);
   const [spotPriceData, setSpotPriceData] = useState<number[]>([]);
   const [sellingPriceData, setSellingPriceData] = useState<number[]>([]);
   const [selectedTimeRange, setSelectedTimeRange] =
-    useState<string>("last_year");
+    useState<string>('last_year');
 
   const generateData = () => {
     const newData = Math.floor(Math.random() * (200 - 50 + 1)) + 50;
@@ -56,29 +56,29 @@ function ProfitChart() {
         <div className="w-1/2 h-1/2 drop-shadow-md border-2 border-chartBorder">
           <Dropdown
             onChange={handleTimeRangeChange}
-            chartTitle={"Profit Analysis"}
+            chartTitle={'Profit Analysis'}
           />
           <LineChart
             chartTitle=""
             xAxisLabels={profitData.map((_, index) => `Day ${index + 1}`)}
             datasets={[
               {
-                label: "Profit",
+                label: 'Profit',
                 data: profitData,
-                borderColor: "purple",
-                backgroundColor: "white",
+                borderColor: 'purple',
+                backgroundColor: 'white',
               },
               {
-                label: "Spot Price",
+                label: 'Spot Price',
                 data: spotPriceData,
-                borderColor: "red",
-                backgroundColor: "white",
+                borderColor: 'red',
+                backgroundColor: 'white',
               },
               {
-                label: "Selling Price",
+                label: 'Selling Price',
                 data: sellingPriceData,
-                borderColor: "blue",
-                backgroundColor: "white",
+                borderColor: 'blue',
+                backgroundColor: 'white',
               },
             ]}
             xAxisTitle="Day"

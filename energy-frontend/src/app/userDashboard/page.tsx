@@ -1,5 +1,5 @@
-import Headings from "@/app/template";
-import PageHeading from "@/components/pageHeading";
+import Headings from '@/app/template';
+import PageHeading from '@/components/pageHeading';
 
 export default function UserDashboard() {
   return (
@@ -7,7 +7,9 @@ export default function UserDashboard() {
       <div className="flex flex-col-2">
         <PageHeading title="User" />
 
-        <div>{/* <InfoBox title="X Urgent Warnings" description="of all warnings" />*/}</div>
+        <div>
+          {/* <InfoBox title="X Urgent Warnings" description="of all warnings" />*/}
+        </div>
       </div>
     </>
   );
