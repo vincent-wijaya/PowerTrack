@@ -27,7 +27,6 @@ router.get('/map', async (req, res) => {
   let suburbs = await req.app.get('models').Suburb.findAll({
     where: whereClause,
   });
-  console.log(`Suburbs: ${suburbs}`);
 
   // Get the latest timestamp for each suburb
   let latestConsumptions = await req.app.get('models').sequelize.query(
@@ -142,6 +141,150 @@ router.get('/consumption', async (req, res) => {
 });
 
 /**
+ * GET /retailer/generation
+ *
+ * Retrieve energy generation data for a suburb over a period of time.
+ * Based on the time period, the data is aggregated by hour, day, or week.
+ *
+ * Query parameters:
+ * - suburb_id: The ID of the suburb to retrieve data for.
+ * - start_date: The start date of the period to retrieve data for, in ISO format
+ * - end_date: The end date of the period to retrieve data for, in ISO format
+ *
+ * Response format:
+ * {
+ *  suburb_id: number, // The ID of the suburb (if provided)
+ *  energy: [ [string, number], ... ] // An array of [date, amount] pairs, where the string is the ISO date and the number is the amount of energy generated.
+ * }
+ *
+ * Example response:
+ * {
+ *  suburb_id: 1,
+ *  energy: [
+ *    ["2022-01-01T12:30Z", 100],
+ *    ["2022-01-01T13:30Z", 120],
+ *    ...
+ *  ]
+ * }
+ */
+router.get('/generation', async (req, res) => {
+  try {
+    let { suburb_id, start_date, end_date } = req.query; // Get query parameters
+    let { sequelize, EnergyGeneration, EnergyGenerator } =
+      req.app.get('models');
+
+    // Define where clause for suburb (if provided)
+    let suburbWhere: any = {};
+    if (suburb_id) {
+      // Check if suburb_id is an integer
+      if (!Number.isInteger(Number(suburb_id))) {
+        return res.status(400).send('Suburb ID must be an integer');
+      }
+
+      suburbWhere.suburb_id = suburb_id;
+    }
+
+    // If no date range is provided, return error 400
+    if (!start_date)
+      return res.status(400).send('Start date must be provided.');
+
+    // If no end date is provided, set it to the current date
+    if (!end_date) {
+      end_date = moment().toISOString();
+    }
+
+    // If start date format is invalid, return error 400 and check if time is included
+    if (!moment(String(start_date), moment.ISO_8601, true).isValid()) {
+      return res
+        .status(400)
+        .send('Invalid start date format. Provide dates in ISO string format.');
+    }
+
+    // If end date format is invalid, return error 400 and check if time is included
+    if (!moment(String(end_date), moment.ISO_8601, true).isValid()) {
+      return res
+        .status(400)
+        .send('Invalid end date format. Provide dates in ISO string format.');
+    }
+
+    // If the start date is after the end date, return error 400
+    if (start_date > end_date)
+      return res.status(400).send('Invalid start date provided.');
+
+    // Define where clause for date range
+    let dateGranularity: any = null;
+    let dateWhere: any = {};
+    // Set the date range to be within the start and end dates
+    dateWhere.date = {
+      [Op.and]: {
+        [Op.gt]: moment(String(start_date)).toISOString(),
+        [Op.lte]: moment(String(end_date)).toISOString(),
+      },
+    };
+
+    // Determine the date granularity based on the date range
+    let dateDifference = moment(String(end_date)).diff(String(start_date));
+    if (moment.duration(dateDifference).asMonths() >= 1) {
+      dateGranularity = 'week';
+    } else if (moment.duration(dateDifference).asWeeks() >= 1) {
+      dateGranularity = 'day';
+    } else {
+      dateGranularity = 'hour';
+    }
+
+    // Retrieve energy generation data based on the date granularity
+    const result = await EnergyGeneration.findAll({
+      attributes: [
+        [sequelize.fn('SUM', sequelize.col('amount')), 'amount'], // Sum the amount of energy generated
+        [
+          sequelize.fn('date_trunc', dateGranularity, sequelize.col('date')),
+          'truncatedDate',
+        ], // Truncate the date based on the date granularity
+      ],
+      group: ['truncatedDate'],
+      include: [
+        {
+          model: EnergyGenerator,
+          attributes: [],
+          where: suburbWhere,
+        },
+      ],
+      where: {
+        ...dateWhere,
+      },
+      order: [['truncatedDate', 'ASC']],
+    });
+
+    // Prepare the data to be returned
+    // The return data will be an object with the start date, end date, and energy data
+    // The energy data is an array of [date, amount] pairs
+    let returnData: any = {
+      start_date: start_date,
+      end_date: end_date,
+      energy: [],
+    };
+
+    // Add suburb_id to the return data (if provided)
+    if (suburb_id) {
+      returnData.suburb_id = Number(suburb_id);
+    }
+
+    // Extract the total generation value from the result
+    result.forEach((generation: any) => {
+      const date = moment(generation.dataValues.truncatedDate).toISOString();
+
+      // Add the date and amount of energy generated to the return data
+      returnData.energy.push([date, Number(generation.dataValues.amount)]);
+    });
+
+    return res.status(200).send(returnData);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).send('Internal server error');
+  }
+});
+
+/**
  * GET /retailer/generator
  *
  * Retrieve the energy generation of generators in a suburb over a period of time.
@@ -234,6 +377,192 @@ router.get('/generator', async (req, res) => {
     // If start_date is after end_date, return error 400
     if (start_date > end_date) {
       return res.status(400).send('Invalid start date provided.');
+    }
+
+    // Set the date range to be between the two dates
+    dateWhere.date = {
+      [Op.and]: {
+        [Op.gt]: new Date(String(start_date)),
+        [Op.lte]: new Date(String(end_date)),
+      },
+    };
+
+    // Determine the date granularity based on the date range
+    let dateDifference = moment(String(end_date)).diff(
+      moment(String(start_date))
+    );
+    if (moment.duration(dateDifference).asMonths() >= 1) {
+      dateGranularity = 'week';
+    } else if (moment.duration(dateDifference).asWeeks() >= 1) {
+      dateGranularity = 'day';
+    } else {
+      dateGranularity = 'hour';
+    }
+
+    // Retrieve energy generation data based on the date granularity
+    const result = await EnergyGeneration.findAll({
+      attributes: [
+        [sequelize.fn('SUM', sequelize.col('amount')), 'amount'], // Sum the amount of energy generated
+        [
+          sequelize.fn('date_trunc', dateGranularity, sequelize.col('date')),
+          'truncatedDate',
+        ], // Truncate the date based on the date granularity
+        'energy_generator_id', // Include the energy generator ID
+      ],
+      group: ['truncatedDate', 'energy_generator_id'],
+      include: [
+        {
+          model: EnergyGenerator,
+          attributes: [],
+          where: suburbWhere,
+        },
+      ],
+      where: {
+        ...dateWhere,
+      },
+      order: [
+        ['truncatedDate', 'ASC'],
+        ['energy_generator_id', 'ASC'],
+      ],
+    });
+
+    // Prepare the data to be returned
+    // The return data will be an object with the start date, end date, and energy data
+    // The energy data is an array of [date, amount] pairs
+    let returnData: any = {
+      start_date,
+      end_date,
+      generators: [],
+    };
+
+    // Add suburb_id to the return data (if provided)
+    if (suburb_id) {
+      returnData.suburb_id = Number(suburb_id);
+    }
+
+    // This section groups the energy generation data by energy generator
+    // Cycles through each energy generation and appends it to the array of the corresponding energy generator
+    result.forEach((generator: any) => {
+      const generatorId = generator.dataValues.energy_generator_id;
+      const date = moment(generator.dataValues.truncatedDate).toISOString();
+      const amount = Number(generator.dataValues.amount);
+
+      // If the generator ID is not in the return data, add it
+      // Adds the generator ID and an empty array for the energy data
+      if (!returnData.generators[generatorId]) {
+        returnData.generators[generatorId] = {
+          energy_generator_id: Number(generatorId),
+          energy: [],
+        };
+      }
+
+      // Add the energy generation data to the gemerator's array of energy data
+      returnData.generators[generatorId].energy.push([date, amount]);
+    });
+
+    // Convert the generators object to an array
+    returnData.generators = Object.values(returnData.generators);
+
+    return res.status(200).send(returnData);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send('Internal server error');
+  }
+});
+
+/**
+ * GET /retailer/generator
+ *
+ * Retrieve the energy generation of generators in a suburb over a period of time.
+ * Based on the time period, the data is aggregated by hour, day, or week.
+ *
+ * Query parameters:
+ * - suburb_id: The ID of the suburb to retrieve data for. If not provided, data for all suburbs will be retrieved.
+ * - start_date: The start date of the period to retrieve data for in ISO format. Must be provided.
+ * - end_date: The end date of the period to retrieve data for in ISO format. If not provided, the current date will be used.
+ *
+ * Response format:
+ *  {
+ *    suburb_id: number, // The ID of the suburb (if provided)
+ *    generators: [
+ *      {
+ *        energy_generator_id: number, // The ID of the energy generator
+ *        energy: [
+ *          [date: string, amount: number], // The date in ISO format and amount of energy generated
+ *          ...
+ *        ]
+ *      },
+ *      ...
+ *    ]
+ *  }
+ *
+ * Example response (hourly time granularity):
+ *  {
+ *    suburb_id: 1,
+ *    generators: [
+ *      {
+ *        energy_generator_id: 1,
+ *        energy: [
+ *          ["2022-01-01T00:00:00Z", 100],
+ *          ["2022-01-01T01:00:00Z", 120],
+ *        ]
+ *      },
+ *    ]
+ *  }
+ *
+ */
+router.get('/generator', async (req, res) => {
+  try {
+    let { suburb_id, start_date, end_date } = req.query;
+    const { sequelize, EnergyGeneration, EnergyGenerator } =
+      req.app.get('models');
+
+    // Define where clause for suburb_id
+    const suburbWhere: any = {};
+    if (suburb_id) {
+      // Check if suburb_id is a whole number
+      if (!Number.isInteger(Number(suburb_id))) {
+        return res.status(400).json({error: 'Suburb ID must be an integer.'});
+      }
+
+      suburbWhere.suburb_id = suburb_id;
+    } else {
+      suburbWhere.suburb_id = {
+        [Op.ne]: null,
+      };
+    }
+
+    // Define where clause for date range
+    let dateGranularity: any = null;
+    let dateWhere: any = {};
+
+    // If start_date is not provided, return error 400
+    if (!start_date) {
+      return res.status(400).send({error: 'Start date must be provided.'});
+    }
+
+    // If end_date is not provided, set it to the current date
+    if (!end_date) {
+      end_date = new Date().toISOString();
+    }
+
+    // If start date format is invalid, return error 400 and check if time is included
+    if (!moment(String(start_date), moment.ISO_8601, true).isValid()) {
+      return res
+        .status(400)
+        .send({error: 'Invalid start date format. Provide dates in ISO string format.'});
+    }
+
+    // If end date format is invalid, return error 400 and check if time is included
+    if (!moment(String(end_date), moment.ISO_8601, true).isValid()) {
+      return res
+        .status(400)
+        .send({error: 'Invalid end date format. Provide dates in ISO string format.'});
+    }
+
+    // If start_date is after end_date, return error 400
+    if (start_date > end_date) {
+      return res.status(400).send({error: 'Invalid start date provided.'});
     }
 
     // Set the date range to be between the two dates
