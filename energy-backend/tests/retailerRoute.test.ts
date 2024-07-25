@@ -3,6 +3,7 @@ import request from 'supertest';
 import { Sequelize } from 'sequelize';
 import app from '../app';
 import { connectToTestDb, dropTestDb } from './testDb';
+import moment from 'moment';
 
 describe('GET /retailer/consumption', () => {
   let sequelize: Sequelize;
@@ -229,6 +230,293 @@ describe('GET /retailer/map', () => {
           timestamp: x.date.toISOString(),
         };
       }),
+    });
+  });
+});
+
+describe('GET /retailer/generation', () => {
+  let sequelize: Sequelize;
+  let appInstance: Application;
+
+  const mockGenerationData = [
+    { energy_generator_id: 1, date: '2023-01-01T09:00:00Z', amount: 100 },
+    { energy_generator_id: 1, date: '2023-02-01T09:00:00Z', amount: 200 },
+    { energy_generator_id: 1, date: '2023-03-01T09:00:00Z', amount: 300 },
+    { energy_generator_id: 1, date: '2023-04-01T09:00:00Z', amount: 400 },
+
+    { energy_generator_id: 1, date: '2023-06-01T09:00:00Z', amount: 500 },
+    { energy_generator_id: 1, date: '2023-06-02T10:00:00Z', amount: 500 },
+    { energy_generator_id: 1, date: '2023-06-03T11:00:00Z', amount: 500 },
+
+    { energy_generator_id: 2, date: '2023-01-01T09:00:00Z', amount: 100 },
+    { energy_generator_id: 2, date: '2023-02-01T09:00:00Z', amount: 200 },
+    { energy_generator_id: 2, date: '2023-03-01T09:00:00Z', amount: 300 },
+    { energy_generator_id: 2, date: '2023-04-01T09:00:00Z', amount: 400 },
+
+    { energy_generator_id: 2, date: '2023-06-01T09:00:00Z', amount: 500 },
+    { energy_generator_id: 2, date: '2023-06-02T09:00:00Z', amount: 500 },
+    { energy_generator_id: 2, date: '2023-06-03T09:00:00Z', amount: 500 },
+  ];
+
+  beforeAll(async () => {
+    // Set up and connect to test database
+    sequelize = await connectToTestDb();
+    appInstance = app(sequelize);
+
+    const Suburb = appInstance.get('models').Suburb;
+    const GeneratorType = appInstance.get('models').GeneratorType;
+    const EnergyGenerator = appInstance.get('models').EnergyGenerator;
+    const EnergyGeneration = appInstance.get('models').EnergyGeneration;
+
+    // Insert prerequesite data for tests
+    await Suburb.bulkCreate([
+      {
+        id: 1,
+        name: 'Test Suburb',
+        postcode: 3000,
+        state: 'Victoria',
+        latitude: 0,
+        longitude: 0,
+      },
+      {
+        id: 2,
+        name: 'Test Suburb 2',
+        postcode: 3001,
+        state: 'Victoria',
+        latitude: 0,
+        longitude: 0,
+      },
+    ]);
+
+    await GeneratorType.create({
+      id: 1,
+      category: 'Test Generator',
+      renewable: false,
+    });
+    await EnergyGenerator.bulkCreate([
+      { id: 1, name: 'Test Generator', suburb_id: 1, generator_type_id: 1 },
+      { id: 2, name: 'Test Generator 2', suburb_id: 2, generator_type_id: 1 },
+    ]);
+    await EnergyGeneration.bulkCreate(mockGenerationData);
+  });
+
+  afterAll(async () => {
+    // Drop the test database
+    await sequelize.close();
+    await dropTestDb(sequelize);
+  });
+
+  it('should return error 400 if invalid suburb_id is provided', async () => {
+    const SUBURB_ID = '1.111'; // Invalid suburb_id
+
+    const response = await request(appInstance).get(
+      `/retailer/generation?suburb_id=${SUBURB_ID}`
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it('should return empty generation if invalid suburb_id is provided', async () => {
+    const SUBURB_ID = 10000; // Invalid suburb_id
+    const START_DATE = '2023-06-01T09:00:00Z';
+    const END_DATE = '2023-06-03T12:00:00Z';
+
+    const response = await request(appInstance).get(
+      `/retailer/generation?suburb_id=${SUBURB_ID}&start_date=${START_DATE}&end_date=${END_DATE}`
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      suburb_id: SUBURB_ID,
+      start_date: START_DATE,
+      end_date: END_DATE,
+      energy: [],
+    });
+  });
+
+  it('should return error 400 if start date is missing', async () => {
+    const response = await request(appInstance).get('/retailer/generation');
+
+    expect(response.status).toBe(400);
+  });
+
+  it('should return error 400 if invalid start date format is provided', async () => {
+    const START_DATE = '01/01/2024'; // Invalid date format
+
+    const response = await request(appInstance).get(
+      `/retailer/generation?start_date=${START_DATE}`
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it('should return error 400 if invalid end date format is provided', async () => {
+    const START_DATE = '2024-01-01T09:00:00Z';
+    const END_DATE = '01/01/2024'; // Invalid date format
+
+    const response = await request(appInstance).get(
+      `/retailer/generation?start_date=${START_DATE}&end_date=${END_DATE}`
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it('should return error 400 if future start date is provided', async () => {
+    const START_DATE = '2099-01-01T09:00:00Z'; // Future date
+
+    const response = await request(appInstance).get(
+      `/retailer/generation?start_date=${START_DATE}`
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it('should return with status and the generation between 1 Jun 2023 and 3 Jun 2023 with hourly granularity', async () => {
+    const SUBURB_ID = 1;
+    const START_DATE = '2023-06-01T08:00:00Z';
+    const END_DATE = '2023-06-03T12:00:00Z';
+
+    const expectedEnergy = mockGenerationData
+      .filter(
+        (generation) =>
+          generation.date > START_DATE &&
+          generation.date < END_DATE &&
+          generation.energy_generator_id === SUBURB_ID
+      )
+      .map((generation) => [
+        moment(generation.date).startOf('hour').toISOString(),
+        generation.amount,
+      ]);
+
+    const response = await request(appInstance).get(
+      `/retailer/generation?suburb_id=${SUBURB_ID}&start_date=${START_DATE}&end_date=${END_DATE}`
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      suburb_id: SUBURB_ID,
+      start_date: START_DATE,
+      end_date: END_DATE,
+      energy: expectedEnergy,
+    });
+  });
+
+  it('should respond with status 200 and generation between 1 Jan 2024 and 7 Jan 2024 with daily granularity', async () => {
+    const SUBURB_ID = 1;
+    const START_DATE = '2023-06-01T08:00:00Z';
+    const END_DATE = '2023-06-08T08:00:00Z';
+
+    const expectedEnergy = mockGenerationData
+      .filter(
+        (generation) =>
+          generation.date > START_DATE &&
+          generation.date <= END_DATE &&
+          generation.energy_generator_id === SUBURB_ID
+      )
+      .map((generation) => [
+        moment(generation.date).startOf('day').toISOString(),
+        generation.amount,
+      ]);
+
+    const response = await request(appInstance).get(
+      `/retailer/generation?suburb_id=${SUBURB_ID}&start_date=${START_DATE}&end_date=${END_DATE}`
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      suburb_id: SUBURB_ID,
+      start_date: START_DATE,
+      end_date: END_DATE,
+      energy: expectedEnergy,
+    });
+  });
+
+  it('should respond with status 200 and generation between January 2023 and August 2023 with weekly granularity', async () => {
+    const SUBURB_ID = 1;
+    const START_DATE = '2023-01-01T08:00:00Z';
+    const END_DATE = '2023-08-01T08:00:00Z';
+
+    const adjustedGenerationData = mockGenerationData.map((generation) => {
+      return {
+        ...generation,
+        truncatedDate: moment(generation.date).startOf('isoWeek').toISOString(),
+      };
+    });
+
+    // Aggregate the data by week
+    let expectedEnergy = adjustedGenerationData
+      .filter(
+        (generation) =>
+          moment(generation.date) > moment(START_DATE) &&
+          moment(generation.date) <= moment(END_DATE) &&
+          generation.energy_generator_id === SUBURB_ID
+      )
+      .reduce((acc: any, generation: any) => {
+        if (!acc[generation.truncatedDate]) {
+          acc[generation.truncatedDate] = 0;
+        }
+        acc[generation.truncatedDate] += generation.amount;
+        return acc;
+      }, {});
+
+    expectedEnergy = Object.keys(expectedEnergy).map((date) => [
+      date,
+      expectedEnergy[date],
+    ]);
+
+    const response = await request(appInstance).get(
+      `/retailer/generation?suburb_id=${SUBURB_ID}&start_date=${START_DATE}&end_date=${END_DATE}`
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      suburb_id: SUBURB_ID,
+      start_date: START_DATE,
+      end_date: END_DATE,
+      energy: expectedEnergy,
+    });
+  });
+
+  it('should return nationwide total with weekly granularity', async () => {
+    const START_DATE = '2023-01-01T08:00:00Z';
+    const END_DATE = '2023-08-01T08:00:00Z';
+
+    const adjustedGenerationData = mockGenerationData.map((generation) => {
+      return {
+        ...generation,
+        truncatedDate: moment(generation.date).startOf('isoWeek').toISOString(),
+      };
+    });
+
+    // Aggregate the data by week
+    let expectedEnergy = adjustedGenerationData
+      .filter(
+        (generation) =>
+          moment(START_DATE) < moment(generation.date) &&
+          moment(generation.date) <= moment(END_DATE)
+      )
+      .reduce((acc: any, generation: any) => {
+        if (!acc[generation.truncatedDate]) {
+          acc[generation.truncatedDate] = 0;
+        }
+        acc[generation.truncatedDate] += generation.amount;
+        return acc;
+      }, {});
+
+    expectedEnergy = Object.keys(expectedEnergy).map((key) => [
+      key,
+      expectedEnergy[key],
+    ]);
+
+    const response = await request(appInstance).get(
+      `/retailer/generation?start_date=${START_DATE}&end_date=${END_DATE}`
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      start_date: START_DATE,
+      end_date: END_DATE,
+      energy: expectedEnergy,
     });
   });
 });
@@ -678,6 +966,313 @@ describe('GET /retailer/consumers', () => {
 
     expect(response.status).toBe(400);
     expect(response.text).toBe('Cannot specify both suburb_id and consumer_id');
+  });
+});
+
+describe('GET /retailer/generator', () => {
+  let sequelize: Sequelize;
+  let appInstance: Application;
+
+  const mockEnergyGenerations = [
+    { energy_generator_id: 1, date: '2024-01-01T09:00:00Z', amount: 100 },
+    { energy_generator_id: 1, date: '2024-02-01T09:00:00Z', amount: 200 },
+    { energy_generator_id: 1, date: '2024-03-01T09:00:00Z', amount: 300 },
+    { energy_generator_id: 1, date: '2024-04-01T09:00:00Z', amount: 400 },
+
+    { energy_generator_id: 1, date: '2024-06-01T09:00:00Z', amount: 500 },
+    { energy_generator_id: 1, date: '2024-06-02T10:00:00Z', amount: 500 },
+    { energy_generator_id: 1, date: '2024-06-03T11:00:00Z', amount: 500 },
+
+    { energy_generator_id: 2, date: '2024-01-01T09:00:00Z', amount: 100 },
+    { energy_generator_id: 2, date: '2024-02-01T09:00:00Z', amount: 200 },
+    { energy_generator_id: 2, date: '2024-03-01T09:00:00Z', amount: 300 },
+    { energy_generator_id: 2, date: '2024-04-01T09:00:00Z', amount: 400 },
+
+    { energy_generator_id: 2, date: '2024-06-01T09:00:00Z', amount: 500 },
+    { energy_generator_id: 2, date: '2024-06-02T09:00:00Z', amount: 500 },
+    { energy_generator_id: 2, date: '2024-06-03T09:00:00Z', amount: 500 },
+  ];
+
+  beforeAll(async () => {
+    // Set up and connect to test database
+    sequelize = await connectToTestDb();
+    appInstance = app(sequelize);
+
+    const Suburb = appInstance.get('models').Suburb;
+    const GeneratorType = appInstance.get('models').GeneratorType;
+    const EnergyGenerator = appInstance.get('models').EnergyGenerator;
+    const EnergyGeneration = appInstance.get('models').EnergyGeneration;
+
+    // Insert prerequesite data for tests
+    await Suburb.bulkCreate([
+      {
+        id: 1,
+        name: 'Test Suburb',
+        postcode: 3000,
+        state: 'Victoria',
+        latitude: 100,
+        longitude: 100,
+      },
+      {
+        id: 2,
+        name: 'Test Suburb 2',
+        postcode: 3001,
+        state: 'Victoria',
+        latitude: 105,
+        longitude: 100,
+      },
+    ]);
+
+    await GeneratorType.create({
+      id: 1,
+      category: 'Test Generator',
+      renewable: false,
+    });
+    await EnergyGenerator.bulkCreate([
+      { id: 1, name: 'Test Generator', suburb_id: 1, generator_type_id: 1 },
+      { id: 2, name: 'Test Generator 2', suburb_id: 2, generator_type_id: 1 },
+    ]);
+
+    await EnergyGeneration.bulkCreate(mockEnergyGenerations);
+  });
+
+  afterAll(async () => {
+    // Drop the test database
+    await sequelize.close();
+    await dropTestDb(sequelize);
+  });
+
+  it('should return error 400 if invalid suburb_id is provided', async () => {
+    const SUBURB_ID = '1.111'; // Invalid suburb_id
+
+    const response = await request(appInstance).get(
+      `/retailer/generator?suburb_id=${SUBURB_ID}`
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it('should return empty generator array if invalid suburb_id is provided', async () => {
+    const SUBURB_ID = 100000; // Suburb doesn't exist
+    const START_DATE = '2024-06-01T09:00:00Z';
+    const END_DATE = '2024-06-03T11:00:00Z';
+
+    const response = await request(appInstance).get(
+      `/retailer/generator?suburb_id=${SUBURB_ID}&start_date=${START_DATE}&end_date=${END_DATE}`
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      suburb_id: SUBURB_ID,
+      start_date: START_DATE,
+      end_date: END_DATE,
+      generators: [],
+    });
+  });
+
+  it('should return error 400 if start date is missing', async () => {
+    const response = await request(appInstance).get('/retailer/generator');
+
+    expect(response.status).toBe(400);
+  });
+
+  it('should return error 400 if invalid start date format is provided', async () => {
+    const START_DATE = '01/01/2024'; // Invalid date format
+
+    const response = await request(appInstance).get(
+      `/retailer/generator?start_date=${START_DATE}`
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it('should return error 400 if invalid end date format is provided', async () => {
+    const START_DATE = '2024-01-01T09:00:00Z';
+    const END_DATE = '01/01/2024'; // Invalid date format
+
+    const response = await request(appInstance).get(
+      `/retailer/generator?start_date=${START_DATE}&end_date=${END_DATE}`
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it('should return error 400 if future start date is provided', async () => {
+    const START_DATE = '2026-06-10T09:00:00Z'; // Date is in the future
+
+    const response = await request(appInstance).get(
+      `/retailer/generator?start_date=${START_DATE}`
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it('should return energy generation of all generator in weekly time granularity', async () => {
+    const START_DATE = '2024-06-01T09:00:00Z';
+    const END_DATE = '2024-07-10T11:00:00Z';
+
+    let expectedResponse = mockEnergyGenerations
+      .filter(
+        (generation) =>
+          generation.date > START_DATE && generation.date <= END_DATE
+      )
+      .reduce((acc: any, generation: any) => {
+        // Create a new generator if it doesn't exist
+        if (!acc[generation.energy_generator_id]) {
+          acc[generation.energy_generator_id] = {
+            energy_generator_id: generation.energy_generator_id,
+            energy: {},
+          };
+        }
+
+        const truncatedDate = moment(generation.date)
+          .startOf('isoWeek')
+          .toISOString();
+        // Set initial value to 0 if it doesn't exist yet
+        if (!acc[generation.energy_generator_id].energy[truncatedDate]) {
+          acc[generation.energy_generator_id].energy[truncatedDate] = 0;
+        }
+
+        // Add the amount to the existing value
+        acc[generation.energy_generator_id].energy[truncatedDate] +=
+          generation.amount;
+
+        return acc;
+      }, {});
+
+    expectedResponse = Object.keys(expectedResponse).map((generatorId) => {
+      return {
+        energy_generator_id: parseInt(generatorId),
+        energy: Object.entries(expectedResponse[generatorId].energy).map(
+          ([date, amount]) => [date, amount]
+        ),
+      };
+    });
+
+    const response = await request(appInstance).get(
+      `/retailer/generator?start_date=${START_DATE}&end_date=${END_DATE}`
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      start_date: START_DATE,
+      end_date: END_DATE,
+      generators: expectedResponse,
+    });
+  });
+
+  it('should return total energy generation of each generator in suburb in daily time granularity', async () => {
+    const SUBURB_ID = 1;
+    const START_DATE = '2024-05-30T09:00:00Z';
+    const END_DATE = '2024-06-07T09:00:00Z';
+
+    let expectedResponse = mockEnergyGenerations
+      .filter(
+        (generation) =>
+          generation.date > START_DATE && generation.energy_generator_id == 1
+      )
+      .reduce((acc: any, generation: any) => {
+        // Create a new generator if it doesn't exist
+        if (!acc[generation.energy_generator_id]) {
+          acc[generation.energy_generator_id] = {
+            energy_generator_id: generation.energy_generator_id,
+            energy: {},
+          };
+        }
+
+        const truncatedDate = moment(generation.date)
+          .startOf('day')
+          .toISOString();
+        // Set initial value to 0 if it doesn't exist yet
+        if (!acc[generation.energy_generator_id].energy[truncatedDate]) {
+          acc[generation.energy_generator_id].energy[truncatedDate] = 0;
+        }
+
+        // Add the amount to the existing value
+        acc[generation.energy_generator_id].energy[truncatedDate] +=
+          generation.amount;
+
+        return acc;
+      }, {});
+
+    expectedResponse = Object.keys(expectedResponse).map((generatorId) => {
+      return {
+        energy_generator_id: parseInt(generatorId),
+        energy: Object.entries(expectedResponse[generatorId].energy).map(
+          ([date, amount]) => [date, amount]
+        ),
+      };
+    });
+
+    const response = await request(appInstance).get(
+      `/retailer/generator?suburb_id=${SUBURB_ID}&start_date=${START_DATE}&end_date=${END_DATE}`
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      suburb_id: SUBURB_ID,
+      start_date: START_DATE,
+      end_date: END_DATE,
+      generators: expectedResponse,
+    });
+  });
+
+  it('should return total energy generation of each generator in suburb in hourly time granularity', async () => {
+    const SUBURB_ID = 1;
+    const START_DATE = '2024-06-01T08:00:00Z';
+    const END_DATE = '2024-06-07T09:00:00Z';
+
+    let expectedResponse = mockEnergyGenerations
+      .filter(
+        (generation) =>
+          generation.date > START_DATE &&
+          generation.date <= END_DATE &&
+          generation.energy_generator_id == 1
+      )
+      .reduce((acc: any, generation: any) => {
+        // Create a new generator if it doesn't exist
+        if (!acc[generation.energy_generator_id]) {
+          acc[generation.energy_generator_id] = {
+            energy_generator_id: generation.energy_generator_id,
+            energy: {},
+          };
+        }
+
+        const truncatedDate = moment(generation.date)
+          .startOf('hour')
+          .toISOString();
+        // Set initial value to 0 if it doesn't exist yet
+        if (!acc[generation.energy_generator_id].energy[truncatedDate]) {
+          acc[generation.energy_generator_id].energy[truncatedDate] = 0;
+        }
+
+        // Add the amount to the existing value
+        acc[generation.energy_generator_id].energy[truncatedDate] +=
+          generation.amount;
+
+        return acc;
+      }, {});
+
+    expectedResponse = Object.keys(expectedResponse).map((generatorId) => {
+      return {
+        energy_generator_id: parseInt(generatorId),
+        energy: Object.entries(expectedResponse[generatorId].energy).map(
+          ([date, amount]) => [date, amount]
+        ),
+      };
+    });
+
+    const response = await request(appInstance).get(
+      `/retailer/generator?suburb_id=${SUBURB_ID}&start_date=${START_DATE}&end_date=${END_DATE}`
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      suburb_id: SUBURB_ID,
+      start_date: START_DATE,
+      end_date: END_DATE,
+      generators: expectedResponse,
+    });
   });
 });
 
