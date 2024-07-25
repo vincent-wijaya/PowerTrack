@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState } from "react";
-import "chartjs-adapter-date-fns"
+import "chartjs-adapter-date-fns";
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -27,7 +27,7 @@ ChartJS.register(
 
 interface Dataset {
   label: string;
-  data: {x:Date,y:number}[];
+  data: { x: Date; y: number }[];
   borderColor: string;
   backgroundColor: string;
 }
@@ -86,7 +86,7 @@ const LineChart: React.FC<Props> = ({
       x: {
         type: "time" as const,
         time: {
-          round:"second" as TimeUnit
+          round: "second" as TimeUnit,
         },
         title: {
           display: true,
