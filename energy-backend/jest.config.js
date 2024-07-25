@@ -12,7 +12,7 @@ module.exports = {
   testTimeout: 10000,
   collectCoverage: true,
   coverageDirectory: "./coverage", // Ensure this directory is writeable and exists
-  coverageReporters: ["json", "lcov", "text", "clover"],
+  coverageReporters: ["json", "lcov", "text", "text-summary", "cobertura"],
   coverageThreshold: {
     global: {
       branches: 80,
