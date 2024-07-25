@@ -25,6 +25,9 @@ RUN --mount=type=bind,source=package.json,target=package.json \
     --mount=type=cache,target=/root/.npm \
     npm ci --omit=dev
 
+# Ensure the coverage directory exists and is writeable
+RUN mkdir -p /usr/src/app/coverage && chown -R node:node /usr/src/app/coverage
+
 # Copy the rest of the source files into the image.
 COPY . .
 
