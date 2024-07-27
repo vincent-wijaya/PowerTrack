@@ -15,7 +15,9 @@ services:
       db:
         condition: service_healthy
     volumes:
-      - .:/usr/src/app
+      - type: bind
+        source: ./coverage
+        target: /usr/src/app/coverage
   db:
     image: timescale/timescaledb-ha:pg16
     restart: always
