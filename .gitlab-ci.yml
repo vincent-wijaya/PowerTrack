@@ -15,3 +15,7 @@ job_test:
   stage: test
   script:
     - docker-compose -f ./energy-backend/compose.yaml run --rm server npm test
+  artifacts:
+    when: always
+    reports:
+      cobertura: coverage/cobertura-coverage.xml
