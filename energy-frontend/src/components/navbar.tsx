@@ -6,6 +6,7 @@ import WarningIcon from './icons/warningsIcon';
 import GoalsIcon from './icons/goalsIcon';
 import ReportsIcon from './icons/reportsIcon';
 import LogoutIcon from './icons/logoutIcon';
+import LiveIcon from './icons/liveIcon'
 import Home from '@/app/page';
 import { useState } from 'react';
 
@@ -30,33 +31,18 @@ export default function Navbar({ isOpen }: InfoBoxProps) {
               </div>
             </div>
             <div className="flex flex-col items-start">
-              <ListMenu
-                icon={<HomeIcon />}
-                description="Home"
-                href="/mainDashboard"
-              />
-              <ListMenu
-                icon={<GoalsIcon />}
-                description="Goals"
-                href="/goals"
-              />
-              <ListMenu
-                icon={<WarningIcon />}
-                description="Warnings"
-                href="/warnings"
-              />
-              <ListMenu
-                icon={<ReportsIcon />}
-                description="Reports"
-                href="/reportsDashboard"
-              />
+              <ListMenu icon={<HomeIcon />} description="Home" href="/main/mainDashboard" />
+              <ListMenu icon={<GoalsIcon />} description="Goals" href="/main/goals" />
+              <ListMenu icon={<WarningIcon />} description="Warnings" href="/main/warnings" />
+              <ListMenu icon={<ReportsIcon />} description="Reports" href="/main/reportsDashboard" />
+              <ListMenu icon={<LiveIcon />} description="LiveViews" href="/main/liveViews" />
             </div>
           </div>
           <div className="flex flex-col items-start self-stretch">
             <ListMenu
               icon={<LogoutIcon />}
               description="Logout"
-              href="/mainDashboard"
+              href="/login"
             />
           </div>
         </div>

@@ -1,1 +1,1 @@
-export const POLLING_RATE = 5000; // Polling rate in ms
+export const POLLING_RATE = 5000 // Polling rate in ms
