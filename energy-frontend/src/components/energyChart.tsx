@@ -3,12 +3,11 @@ import React, { useEffect, useState } from 'react';
 import Dropdown from './dropDownFilter'; // Adjust the path based on your folder structure
 import LineChart from './lineChart';
 
-function EnergyChart() {
+function EnergyChart(props: { className?: string }) {
   const [consumptionData, setConsumptionData] = useState<number[]>([]);
   const [generationData, setGenerationData] = useState<number[]>([]);
   const [additionalData, setAdditionalData] = useState<number[]>([]);
-  const [selectedTimeRange, setSelectedTimeRange] =
-    useState<string>('last_year');
+  const [selectedTimeRange, setSelectedTimeRange] = useState<string>("last_year");
 
   const generateData = () => {
     const newData = Math.floor(Math.random() * (200 - 50 + 1)) + 50;
@@ -52,8 +51,8 @@ function EnergyChart() {
 
   return (
     <div>
-      <div className="flex justify-center items-center w-screen h-screen">
-        <div className="w-1/2 h-1/2 drop-shadow-md border-2 border-chartBorder">
+      <div className="flex justify-center items-center ">
+        <div className="w-full bg-itembg border border-stroke rounded-lg p-4">
           <Dropdown
             onChange={handleTimeRangeChange}
             chartTitle={'Energy Consumption/Generation'}

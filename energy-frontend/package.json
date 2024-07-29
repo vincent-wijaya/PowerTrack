@@ -11,6 +11,7 @@
   "dependencies": {
     "@types/geojson": "^7946.0.14",
     "@types/react-leaflet": "^3.0.0",
+    "chart.js": "^4.4.3",
     "chartjs": "^0.3.24",
     "geojson": "^0.5.0",
     "leaflet": "^1.9.4",
@@ -21,6 +22,7 @@
     "react-chartjs-2": "^5.2.0",
     "react-dom": "^18.2.0",
     "react-leaflet": "^4.2.1",
+    "simplex-noise": "^4.0.1",
     "swr": "^2.2.5"
   },
   "devDependencies": {

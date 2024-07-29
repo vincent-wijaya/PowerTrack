@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import Dropdown from './dropDownFilter'; // Adjust the path based on your folder structure
 import LineChart from './lineChart';
 
-function ProfitChart() {
+function ProfitChart(props: { className?: string }) {
   const [profitData, setProfitData] = useState<number[]>([]);
   const [spotPriceData, setSpotPriceData] = useState<number[]>([]);
   const [sellingPriceData, setSellingPriceData] = useState<number[]>([]);
@@ -51,13 +51,10 @@ function ProfitChart() {
   };
 
   return (
-    <div>
-      <div className="flex justify-center items-center w-screen h-screen">
-        <div className="w-1/2 h-1/2 drop-shadow-md border-2 border-chartBorder">
-          <Dropdown
-            onChange={handleTimeRangeChange}
-            chartTitle={'Profit Analysis'}
-          />
+    <div className={`bg-itembg border border-stroke rounded-lg p-4 ${props.className ? props.className : ""}`}>
+      <div className="justify-center items-center">
+        <div className="drop-shadow-md border-chartBorder ">
+          <Dropdown onChange={handleTimeRangeChange} chartTitle={"Profit Analysis"} />
           <LineChart
             chartTitle=""
             xAxisLabels={profitData.map((_, index) => `Day ${index + 1}`)}
@@ -86,7 +83,6 @@ function ProfitChart() {
           />
         </div>
       </div>
-      <div className="mt-4 mx-auto w-1/2"></div>
     </div>
   );
 }
