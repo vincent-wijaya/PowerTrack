@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
-import ListMenu from './listMenu';
-import HomeIcon from './icons/homeIcon';
-import WarningIcon from './icons/warningsIcon';
-import GoalsIcon from './icons/goalsIcon';
-import ReportsIcon from './icons/reportsIcon';
-import LogoutIcon from './icons/logoutIcon';
-import LiveIcon from './icons/liveIcon'
-import Home from '@/app/page';
-import { useState } from 'react';
+import ListMenu from "./listMenu";
+import HomeIcon from "./icons/homeIcon";
+import WarningIcon from "./icons/warningsIcon";
+import GoalsIcon from "./icons/goalsIcon";
+import ReportsIcon from "./icons/reportsIcon";
+import LogoutIcon from "./icons/logoutIcon";
+import LiveIcon from "./icons/liveIcon"
+import Home from "@/app/page";
+import { useState } from "react";
 
 interface InfoBoxProps {
   isOpen: boolean;
@@ -39,14 +39,11 @@ export default function Navbar({ isOpen }: InfoBoxProps) {
             </div>
           </div>
           <div className="flex flex-col items-start self-stretch">
-            <ListMenu
-              icon={<LogoutIcon />}
-              description="Logout"
-              href="/login"
-            />
+            <ListMenu icon={<LogoutIcon />} description="Logout" href="/logIn" />
           </div>
         </div>
       )}
     </>
   );
 }
+
