@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, GeoJSON, Marker, Popup } from 'react-leaflet';
 import { useMapEvents } from 'react-leaflet/hooks';
-import { VictorianSuburbs } from '../data/victorian-suburbs';
 import { GreaterVictoria } from '@/data/greater-victoria';
 import fetchEnergyConsumption from '../api/energyConsumption';
 import 'leaflet/dist/leaflet.css';
@@ -61,12 +60,11 @@ function getColorBasedOnConsumption(consumption: number | undefined): string {
 
 export default function Map(props: {className?: string}) {
   const router = useRouter();
+  const [powerOutageCoords, setPowerOutageCoords] = useState<LatLng[]>([]);
   const [victorianSuburbs, setVictorianSuburbs] = useState<FeatureCollection<any, any>>({
     type: "FeatureCollection",
     features: [],
   });
-  const [powerOutageCoords, setPowerOutageCoords] = useState<LatLng[]>([]);
-
   const [geoJSONKey, setGeoJSONKey] = useState(0); // Add key state
   const [zoomLevel, setZoomLevel] = useState(5);
   const bounds = new LatLngBounds(
@@ -81,16 +79,31 @@ export default function Map(props: {className?: string}) {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // here get the energy data
         const result = await fetchEnergyConsumption();
+
+        // if there is energy consumption data present...
         if (result) {
-          const body = result as DataItem;
+          const body = result as DataItem
+          // Fetch victorian suburbs JSON file
+          const response = await fetch('/data/combined.json');
+          if (!response.ok) {
+            throw new Error('Failed to fetch combined JSON data');
+          }
+          const suburbs : FeatureCollection = await response.json();
+          console.log(suburbs)
+  
+          // Map over the energy consumption data to filter features from combined JSON
           const geoJSONPromises = body.energy.map(async (item) => {
-            const response = await fetch(`/data/suburbs/${item.suburb_id}.json`);
-            if (!response.ok) {
-              throw new Error(`Failed to fetch GeoJSON for suburb_id: ${item.suburb_id}`);
+            // Find the feature based on suburb_id
+            console.log(suburbs.features)
+            const feature = suburbs.features.find(
+              (f) => f.properties.id === item.suburb_id.toString()
+            );
+            if (!feature) {
+              throw new Error(`Feature not found for suburb_id: ${item.suburb_id}`);
             }
-            const geoJSON: Feature = await response.json();
-            return { geoJSON, amount: item.amount };
+            return { geoJSON: feature, amount: item.amount };
           });
 
           const geoJSONResults = await Promise.all(geoJSONPromises);
@@ -118,12 +131,12 @@ export default function Map(props: {className?: string}) {
         console.error("Error fetching data:", error);
       }
     };
-
+    console.log(victorianSuburbs)
     fetchData();
 
-    const intervalId = setInterval(fetchData, 5000); // Fetch data every 50 seconds
+    const intervalId = setInterval(fetchData, 5000); // Fetch data every 5 seconds
     return () => clearInterval(intervalId);
-  }, [victorianSuburbs]);
+  }, []);
 
   useEffect(() => {
     setGeoJSONKey((prevKey) => prevKey + 1);
@@ -138,7 +151,7 @@ export default function Map(props: {className?: string}) {
       <MyComponent zoomLevel={zoomLevel} setZoomLevel={setZoomLevel} />
       <GeoJSON
         key={geoJSONKey}
-        data={zoomLevel <= 7 ? GreaterVictoria : victorianSuburbs} // Conditionally set data based on zoom level
+        data={victorianSuburbs} // Conditionally set data based on zoom level
         onEachFeature={(feature, layer: any) => {
           const energyData = feature.properties["amount"];
           const suburbName = feature.properties["name"];
