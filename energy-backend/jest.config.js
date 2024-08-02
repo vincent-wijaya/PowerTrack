@@ -10,4 +10,15 @@ module.exports = {
   },
   verbose: true,
   testTimeout: 10000,
+  collectCoverage: true,
+  coverageDirectory: '/usr/src/app/coverage', // Ensure this directory is writeable and exists
+  coverageReporters: ['json', 'lcov', 'text', 'text-summary', 'cobertura'],
+  coverageThreshold: {
+    global: {
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80,
+    },
+  },
 };
