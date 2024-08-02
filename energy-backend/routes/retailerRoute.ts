@@ -703,4 +703,141 @@ router.get('/suburbs', async (req, res) => {
   }
 });
 
+/**
+ * GET /retailer/reports
+ *
+ * Get list of IDs of reports already generated
+ *
+ * Response format:
+ *  {
+ *   "reports": [
+ *       {
+ *           "id": 1,
+ *           "startDate": "2024-04-17T09:06:41Z",
+ *           "endDate": "2024-04-17T09:06:41Z",
+ *           "for": {
+ *               "suburb_id": 2,
+ *               "consumer_id": null,
+ *           }
+ *       }
+ *   ]
+ * }
+ *
+ *
+ * POST /retailer/reports
+ * Generate a new report
+ *
+ * Query parameters:
+ * - start_date: The start date of the period to generate the report for, in ISO format
+ * - end_date: The end date of the period to generate the report for, in ISO format
+ * - for: object with the following keys (one of which must be a non-null value and the other of which should be null):
+ *   - suburb_id: The ID of the suburb to generate the report for
+ *   - consumer_id: The ID of the consumer to generate the report for
+ *
+ * Response format:
+ * {
+ *    "id": 2
+ * }
+ *
+ */
+router.get('/reports', async (req, res) => {
+  const { sequelize, Report } = req.app.get('models');
+
+  if (req.method === 'GET') {
+    // Get the IDs of all reports
+    // TODO
+  } else if (req.method === 'POST') {
+    // Generate a new report
+    const { start_date, end_date, for: forObj } = req.body;
+
+    // Check if the for object is provided
+    if (!forObj) {
+      return res.status(400).send('for object must be provided');
+    }
+
+    // Check if either suburb_id or consumer_id is provided
+    if (!forObj.suburb_id && !forObj.consumer_id) {
+      return res
+        .status(400)
+        .send('Either suburb_id or consumer_id must be provided');
+    }
+
+    // Check if both suburb_id and consumer_id are provided
+    if (forObj.suburb_id && forObj.consumer_id) {
+      return res
+        .status(400)
+        .send('Cannot specify both suburb_id and consumer_id');
+    }
+
+    // Check if start_date and end_date are provided
+    if (!start_date || !end_date) {
+      return res.status(400).send('start_date and end_date must be provided');
+    }
+
+    // Check if start_date and end_date are valid dates
+    if (
+      isNaN(new Date(String(start_date)).getTime()) ||
+      isNaN(new Date(String(end_date)).getTime())
+    ) {
+      return res
+        .status(400)
+        .send('Invalid date format. Provide dates in ISO string format.');
+    }
+
+    // Now that inputs are validated, create a new report
+    // TODO
+  }
+});
+
+/*
+ * GET /retailer/reports/[id]
+ * Get the data for a specific report, given the id
+ *
+ * Response format:
+ * {
+ *  "id": 1,
+ *  "start_date": "2024-03-17T09:06:41Z",
+ *  "end_date": "2024-04-17T09:06:41Z",
+ *  "for": {
+ *    "suburb_id": 1,
+ *    "consumer_id": null
+ *  },
+ *  "energy": [
+ *    {
+ *      "start_date": "2024-04-16T09:06:41Z",
+ *      "end_date": "2024-04-17T09:06:41Z",
+ *      "consumption": 123.45,
+ *      "generation": 150.12
+ *    }
+ *  ],
+ *  "profit": [
+ *    {
+ *      "date": "2024-04-16T09:06:41Z",
+ *      "spot_price": 10,
+ *      "selling_price": 10
+ *    }
+ *  ],
+ *  "sources": [
+ *    {
+ *      "category": "Fossil Fuels",
+ *      "renewable": false,
+ *      "percentage": 0.1033,
+ *      "count": 148
+ *    },
+ *    {
+ *      "category": "Renewable",
+ *      "renewable": true,
+ *      "percentage": 0.0419,
+ *      "count": 67
+ *    }
+ *  ]
+ * }
+ *
+ */
+router.get('/retailer/reports/:id', (req, res) => {
+  const id = req.params.id;
+
+  // TODO
+});
+
 export default router;
