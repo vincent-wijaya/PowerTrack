@@ -16,11 +16,5 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return (
-    <html lang="en">
-      <body className={inter.className + ' bg-mainbg'}>
-        <main className="flex-grow">{children}</main>
-      </body>
-    </html>
-  );
+  return <div className="flex-grow">{children}</div>;
 }
