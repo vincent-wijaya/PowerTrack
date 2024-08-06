@@ -1,4 +1,11 @@
-import { Sequelize, DataTypes } from 'sequelize';
+import {
+  Sequelize,
+  DataTypes,
+  CreationOptional,
+  InferAttributes,
+  InferCreationAttributes,
+  Model,
+} from 'sequelize';
 
 export const defineModels = (sequelize: Sequelize) => {
   // Setup models to apply and represent the database schema. All properties are non-nullable,
@@ -7,7 +14,19 @@ export const defineModels = (sequelize: Sequelize) => {
 
   // Create suburb related tables
   // Properties defined from the schema document
-  const Suburb = sequelize.define(
+  interface ISuburbModel
+    extends Model<
+      InferAttributes<ISuburbModel>,
+      InferCreationAttributes<ISuburbModel>
+    > {
+    id: number;
+    name: string;
+    postcode: number;
+    state: string;
+    latitude: string; // Sequelize returns DataTypes.DECIMALs as strings. Bug: https://github.com/sequelize/sequelize/issues/8019
+    longitude: string; // Sequelize returns DataTypes.DECIMALs as strings. Bug: https://github.com/sequelize/sequelize/issues/8019
+  }
+  const Suburb = sequelize.define<ISuburbModel>(
     'suburb', //set the name of the table
     {
       id: {
@@ -39,7 +58,17 @@ export const defineModels = (sequelize: Sequelize) => {
     },
     { freezeTableName: true }
   ); //This stops sequelize from changing the table name from what we specified
-  const SuburbConsumption = sequelize.define(
+
+  interface ISuburbConsumptionModel
+    extends Model<
+      InferAttributes<ISuburbConsumptionModel>,
+      InferCreationAttributes<ISuburbConsumptionModel>
+    > {
+    amount: string;
+    date: string;
+    suburb_id: number;
+  }
+  const SuburbConsumption = sequelize.define<ISuburbConsumptionModel>(
     'suburb_consumption',
     {
       amount: {
@@ -69,9 +98,15 @@ export const defineModels = (sequelize: Sequelize) => {
     foreignKey: { name: 'suburb_id', allowNull: false },
   });
 
-  // Create consumer related tables
-  // Properties defined from the schema document
-  const SellingPrice = sequelize.define(
+  interface ISellingPriceModel
+    extends Model<
+      InferAttributes<ISellingPriceModel>,
+      InferCreationAttributes<ISellingPriceModel>
+    > {
+    date: string;
+    amount: string;
+  }
+  const SellingPrice = sequelize.define<ISellingPriceModel>(
     'selling_price',
     {
       date: {
@@ -87,7 +122,17 @@ export const defineModels = (sequelize: Sequelize) => {
     },
     { freezeTableName: true }
   );
-  const Consumer = sequelize.define(
+  interface IConsumerModel
+    extends Model<
+      InferAttributes<IConsumerModel>,
+      InferCreationAttributes<IConsumerModel>
+    > {
+    // Some fields are optional when calling UserModel.create() or UserModel.build()
+    id: number;
+    street_address: string;
+    high_priority: boolean;
+  }
+  const Consumer = sequelize.define<IConsumerModel>(
     'consumer',
     {
       id: {
@@ -106,7 +151,17 @@ export const defineModels = (sequelize: Sequelize) => {
     },
     { freezeTableName: true }
   );
-  const ConsumerConsumption = sequelize.define(
+
+  interface IConsumerConsumptionModel
+    extends Model<
+      InferAttributes<IConsumerConsumptionModel>,
+      InferCreationAttributes<IConsumerConsumptionModel>
+    > {
+    amount: string;
+    date: string;
+    consumer_id: number;
+  }
+  const ConsumerConsumption = sequelize.define<IConsumerConsumptionModel>(
     'consumer_consumption',
     {
       amount: {
@@ -147,7 +202,15 @@ export const defineModels = (sequelize: Sequelize) => {
 
   // Create generator related tables
   // Properties defined from the schema document
-  const SpotPrice = sequelize.define(
+  interface ISpotPriceModel
+    extends Model<
+      InferAttributes<ISpotPriceModel>,
+      InferCreationAttributes<ISpotPriceModel>
+    > {
+    date: string;
+    amount: string;
+  }
+  const SpotPrice = sequelize.define<ISpotPriceModel>(
     'spot_price',
     {
       date: {
@@ -163,7 +226,16 @@ export const defineModels = (sequelize: Sequelize) => {
     },
     { freezeTableName: true }
   );
-  const GeneratorType = sequelize.define(
+  interface IGeneratorTypeModel
+    extends Model<
+      InferAttributes<IGeneratorTypeModel>,
+      InferCreationAttributes<IGeneratorTypeModel>
+    > {
+    id: number;
+    category: string;
+    renewable: boolean;
+  }
+  const GeneratorType = sequelize.define<IGeneratorTypeModel>(
     'generator_type',
     {
       id: {
@@ -183,7 +255,15 @@ export const defineModels = (sequelize: Sequelize) => {
     },
     { freezeTableName: true }
   );
-  const EnergyGenerator = sequelize.define(
+  interface IEnergyGeneratorModel
+    extends Model<
+      InferAttributes<IEnergyGeneratorModel>,
+      InferCreationAttributes<IEnergyGeneratorModel>
+    > {
+    id: number;
+    name: string;
+  }
+  const EnergyGenerator = sequelize.define<IEnergyGeneratorModel>(
     'energy_generator',
     {
       id: {
@@ -198,7 +278,16 @@ export const defineModels = (sequelize: Sequelize) => {
     },
     { freezeTableName: true }
   );
-  const EnergyGeneration = sequelize.define(
+  interface IEnergyGenerationModel
+    extends Model<
+      InferAttributes<IEnergyGenerationModel>,
+      InferCreationAttributes<IEnergyGenerationModel>
+    > {
+    amount: string; // Sequelize returns DataTypes.DECIMALs as strings. Bug: https://github.com/sequelize/sequelize/issues/8019
+    date: string;
+    energy_generator_id: number;
+  }
+  const EnergyGeneration = sequelize.define<IEnergyGenerationModel>(
     'energy_generation',
     {
       amount: {
@@ -246,7 +335,17 @@ export const defineModels = (sequelize: Sequelize) => {
 
   // Create goal and report related tables
   // Properties defined from the schema document
-  const GoalType = sequelize.define(
+  interface IGoalTypeModel
+    extends Model<
+      InferAttributes<IGoalTypeModel>,
+      InferCreationAttributes<IGoalTypeModel>
+    > {
+    id: number;
+    category: string;
+    description: string;
+    target_type: 'retailer' | 'consumer';
+  }
+  const GoalType = sequelize.define<IGoalTypeModel>(
     'goal_type',
     {
       id: {
@@ -269,7 +368,15 @@ export const defineModels = (sequelize: Sequelize) => {
     },
     { freezeTableName: true }
   );
-  const Goal = sequelize.define(
+  interface IGoalModel
+    extends Model<
+      InferAttributes<IGoalModel>,
+      InferCreationAttributes<IGoalModel>
+    > {
+    id: number;
+    target: string;
+  }
+  const Goal = sequelize.define<IGoalModel>(
     'goal',
     {
       id: {
@@ -284,7 +391,16 @@ export const defineModels = (sequelize: Sequelize) => {
     },
     { freezeTableName: true }
   );
-  const Reports = sequelize.define(
+  interface IReportsModel
+    extends Model<
+      InferAttributes<IReportsModel>,
+      InferCreationAttributes<IReportsModel>
+    > {
+    id: number;
+    start_date: string;
+    end_date: string;
+  }
+  const Reports = sequelize.define<IReportsModel>(
     'report',
     {
       id: {
@@ -304,7 +420,18 @@ export const defineModels = (sequelize: Sequelize) => {
     { freezeTableName: true }
   );
 
-  const WarningType = sequelize.define(
+  interface IWarningTypeModel
+    extends Model<
+      InferAttributes<IWarningTypeModel>,
+      InferCreationAttributes<IWarningTypeModel>
+    > {
+    id: number;
+    category: string;
+    description: string;
+    trigger_greater_than: boolean;
+    target: string;
+  }
+  const WarningType = sequelize.define<IWarningTypeModel>(
     'warning_type',
     {
       id: {
