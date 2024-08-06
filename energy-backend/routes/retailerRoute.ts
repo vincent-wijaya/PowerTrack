@@ -744,7 +744,7 @@ router.get('/reports', async (req, res) => {
   const { sequelize, Report } = req.app.get('models');
 
   if (req.method === 'GET') {
-    // Get the IDs of all reports
+    // Get all rows in reports table
     // TODO
   } else if (req.method === 'POST') {
     // Generate a new report
@@ -784,8 +784,9 @@ router.get('/reports', async (req, res) => {
         .send('Invalid date format. Provide dates in ISO string format.');
     }
 
-    // Now that inputs are validated, create a new report
+    // Now that inputs are validated, create a new row in the reports table
     // TODO
+
   }
 });
 
@@ -832,12 +833,36 @@ router.get('/reports', async (req, res) => {
  *    }
  *  ]
  * }
- *
  */
 router.get('/retailer/reports/:id', (req, res) => {
   const id = req.params.id;
 
+  // Get the relevant row from the reports table
+  // TODO
+
+
+  // Generate the data for the report  
+  // const reportData = generateReport(
+  //   new Date(String(start_date)),
+  //   new Date(String(end_date)),
+  //   consumer_id,
+  //   suburb_id,
+  // );
+
+  // Return the data for the report
   // TODO
 });
+
+/**
+ * Generates a report
+ * @param start_date The start date of the period to generate the report for
+ * @param end_date The end date of the period to generate the report for
+ * @param consumer_id The ID of the consumer to generate the report for
+ * @param suburb_id The ID of the suburb to generate the report for
+ * @returns Report data
+*/
+const generateReport = async (start_date: Date, end_date: Date, consumer_id: number, suburb_id: number) => {
+  // TODO
+}
 
 export default router;
