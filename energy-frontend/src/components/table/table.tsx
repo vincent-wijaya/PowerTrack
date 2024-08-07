@@ -35,7 +35,7 @@ export default function Table({ columns, data, link }: TableProps) {
                 key={columnIndex}
               >
                 <div className="font-inter text-white">
-                  {(row[column.toLowerCase().replace(' ','_')]).toString()}
+                  {(row[column.toLowerCase().replace(' ','_')])}
                 </div>
               </td>
             ))}
