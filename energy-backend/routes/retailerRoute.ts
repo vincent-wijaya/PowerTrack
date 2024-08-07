@@ -1,8 +1,11 @@
 import express from 'express';
 import moment from 'moment';
 import { Op } from 'sequelize';
+import { defineModels } from '../databaseModels';
 
 const router = express.Router();
+
+type DbModelType = ReturnType<typeof defineModels>;
 
 router.get('/map', async (req, res) => {
   // Retrieve the last energy consumption record (kW) of each suburb. Optionally limit the area of the map to the bounding box defined by 2 coordinate points (top-left and bottom-right).

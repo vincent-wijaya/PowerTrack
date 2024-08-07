@@ -16,11 +16,5 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return (
-    <html lang="en">
-      <body className={inter.className + " bg-mainbg"}>
-        <main className="w full">{children}</main>
-      </body>
-    </html>
-  );
+  return <div className="w full">{children}</div>;
 }
