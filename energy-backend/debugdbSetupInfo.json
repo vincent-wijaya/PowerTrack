@@ -1,0 +1,167 @@
+[
+    {
+        "name": "selling_price",
+        "values": [
+            {
+                "date": "2024-01-01T11:10:00",
+                "amount": 2
+            },
+            {
+                "date": "2024-01-02T11:10:00",
+                "amount": 2
+            },
+            {
+                "date": "2024-01-03T11:10:00",
+                "amount": 2
+            },
+            {
+                "date": "2024-01-04T11:00:00",
+                "amount": 2
+            },
+            {
+                "date": "2024-01-05T11:00:00",
+                "amount": 2
+            }
+        ]
+    },
+    {
+        "name": "spot_price",
+        "values": [
+            {
+                "date": "2024-01-01T11:00:00",
+                "amount": 3
+            },
+            {
+                "date": "2024-01-02T11:00:00",
+                "amount": 3
+            },
+            {
+                "date": "2024-01-03T11:10:00",
+                "amount": 3
+            },
+            {
+                "date": "2024-01-04T11:10:00",
+                "amount": 3
+            },
+            {
+                "date": "2024-01-05T11:10:00",
+                "amount": 3
+            }
+        ]
+    },
+    {
+        "name": "consumer_consumption",
+        "values": [
+            {
+                "consumer_id": 1,
+                "date": "2024-04-17T09:00:00Z",
+                "amount": 100
+            },
+            {
+                "consumer_id": 1,
+                "date": "2024-04-17T09:05:00Z",
+                "amount": 110
+            },
+            {
+                "consumer_id": 1,
+                "date": "2024-04-17T09:10:00Z",
+                "amount": 120
+            },
+            {
+                "consumer_id": 1,
+                "date": "2024-04-17T09:15:00Z",
+                "amount": 130
+            }
+        ]
+    },
+    {
+        "name": "suburb_consumption",
+        "values": [
+            {
+                "suburb_id": 21143,
+                "date": "2024-04-17T09:00:00Z",
+                "amount": 1000
+            },
+            {
+                "suburb_id": 21143,
+                "date": "2024-04-17T09:05:00Z",
+                "amount": 1100
+            },
+            {
+                "suburb_id": 21143,
+                "date": "2024-04-17T09:10:00Z",
+                "amount": 1200
+            },
+            {
+                "suburb_id": 21143,
+                "date": "2024-04-17T09:15:00Z",
+                "amount": 1300
+            },
+            {
+                "suburb_id": 22303,
+                "date": "2024-04-17T09:00:00Z",
+                "amount": 1000
+            },
+            {
+                "suburb_id": 22303,
+                "date": "2024-04-17T09:05:00Z",
+                "amount": 1100
+            },
+            {
+                "suburb_id": 22303,
+                "date": "2024-04-17T09:10:00Z",
+                "amount": 1200
+            },
+            {
+                "suburb_id": 22303,
+                "date": "2024-04-17T09:15:00Z",
+                "amount": 1300
+            },
+            {
+                "suburb_id": 22158,
+                "date": "2024-04-17T19:00:00Z",
+                "amount": 1000
+            },
+            {
+                "suburb_id": 22158,
+                "date": "2024-04-17T19:05:00Z",
+                "amount": 1100
+            },
+            {
+                "suburb_id": 22158,
+                "date": "2024-04-17T19:10:00Z",
+                "amount": 1200
+            },
+            {
+                "suburb_id": 22158,
+                "date": "2024-04-17T19:15:00Z",
+                "amount": 1300
+            }
+        ]
+    },
+    {
+        "name": "energy_generation",
+        "values": [
+            {
+                "energy_generator_id": 1,
+                "date": "2024-04-17T09:00:00Z",
+                "amount": 1000
+            },
+            {
+                "energy_generator_id": 1,
+                "date": "2024-04-17T09:05:00Z",
+                "amount": 1100
+            },
+            {
+                "energy_generator_id": 1,
+                "date": "2024-04-17T09:10:00Z",
+                "amount": 1200
+            },
+            {
+                "energy_generator_id": 1,
+                "date": "2024-04-17T09:15:00Z",
+                "amount": 1300
+            }
+        ]
+    }
+]

@@ -6,9 +6,12 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
+    "debug": "node --inspect=0.0.0.0:9229 dist/index.js",
     "database": "node dist/setup_database.js",
+    "debugDatabase": "node --inspect=0.0.0.0:9229 dist/setup_database.js",
     "test": "jest",
-    "eventConsumer": "node dist/kafkaConsumer.js"
+    "eventConsumer": "node dist/kafkaConsumer.js",
+    "debugConsumer": "node --inspect=0.0.0.0:9229 dist/kafkaConsumer.js"
   },
   "author": "",
   "license": "ISC",
