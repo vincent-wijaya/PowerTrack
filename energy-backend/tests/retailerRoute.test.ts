@@ -1338,3 +1338,222 @@ describe('GET /retailer/suburbs', () => {
     ]);
   });
 });
+
+describe('GET /retailer/reports', () => {
+  let sequelize: Sequelize;
+  let appInstance: Application;
+
+  beforeAll(async () => {
+    sequelize = await connectToTestDb();
+    appInstance = app(sequelize);
+
+    // Create mock suburbs
+    await appInstance.get('models').Suburb.bulkCreate([
+      {
+        id: 1,
+        name: 'Test Suburb 1',
+        postcode: 3000,
+        state: 'Victoria',
+        latitude: 100,
+        longitude: 100,
+      },
+      {
+        id: 2,
+        name: 'Test Suburb 2',
+        postcode: 3001,
+        state: 'Victoria',
+        latitude: 105,
+        longitude: 100,
+      },
+    ]);
+
+    // Create mock reports
+    await appInstance.get('models').Report.bulkCreate([
+      {
+        id: 1,
+        start_date: '2024-04-17T09:06:41Z',
+        end_date: '2024-04-17T09:06:41Z',
+        suburb_id: 2,
+        consumer_id: null,
+      },
+      {
+        id: 2,
+        start_date: '2024-04-18T09:06:41Z',
+        end_date: '2024-04-18T09:06:41Z',
+        suburb_id: 1,
+        consumer_id: null,
+      },
+    ]);
+  });
+
+  afterAll(async () => {
+    await sequelize.close();
+    await dropTestDb(sequelize);
+  });
+
+  it('should return a list of existing reports', async () => {
+    const response = await request(appInstance).get('/retailer/reports');
+
+    expect(response.status).toBe(200);
+    expect(response.body.reports.length).toBe(2);
+    expect(response.body.reports).toEqual([
+      expect.objectContaining({
+        id: 1,
+        startDate: '2024-04-17T09:06:41.000Z',
+        endDate: '2024-04-17T09:06:41.000Z',
+        for: {
+          suburb_id: 2,
+          consumer_id: null,
+        },
+      }),
+      expect.objectContaining({
+        id: 2,
+        startDate: '2024-04-18T09:06:41.000Z',
+        endDate: '2024-04-18T09:06:41.000Z',
+        for: {
+          suburb_id: 1,
+          consumer_id: null,
+        },
+      }),
+    ]);
+  });
+});
+
+describe('POST /retailer/reports', () => {
+  let sequelize: Sequelize;
+  let appInstance: Application;
+
+  beforeAll(async () => {
+    sequelize = await connectToTestDb();
+    appInstance = app(sequelize);
+
+    // Create mock suburb
+    await appInstance.get('models').Suburb.create({
+      id: 1,
+      name: 'Test Suburb 1',
+      postcode: 3000,
+      state: 'Victoria',
+      latitude: 100,
+      longitude: 100,
+    });
+
+    // Create mock consumer
+    await appInstance.get('models').Consumer.create({
+      id: 1,
+      street_address: '10 Test Street Melbourne Victoria 3000',
+      high_priority: false,
+      suburb_id: 1,
+    });
+  });
+
+  afterAll(async () => {
+    await sequelize.close();
+    await dropTestDb(sequelize);
+  });
+
+  it('should generate a new retailer report', async () => {
+    const START_DATE = '2024-04-01T09:00:00Z';
+    const END_DATE = '2024-04-30T09:00:00Z';
+    const SUBURB_ID = 1;
+
+    const response = await request(appInstance)
+      .post('/retailer/reports')
+      .send({
+        start_date: START_DATE,
+        end_date: END_DATE,
+        for: {
+          consumer_id: null,
+          suburb_id: SUBURB_ID,
+        },
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ id: expect.any(Number) });
+  });
+
+  it('should generate a new consumer report', async () => {
+    const START_DATE = '2024-04-01T09:00:00Z';
+    const END_DATE = '2024-04-30T09:00:00Z';
+    const CONSUMER_ID = 1;
+
+    const response = await request(appInstance)
+      .post('/retailer/reports')
+      .send({
+        start_date: START_DATE,
+        end_date: END_DATE,
+        for: {
+          consumer_id: CONSUMER_ID,
+          suburb_id: null,
+        },
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ id: expect.any(Number) });
+  });
+
+  it('should return error 400 if start date is missing', async () => {
+    const END_DATE = '2024-04-30T09:00:00Z';
+    const SUBURB_ID = 1;
+
+    const response = await request(appInstance)
+      .post('/retailer/reports')
+      .send({
+        end_date: END_DATE,
+        for: {
+          suburb_id: SUBURB_ID,
+          consumer_id: null,
+        },
+      });
+
+    expect(response.status).toBe(400);
+  });
+
+  it('should return error 400 if end date is missing', async () => {
+    const START_DATE = '2024-04-01T09:00:00Z';
+    const SUBURB_ID = 1;
+
+    const response = await request(appInstance)
+      .post('/retailer/reports')
+      .send({
+        start_date: START_DATE,
+        for: {
+          suburb_id: SUBURB_ID,
+          consumer_id: null,
+        },
+      });
+
+    expect(response.status).toBe(400);
+  });
+
+  it('should return error 400 if for object is missing', async () => {
+    const START_DATE = '2024-04-01T09:00:00Z';
+    const END_DATE = '2024-04-30T09:00:00Z';
+
+    const response = await request(appInstance).post('/retailer/reports').send({
+      start_date: START_DATE,
+      end_date: END_DATE,
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it('should return error 400 if both suburb_id and consumer_id are provided', async () => {
+    const START_DATE = '2024-04-01T09:00:00Z';
+    const END_DATE = '2024-04-30T09:00:00Z';
+    const SUBURB_ID = 1;
+    const CONSUMER_ID = 1;
+
+    const response = await request(appInstance)
+      .post('/retailer/reports')
+      .send({
+        start_date: START_DATE,
+        end_date: END_DATE,
+        for: {
+          suburb_id: SUBURB_ID,
+          consumer_id: CONSUMER_ID,
+        },
+      });
+
+    expect(response.status).toBe(400);
+  });
+});

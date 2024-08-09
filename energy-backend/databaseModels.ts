@@ -400,7 +400,7 @@ export const defineModels = (sequelize: Sequelize) => {
     start_date: string;
     end_date: string;
   }
-  const Reports = sequelize.define<IReportsModel>(
+  const Report = sequelize.define<IReportsModel>(
     'report',
     {
       id: {
@@ -475,19 +475,19 @@ export const defineModels = (sequelize: Sequelize) => {
   /* Link suburb to report
    * One to many relation
    * Nulls are allowed */
-  Suburb.hasMany(Reports, {
+  Suburb.hasMany(Report, {
     foreignKey: { name: 'suburb_id', allowNull: true },
   });
-  Reports.belongsTo(Suburb, {
+  Report.belongsTo(Suburb, {
     foreignKey: { name: 'suburb_id', allowNull: true },
   });
   /* Link consumer to report
    * One to many relation
    * Nulls are allowed */
-  Consumer.hasMany(Reports, {
+  Consumer.hasMany(Report, {
     foreignKey: { name: 'consumer_id', allowNull: true },
   });
-  Reports.belongsTo(Consumer, {
+  Report.belongsTo(Consumer, {
     foreignKey: { name: 'consumer_id', allowNull: true },
   });
 
@@ -513,7 +513,7 @@ export const defineModels = (sequelize: Sequelize) => {
     EnergyGeneration,
     GoalType,
     Goal,
-    Reports,
+    Report,
     WarningType,
   };
 };

@@ -725,12 +725,36 @@ router.get('/suburbs', async (req, res) => {
  *       }
  *   ]
  * }
- *
- *
+ */
+router.get('/reports', async (req, res) => {
+  const { sequelize, Report } = req.app.get('models');
+
+  // Get all rows in reports table
+  const reports = await Report.findAll();
+
+  const reportsFormatted = reports.map((report: any) => {
+    return {
+      id: Number(report.id),
+      startDate: report.start_date,
+      endDate: report.end_date,
+      for: {
+        suburb_id: Number(report.suburb_id),
+        consumer_id: report.consumer_id,
+      },
+    };
+  });
+
+  // Return the reports
+  return res.status(200).send({
+    reports: reportsFormatted,
+  });
+});
+
+/*
  * POST /retailer/reports
  * Generate a new report
  *
- * Query parameters:
+ * Body parameters:
  * - start_date: The start date of the period to generate the report for, in ISO format
  * - end_date: The end date of the period to generate the report for, in ISO format
  * - for: object with the following keys (one of which must be a non-null value and the other of which should be null):
@@ -741,56 +765,78 @@ router.get('/suburbs', async (req, res) => {
  * {
  *    "id": 2
  * }
- *
  */
-router.get('/reports', async (req, res) => {
+router.post('/reports', async (req, res) => {
   const { sequelize, Report } = req.app.get('models');
+  // Generate a new report
+  const { start_date, end_date, for: forObj } = req.body;
 
-  if (req.method === 'GET') {
-    // Get all rows in reports table
-    // TODO
-  } else if (req.method === 'POST') {
-    // Generate a new report
-    const { start_date, end_date, for: forObj } = req.body;
-
-    // Check if the for object is provided
-    if (!forObj) {
-      return res.status(400).send('for object must be provided');
-    }
-
-    // Check if either suburb_id or consumer_id is provided
-    if (!forObj.suburb_id && !forObj.consumer_id) {
-      return res
-        .status(400)
-        .send('Either suburb_id or consumer_id must be provided');
-    }
-
-    // Check if both suburb_id and consumer_id are provided
-    if (forObj.suburb_id && forObj.consumer_id) {
-      return res
-        .status(400)
-        .send('Cannot specify both suburb_id and consumer_id');
-    }
-
-    // Check if start_date and end_date are provided
-    if (!start_date || !end_date) {
-      return res.status(400).send('start_date and end_date must be provided');
-    }
-
-    // Check if start_date and end_date are valid dates
-    if (
-      isNaN(new Date(String(start_date)).getTime()) ||
-      isNaN(new Date(String(end_date)).getTime())
-    ) {
-      return res
-        .status(400)
-        .send('Invalid date format. Provide dates in ISO string format.');
-    }
-
-    // Now that inputs are validated, create a new row in the reports table
-    // TODO
-
+  // Check if the for object is provided
+  if (!forObj) {
+    return res.status(400).send('for object must be provided');
   }
+
+  // Check if either suburb_id or consumer_id is provided
+  if (!forObj.suburb_id && !forObj.consumer_id) {
+    return res
+      .status(400)
+      .send('Either suburb_id or consumer_id must be provided');
+  }
+
+  // Check if both suburb_id and consumer_id are provided
+  if (forObj.suburb_id && forObj.consumer_id) {
+    return res
+      .status(400)
+      .send('Cannot specify both suburb_id and consumer_id');
+  }
+
+  // Check if start_date and end_date are provided
+  if (!start_date || !end_date) {
+    return res.status(400).send('start_date and end_date must be provided');
+  }
+
+  // Check if start_date and end_date are valid dates
+  if (
+    isNaN(new Date(String(start_date)).getTime()) ||
+    isNaN(new Date(String(end_date)).getTime())
+  ) {
+    return res
+      .status(400)
+      .send('Invalid date format. Provide dates in ISO string format.');
+  }
+
+  // Check if a report already exists for the given parameters
+  const existingReport = await Report.findOne({
+    where: {
+      start_date: new Date(String(start_date)),
+      end_date: new Date(String(end_date)),
+      suburb_id: forObj.suburb_id || null,
+      consumer_id: forObj.consumer_id || null,
+    },
+  });
+  if (existingReport) {
+    return res
+      .status(400)
+      .send('Report already exists for the given parameters');
+  }
+
+  // Get the latest report ID
+  const latestReport = await Report.findOne({
+    order: [['id', 'DESC']],
+  });
+
+  // Now that inputs are validated, create a new row in the reports table
+  const newReport = await Report.create({
+    id: latestReport ? Number(latestReport.id) + 1 : 1,
+    start_date: new Date(String(start_date)),
+    end_date: new Date(String(end_date)),
+    suburb_id: forObj.suburb_id,
+    consumer_id: forObj.consumer_id,
+  });
+
+  return res.status(200).send({
+    id: Number(newReport.id),
+  });
 });
 
 /*
@@ -837,23 +883,27 @@ router.get('/reports', async (req, res) => {
  *  ]
  * }
  */
-router.get('/retailer/reports/:id', (req, res) => {
+router.get('/reports/:id', async (req, res) => {
+  const { sequelize, Report } = req.app.get('models');
   const id = req.params.id;
 
   // Get the relevant row from the reports table
-  // TODO
+  const report = await Report.findByPk(id);
 
+  if (!report) {
+    return res.status(404).send('Report not found');
+  }
 
-  // Generate the data for the report  
-  // const reportData = generateReport(
-  //   new Date(String(start_date)),
-  //   new Date(String(end_date)),
-  //   consumer_id,
-  //   suburb_id,
-  // );
+  // Generate the data for the report
+  const reportData = await generateReport(
+    report.start_date,
+    report.end_date,
+    report.consumer_id,
+    report.suburb_id
+  );
 
   // Return the data for the report
-  // TODO
+  res.status(200).send(reportData);
 });
 
 /**
@@ -863,9 +913,14 @@ router.get('/retailer/reports/:id', (req, res) => {
  * @param consumer_id The ID of the consumer to generate the report for
  * @param suburb_id The ID of the suburb to generate the report for
  * @returns Report data
-*/
-const generateReport = async (start_date: Date, end_date: Date, consumer_id: number, suburb_id: number) => {
+ */
+const generateReport = async (
+  start_date: Date,
+  end_date: Date,
+  consumer_id: number,
+  suburb_id: number
+) => {
   // TODO
-}
+};
 
 export default router;
