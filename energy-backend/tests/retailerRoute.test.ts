@@ -383,10 +383,12 @@ describe('GET /retailer/generation', () => {
           generation.date < END_DATE &&
           generation.energy_generator_id === SUBURB_ID
       )
-      .map((generation) => [
-        moment(generation.date).startOf('hour').toISOString(),
-        generation.amount,
-      ]);
+      .map((generation) => {
+        return {
+          date: moment(generation.date).startOf('hour').toISOString(),
+          amount: generation.amount,
+        };
+      });
 
     const response = await request(appInstance).get(
       `/retailer/generation?suburb_id=${SUBURB_ID}&start_date=${START_DATE}&end_date=${END_DATE}`
@@ -413,10 +415,12 @@ describe('GET /retailer/generation', () => {
           generation.date <= END_DATE &&
           generation.energy_generator_id === SUBURB_ID
       )
-      .map((generation) => [
-        moment(generation.date).startOf('day').toISOString(),
-        generation.amount,
-      ]);
+      .map((generation) => {
+        return {
+          date: moment(generation.date).startOf('day').toISOString(),
+          amount: generation.amount,
+        };
+      });
 
     const response = await request(appInstance).get(
       `/retailer/generation?suburb_id=${SUBURB_ID}&start_date=${START_DATE}&end_date=${END_DATE}`
@@ -459,10 +463,12 @@ describe('GET /retailer/generation', () => {
         return acc;
       }, {});
 
-    expectedEnergy = Object.keys(expectedEnergy).map((date) => [
-      date,
-      expectedEnergy[date],
-    ]);
+    expectedEnergy = Object.keys(expectedEnergy).map((date) => {
+      return {
+        date,
+        amount: expectedEnergy[date],
+      };
+    });
 
     const response = await request(appInstance).get(
       `/retailer/generation?suburb_id=${SUBURB_ID}&start_date=${START_DATE}&end_date=${END_DATE}`
@@ -503,10 +509,12 @@ describe('GET /retailer/generation', () => {
         return acc;
       }, {});
 
-    expectedEnergy = Object.keys(expectedEnergy).map((key) => [
-      key,
-      expectedEnergy[key],
-    ]);
+    expectedEnergy = Object.keys(expectedEnergy).map((date) => {
+      return {
+        date,
+        amount: expectedEnergy[date],
+      };
+    });
 
     const response = await request(appInstance).get(
       `/retailer/generation?start_date=${START_DATE}&end_date=${END_DATE}`
@@ -1144,7 +1152,12 @@ describe('GET /retailer/generator', () => {
       return {
         energy_generator_id: parseInt(generatorId),
         energy: Object.entries(expectedResponse[generatorId].energy).map(
-          ([date, amount]) => [date, amount]
+          ([date, amount]) => {
+            return {
+              date,
+              amount,
+            };
+          }
         ),
       };
     });
@@ -1199,7 +1212,12 @@ describe('GET /retailer/generator', () => {
       return {
         energy_generator_id: parseInt(generatorId),
         energy: Object.entries(expectedResponse[generatorId].energy).map(
-          ([date, amount]) => [date, amount]
+          ([date, amount]) => {
+            return {
+              date,
+              amount,
+            };
+          }
         ),
       };
     });
@@ -1257,7 +1275,12 @@ describe('GET /retailer/generator', () => {
       return {
         energy_generator_id: parseInt(generatorId),
         energy: Object.entries(expectedResponse[generatorId].energy).map(
-          ([date, amount]) => [date, amount]
+          ([date, amount]) => {
+            return {
+              date,
+              amount,
+            };
+          }
         ),
       };
     });
