@@ -1,7 +1,7 @@
 import { Sequelize } from 'sequelize';
 import app from './app';
 
-const port = 3000;
+const port = 3001;
 const sequelize = new Sequelize(process.env.DATABASE_URI!, {
   dialect: 'postgres',
   protocol: 'postgres',
@@ -11,7 +11,7 @@ const sequelize = new Sequelize(process.env.DATABASE_URI!, {
 
 const appInstance = app(sequelize);
 
-// Listen on port 3000
-appInstance.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+// Open server
+appInstance.listen(process.env.SERVER_PORT, () => {
+  console.log(`Server is running on port ${process.env.SERVER_PORT}`);
 });
