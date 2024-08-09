@@ -1345,8 +1345,6 @@ describe('GET /retailer/suburbs', () => {
         state: 'Victoria',
         latitude: '100', // Use string for latitude
         longitude: '100', // Use string for longitude
-        createdAt: expect.any(String),
-        updatedAt: expect.any(String),
       }),
       expect.objectContaining({
         id: '2', // Use string for ID
@@ -1355,8 +1353,6 @@ describe('GET /retailer/suburbs', () => {
         state: 'Victoria',
         latitude: '105', // Use string for latitude
         longitude: '100', // Use string for longitude
-        createdAt: expect.any(String),
-        updatedAt: expect.any(String),
       }),
     ]);
   });

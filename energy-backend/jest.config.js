@@ -1,5 +1,5 @@
 module.exports = {
-  // Only include TypeScript test files
+  // Only include TypeScript test files from the tests folder
   testMatch: ['**/*.test.ts'],
   preset: 'ts-jest',
   testEnvironment: 'node',
@@ -11,7 +11,7 @@ module.exports = {
   verbose: true,
   testTimeout: 10000,
   collectCoverage: true,
-  coverageDirectory: '/usr/src/app/coverage', // Ensure this directory is writeable and exists
+  coverageDirectory: './coverage', // Ensure this directory is writeable and exists
   coverageReporters: ['json', 'lcov', 'text', 'text-summary', 'cobertura'],
   coverageThreshold: {
     global: {

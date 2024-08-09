@@ -9,14 +9,25 @@ import setupDatabase from '../setup_database';
  */
 export const connectToTestDb = async () => {
   // Create a new test database using the root connection
-  let rootSequelize = new Sequelize(process.env.DATABASE_URI!);
+  let rootSequelize = new Sequelize(process.env.DATABASE_URI!, {
+    dialect: 'postgres',
+    protocol: 'postgres',
+    define: { timestamps: false }, // remove created and updated timestamps from models
+    dialectOptions: {},
+  });
   const dbName = `test_db_${uuid().replace(/-/g, '_')}`; // Replace "-" with "_"
   await rootSequelize.query(`CREATE DATABASE ${dbName};`).catch((err: any) => {
     console.log(`Error creating database ${dbName}: ${err.message}`);
   });
   await rootSequelize.close();
   let testSequelize = new Sequelize(
-    `${process.env.TEST_DATABASE_CLUSTER}${dbName}`
+    `${process.env.TEST_DATABASE_CLUSTER}${dbName}`,
+    {
+      dialect: 'postgres',
+      protocol: 'postgres',
+      define: { timestamps: false }, // remove created and updated timestamps from models
+      dialectOptions: {},
+    }
   );
   await setupDatabase(testSequelize);
   return testSequelize;
