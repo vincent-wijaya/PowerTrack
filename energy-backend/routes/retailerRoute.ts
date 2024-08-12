@@ -896,6 +896,7 @@ router.get('/reports/:id', async (req, res) => {
 
   // Generate the data for the report
   const reportData = await generateReport(
+    report.id,
     report.start_date,
     report.end_date,
     report.consumer_id,
@@ -908,19 +909,35 @@ router.get('/reports/:id', async (req, res) => {
 
 /**
  * Generates a report
+ * @param id The id of the report being generated
  * @param start_date The start date of the period to generate the report for
  * @param end_date The end date of the period to generate the report for
  * @param consumer_id The ID of the consumer to generate the report for
  * @param suburb_id The ID of the suburb to generate the report for
  * @returns Report data
  */
-const generateReport = async (
+async function generateReport(
+  id: number,
   start_date: Date,
   end_date: Date,
   consumer_id: number,
   suburb_id: number
-) => {
-  // TODO
-};
+) {
+  const finalReport = {
+    id,
+    start_date,
+    end_date,
+    for: {
+      suburb_id,
+      consumer_id,
+    },
+    energy: [],
+    profit: [],
+    sources: [],
+  };
+
+  // Collect all the sources
+  return finalReport;
+}
 
 export default router;
