@@ -1663,26 +1663,26 @@ describe('GET /retailer/reports/:id Suburb', () => {
   const testReports = [
     // This report's suburb will have no energy
     {
-      id: 0,
-      start_date: '2024-02-01T00:00:00Z',
-      end_date: '2024-03-01T00:00:00Z',
-      suburb_id: 0,
+      id: '0',
+      start_date: '2024-02-01T00:00:00.000Z',
+      end_date: '2024-03-01T00:00:00.000Z',
+      suburb_id: '0',
       consumer_id: null,
     },
     // This report's dates will have no entries
     {
-      id: 1,
-      start_date: '2024-01-01T00:00:00Z',
-      end_date: '2024-02-01T00:00:00Z',
-      suburb_id: 1,
+      id: '1',
+      start_date: '2024-01-01T00:00:00.000Z',
+      end_date: '2024-02-01T00:00:00.000Z',
+      suburb_id: '1',
       consumer_id: null,
     },
     // This report will have data
     {
-      id: 2,
-      start_date: '2024-01-01T00:00:00Z',
-      end_date: '2024-02-01T00:00:00Z',
-      suburb_id: 1,
+      id: '2',
+      start_date: '2024-01-01T00:00:00.000Z',
+      end_date: '2024-02-01T00:00:00.000Z',
+      suburb_id: '1',
       consumer_id: null,
     },
   ];
