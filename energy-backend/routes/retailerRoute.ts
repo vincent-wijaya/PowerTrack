@@ -539,11 +539,19 @@ router.get('/profitMargin', async (req, res) => {
 router.get('/warnings', async (req, res) => {
   // Retrieve warnings for a suburb
   const { suburb_id, consumer_id } = req.query;
-  const { Consumer, ConsumerConsumption, GoalType, SellingPrice, WarningType } =
-    req.app.get('models');
+  const {
+    Consumer,
+    ConsumerConsumption,
+    GoalType,
+    SellingPrice,
+    WarningType,
+    SuburbConsumption,
+    EnergyGeneration,
+    EnergyGenerator,
+  } = req.app.get('models') as DbModelType;
 
   // Get goal types
-  const goalTarget: string = consumer_id ? 'consumer' : 'retailer';
+  const goalTarget = consumer_id ? 'consumer' : 'retailer';
   const goalTypes = await GoalType.findAll({
     where: {
       target_type: goalTarget,
@@ -562,6 +570,48 @@ router.get('/warnings', async (req, res) => {
   if (warningTypes.length === 0) {
     return res.status(501).send('No warning types found');
   }
+
+  /**
+   * Gets the ratio of energy consumed / energy generated in the past 24 hours for a given suburb.
+   * If no energy generation in the area in the last 24 hours, returns null
+   * @param suburb_id Can be undefined to indicate nation-wide data
+   * @returns energy utilised ratio for a given suburb as a decimal. If a suburb_id is not provided, returns nation-wide utilised ratio.
+   */
+  const getEnergyUtilisedRatio = async (suburb_id: number | undefined) => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    // Fetch total consumption in the past 24 hours
+    const consumptionPastDay = await SuburbConsumption.sum('amount', {
+      where: suburb_id
+        ? {
+            suburb_id: suburb_id,
+            date: { [Op.gte]: yesterday },
+          }
+        : {
+            date: { [Op.gte]: yesterday },
+          },
+    });
+
+    // Fetch total generation in the past 24 hours
+    const generationPastDay = (
+      await EnergyGeneration.findAll({
+        include: [
+          {
+            model: EnergyGenerator,
+            where: suburb_id ? { suburb_id: suburb_id } : {},
+          },
+        ],
+        where: {
+          date: { [Op.gte]: yesterday },
+        },
+      })
+    ).reduce((prev, cur) => prev + parseFloat(cur.amount), 0); // Add the amounts of all generation records
+
+    if (generationPastDay === 0) return null;
+
+    return consumptionPastDay / generationPastDay;
+  };
 
   // Iterate through each warning type
   let warnings: any[] = [];
@@ -609,7 +659,10 @@ router.get('/warnings', async (req, res) => {
         const sellingPrice = await SellingPrice.findOne({
           order: [['date', 'DESC']],
         });
-
+        if (!sellingPrice) {
+          console.error('No selling price found!');
+          break;
+        }
         if (sellingPrice.amount >= warningType.target) {
           warnings.push({
             category: warningType.category,
@@ -619,6 +672,43 @@ router.get('/warnings', async (req, res) => {
             },
             suggestion: `Energy cost is at $${sellingPrice.amount}/kWh, so use less energy to save money.`,
           });
+        }
+        break;
+      case 'low_usage':
+        {
+          const energyUtilisedRatio = await getEnergyUtilisedRatio(
+            parseInt(suburb_id as string) || undefined
+          );
+          if (
+            energyUtilisedRatio &&
+            energyUtilisedRatio <= parseFloat(warningType.target)
+          ) {
+            warnings.push({
+              category: warningType.category,
+              description: warningType.description,
+              data: { energy_utilised_percentage: energyUtilisedRatio },
+              suggestion: `Only ${(energyUtilisedRatio * 100).toFixed(1)}% of the energy generated in the last 24 hours has been used. Advise AEMO to generate less energy or incentivise customers to consume more energy.`,
+            });
+          }
+        }
+        break;
+      case 'high_usage':
+        {
+          const energyUtilisedRatio = await getEnergyUtilisedRatio(
+            parseInt(suburb_id as string) || undefined
+          );
+
+          if (
+            energyUtilisedRatio &&
+            energyUtilisedRatio >= parseFloat(warningType.target)
+          ) {
+            warnings.push({
+              category: warningType.category,
+              description: warningType.description,
+              data: { energy_utilised_percentage: energyUtilisedRatio },
+              suggestion: `${(energyUtilisedRatio * 100).toFixed(1)}% of the energy generated in the last 24 hours has been used. Advise AEMO to generate more energy.`,
+            });
+          }
         }
         break;
       default:

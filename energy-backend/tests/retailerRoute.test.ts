@@ -887,6 +887,282 @@ describe('GET /retailer/warnings - category high_cost', () => {
   });
 });
 
+describe('GET /retailer/warnings - category high_usage', () => {
+  let sequelize: Sequelize;
+  let appInstance: Application;
+
+  beforeAll(async () => {
+    // Set up and connect to test database
+    sequelize = await connectToTestDb();
+    appInstance = app(sequelize);
+
+    // Insert prerequesite data for tests
+    await appInstance.get('models').Suburb.bulkCreate([
+      {
+        id: 1,
+        name: 'Test Suburb',
+        postcode: 3000,
+        state: 'Victoria',
+        latitude: 100,
+        longitude: 100,
+      },
+      {
+        id: 2,
+        name: 'Test Suburb 2',
+        postcode: 3001,
+        state: 'Victoria',
+        latitude: 100,
+        longitude: 100,
+      },
+    ]);
+    await appInstance.get('models').GeneratorType.create({
+      id: 1,
+      category: 'Natural Gas Pipeline',
+      renewable: false,
+    });
+    await appInstance.get('models').EnergyGenerator.bulkCreate([
+      {
+        id: 1,
+        name: 'Test Generator 1',
+        generator_type_id: 1,
+        suburb_id: 1,
+      },
+      {
+        id: 2,
+        name: 'Test Generator 2',
+        generator_type_id: 1,
+        suburb_id: 2,
+      },
+    ]);
+
+    await appInstance.get('models').SuburbConsumption.create({
+      amount: 10,
+      date: new Date().toISOString(),
+      suburb_id: 1,
+    });
+    await appInstance.get('models').SuburbConsumption.create({
+      amount: 8,
+      date: new Date().toISOString(),
+      suburb_id: 2,
+    });
+    await appInstance.get('models').EnergyGeneration.create({
+      amount: 10,
+      date: new Date().toISOString(),
+      energy_generator_id: 1,
+    });
+    await appInstance.get('models').EnergyGeneration.create({
+      amount: 10,
+      date: new Date().toISOString(),
+      energy_generator_id: 2,
+    });
+    await appInstance.get('models').GoalType.create({
+      id: 1,
+      category: 'profit',
+      description:
+        'I want to sell most/all of the energy I buy. Sell energy for more than I bought it for.',
+      target_type: 'retailer',
+    });
+    await appInstance.get('models').WarningType.create({
+      id: 1,
+      goal_type_id: 1,
+      category: 'high_usage',
+      description: 'Too much energy used in the grid',
+      trigger_greater_than: true,
+      target: 0.85,
+    });
+  });
+
+  afterAll(async () => {
+    // Drop the test database
+    await sequelize.close();
+    await dropTestDb(sequelize);
+  });
+
+  it('should not return a high_usage warning', async () => {
+    const response = await request(appInstance).get(
+      '/retailer/warnings?suburb_id=2'
+    );
+
+    expect(response.status).toBe(200);
+
+    let relevantWarnings = response.body.warnings.filter(
+      (warning: any) => warning.category === 'high_usage'
+    );
+    expect(relevantWarnings).toEqual([]);
+  });
+
+  it('should return a high_usage warning', async () => {
+    const response = await request(appInstance).get(
+      '/retailer/warnings?suburb_id=1'
+    );
+
+    expect(response.status).toBe(200);
+    let relevantWarnings = response.body.warnings.filter(
+      (warning: any) => warning.category === 'high_usage'
+    );
+    expect(relevantWarnings.length).toBe(1);
+    expect(relevantWarnings[0].data).toEqual({
+      energy_utilised_percentage: 1,
+    });
+  });
+
+  it('should return an high_usage warning (with no suburb or consumer provided', async () => {
+    const response = await request(appInstance).get('/retailer/warnings');
+
+    expect(response.status).toBe(200);
+    let relevantWarnings = response.body.warnings.filter(
+      (warning: any) => warning.category === 'high_usage'
+    );
+    expect(relevantWarnings.length).toBe(1);
+    expect(relevantWarnings[0].data).toEqual({
+      energy_utilised_percentage: 0.9,
+    });
+  });
+});
+
+describe('GET /retailer/warnings - category low_usage', () => {
+  let sequelize: Sequelize;
+  let appInstance: Application;
+
+  beforeAll(async () => {
+    // Set up and connect to test database
+    sequelize = await connectToTestDb();
+    appInstance = app(sequelize);
+
+    // Insert prerequesite data for tests
+    await appInstance.get('models').Suburb.bulkCreate([
+      {
+        id: 1,
+        name: 'Test Suburb',
+        postcode: 3000,
+        state: 'Victoria',
+        latitude: 100,
+        longitude: 100,
+      },
+      {
+        id: 2,
+        name: 'Test Suburb 2',
+        postcode: 3001,
+        state: 'Victoria',
+        latitude: 100,
+        longitude: 100,
+      },
+    ]);
+    await appInstance.get('models').GeneratorType.create({
+      id: 1,
+      category: 'Natural Gas Pipeline',
+      renewable: false,
+    });
+    await appInstance.get('models').EnergyGenerator.bulkCreate([
+      {
+        id: 1,
+        name: 'Test Generator 1',
+        generator_type_id: 1,
+        suburb_id: 1,
+      },
+      {
+        id: 2,
+        name: 'Test Generator 2',
+        generator_type_id: 1,
+        suburb_id: 2,
+      },
+    ]);
+
+    await appInstance.get('models').SuburbConsumption.create({
+      amount: 1,
+      date: new Date().toISOString(),
+      suburb_id: 1,
+    });
+    await appInstance.get('models').SuburbConsumption.create({
+      amount: 1,
+      date: new Date().toISOString(),
+      suburb_id: 1,
+    });
+    await appInstance.get('models').SuburbConsumption.create({
+      amount: 10,
+      date: new Date().toISOString(),
+      suburb_id: 2,
+    });
+    await appInstance.get('models').EnergyGeneration.create({
+      amount: 10,
+      date: new Date().toISOString(),
+      energy_generator_id: 1,
+    });
+    await appInstance.get('models').EnergyGeneration.create({
+      amount: 10,
+      date: new Date().toISOString(),
+      energy_generator_id: 1,
+    });
+    await appInstance.get('models').EnergyGeneration.create({
+      amount: 10,
+      date: new Date().toISOString(),
+      energy_generator_id: 2,
+    });
+    await appInstance.get('models').GoalType.create({
+      id: 1,
+      category: 'profit',
+      description:
+        'I want to sell most/all of the energy I buy. Sell energy for more than I bought it for.',
+      target_type: 'retailer',
+    });
+    await appInstance.get('models').WarningType.create({
+      id: 1,
+      goal_type_id: 1,
+      category: 'low_usage',
+      description: 'Too much unused energy in the grid',
+      trigger_greater_than: false,
+      target: 0.5,
+    });
+  });
+
+  afterAll(async () => {
+    // Drop the test database
+    await sequelize.close();
+    await dropTestDb(sequelize);
+  });
+
+  it('should not return a low_usage warning', async () => {
+    const response = await request(appInstance).get(
+      '/retailer/warnings?suburb_id=2'
+    );
+
+    expect(response.status).toBe(200);
+
+    let relevantWarnings = response.body.warnings.filter(
+      (warning: any) => warning.category === 'low_usage'
+    );
+    expect(relevantWarnings).toEqual([]);
+  });
+
+  it('should return a low_usage warning', async () => {
+    const response = await request(appInstance).get(
+      '/retailer/warnings?suburb_id=1'
+    );
+
+    expect(response.status).toBe(200);
+    let relevantWarnings = response.body.warnings.filter(
+      (warning: any) => warning.category === 'low_usage'
+    );
+    expect(relevantWarnings.length).toBe(1);
+    expect(relevantWarnings[0].data).toEqual({
+      energy_utilised_percentage: 0.1,
+    });
+  });
+
+  it('should return an low_usage warning (with no suburb or consumer provided', async () => {
+    const response = await request(appInstance).get('/retailer/warnings');
+
+    expect(response.status).toBe(200);
+    let relevantWarnings = response.body.warnings.filter(
+      (warning: any) => warning.category === 'low_usage'
+    );
+    expect(relevantWarnings.length).toBe(1);
+    expect(relevantWarnings[0].data).toEqual({
+      energy_utilised_percentage: 0.4,
+    });
+  });
+});
+
 describe('GET /retailer/consumers', () => {
   let sequelize: Sequelize;
   let appInstance: Application;
