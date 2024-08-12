@@ -2,6 +2,16 @@ import { Sequelize } from 'sequelize';
 import { defineModels } from './databaseModels';
 import fs from 'node:fs';
 
+async function createHypertables(sequelize: Sequelize, tableNames: String[]) {
+  for (let tableName of tableNames) {
+    await sequelize
+      .query(`SELECT create_hypertable('${tableName}', by_range('date'));`)
+      .catch((error) => {
+        console.error(`Unable to create hypertable for ${tableName}: `, error);
+      });
+  }
+}
+
 async function setupDatabase(sequelize: Sequelize) {
   // Define the database schema
   const models = defineModels(sequelize);
@@ -15,43 +25,15 @@ async function setupDatabase(sequelize: Sequelize) {
     .catch((error) => {
       console.error('Unable to sync database schema: ', error);
     });
+
   /* Convert relevant databases into timescale db hypertables */
-  await sequelize
-    .query("SELECT create_hypertable('suburb_consumption', by_range('date'));")
-    .catch((error) => {
-      console.error(
-        'Unable to create hypertable for suburb_consumption: ',
-        error
-      );
-    });
-  await sequelize
-    .query(
-      "SELECT create_hypertable('consumer_consumption', by_range('date'));"
-    )
-    .catch((error) => {
-      console.error(
-        'Unable to create hypertable for consumer_consumption: ',
-        error
-      );
-    });
-  await sequelize
-    .query("SELECT create_hypertable('energy_generation', by_range('date'));")
-    .catch((error) => {
-      console.error(
-        'Unable to create hypertable for energy_generation: ',
-        error
-      );
-    });
-  await sequelize
-    .query("SELECT create_hypertable('selling_price', by_range('date'));")
-    .catch((error) => {
-      console.error('Unable to create hypertable for selling_price: ', error);
-    });
-  await sequelize
-    .query("SELECT create_hypertable('spot_price', by_range('date'));")
-    .catch((error) => {
-      console.error('Unable to create hypertable for spot_price: ', error);
-    });
+  await createHypertables(sequelize, [
+    'suburb_consumption',
+    'consumer_consumption',
+    'energy_generation',
+    'selling_price',
+    'spot_price',
+  ]);
 }
 
 /**
@@ -112,6 +94,13 @@ if (require.main === module) {
     () => {
       try {
         const data = JSON.parse(fs.readFileSync(DB_SETUP_FILE, 'utf8'));
+
+        if (process.env.NODE_ENV === 'development') {
+          const debugData = JSON.parse(
+            fs.readFileSync('debug' + DB_SETUP_FILE, 'utf8')
+          );
+          data.push(...debugData);
+        }
         loadDatabaseJSON(sequelize, data); // load data from json into the database
       } catch (e: any) {
         if (e instanceof SyntaxError) {
@@ -126,3 +115,12 @@ if (require.main === module) {
 }
 
 export default setupDatabase;
+
+// Only export these functions if the node enviornment is set to testing
+export let exportsForTesting: {
+  createHypertables: (seq: Sequelize, names: String[]) => Promise<void>;
+  loadDatabaseJSON: (seq: Sequelize, data: any[]) => Promise<void>;
+};
+if (process.env.NODE_ENV === 'test') {
+  exportsForTesting = { createHypertables, loadDatabaseJSON };
+}

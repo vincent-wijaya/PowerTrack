@@ -277,7 +277,10 @@ router.get('/generation', async (req, res) => {
       const date = moment(generation.dataValues.truncatedDate).toISOString();
 
       // Add the date and amount of energy generated to the return data
-      returnData.energy.push([date, Number(generation.dataValues.amount)]);
+      returnData.energy.push({
+        date,
+        amount: Number(generation.dataValues.amount),
+      });
     });
 
     return res.status(200).send(returnData);
@@ -460,7 +463,10 @@ router.get('/generator', async (req, res) => {
       }
 
       // Add the energy generation data to the gemerator's array of energy data
-      returnData.generators[generatorId].energy.push([date, amount]);
+      returnData.generators[generatorId].energy.push({
+        date,
+        amount,
+      });
     });
 
     // Convert the generators object to an array
