@@ -514,12 +514,8 @@ router.get('/profitMargin', async (req, res) => {
     },
   });
 
-  spotPrices.sort((a: any, b: any) => {
-    return new Date(a.date).valueOf() - new Date(b.date).valueOf();
-  });
-  sellingPrices.sort((a: any, b: any) => {
-    return new Date(a.date).valueOf() - new Date(b.date).valueOf();
-  });
+  spotPrices.sort(eventSorter);
+  sellingPrices.sort(eventSorter);
 
   spotPrices = spotPrices.map((spotPrice: any) => ({
     date: spotPrice.date.toISOString(),
@@ -949,5 +945,9 @@ router.get('/reports/:id', async (req, res) => {
   // Return the data for the report
   res.status(200).send(finalReport);
 });
+
+function eventSorter(a: any, b: any) {
+  return new Date(a.date).valueOf() - new Date(b.date).valueOf();
+}
 
 export default router;
