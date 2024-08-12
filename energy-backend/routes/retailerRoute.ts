@@ -896,16 +896,16 @@ router.get('/reports/:id', async (req, res) => {
     return res.status(404).send('Report not found');
   }
 
-  let selling_price = await SellingPrice.findAll({
-    where: {
-      date: {
-        [Op.and]: {
-          [Op.gt]: new Date(String(report.start_date)),
-          [Op.lte]: new Date(String(report.end_date)),
-        },
+  let eventWhereClause = {
+    date: {
+      [Op.and]: {
+        [Op.gt]: new Date(String(report.start_date)),
+        [Op.lte]: new Date(String(report.end_date)),
       },
     },
-  });
+  };
+
+  let selling_price = await SellingPrice.findAll({ where: eventWhereClause });
   selling_price = selling_price.map(
     (price: { date: string; amount: string }) => ({
       date: new Date(price.date),
@@ -913,16 +913,7 @@ router.get('/reports/:id', async (req, res) => {
     })
   );
 
-  let spot_price = await SpotPrice.findAll({
-    where: {
-      date: {
-        [Op.and]: {
-          [Op.gt]: new Date(String(report.start_date)),
-          [Op.lte]: new Date(String(report.end_date)),
-        },
-      },
-    },
-  });
+  let spot_price = await SpotPrice.findAll({ where: eventWhereClause });
   spot_price = spot_price.map((price: { date: string; amount: string }) => ({
     date: new Date(price.date),
     amount: Number(price.amount),
