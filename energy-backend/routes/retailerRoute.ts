@@ -950,4 +950,29 @@ function eventSorter(a: any, b: any) {
   return new Date(a.date).valueOf() - new Date(b.date).valueOf();
 }
 
+/**
+ * Amount is given in Kw
+ * Result should be given in kwh
+ * @param events
+ */
+function rollupEvents(events: [{ date: Moment; amount: number }]) {
+  events.sort(eventSorter);
+
+  let priorDate: Moment;
+  let durationEvents = events.map(
+    (event): { date: Moment; amount: number; kwh: number } => {
+      //Get the duration, or just use 0 if there isnt a prior date yet
+      let duration =
+        priorDate !== undefined ? event.date.diff(priorDate, 'hours', true) : 0;
+      priorDate = event.date;
+      return { ...event, kwh: event.amount * duration };
+    }
+  );
+
+  return durationEvents.reduce(
+    (acc: number, currVal: { kwh: number }) => acc + currVal.kwh,
+    0
+  );
+}
+
 export default router;
