@@ -1739,9 +1739,24 @@ describe('GET /retailer/reports/:id Suburb', () => {
     });
   });
 
-  it('Should return report', async () => {
-    const response = await request(appInstance).get('/retailer/reports');
-
+  it('Should return empty report', async () => {
+    const testReport = testReports[1];
+    const response = await request(appInstance).get(
+      `/retailer/reports/${testReport.id}`
+    );
     expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      id: testReport.id,
+      start_date: testReport.start_date,
+      end_date: testReport.end_date,
+      for: {
+        suburb_id: testReport.suburb_id,
+        consumer_id: testReport.consumer_id,
+      },
+      energy: [],
+      selling_price: [],
+      spot_price: [],
+      sources: [],
+    });
   });
 });
