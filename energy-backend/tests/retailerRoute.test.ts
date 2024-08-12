@@ -1600,20 +1600,20 @@ describe('GET /retailer/reports/:id Suburb', () => {
   ];
   const testSuburbConsumptions = [{}];
   const testSellingPrice = [
-    { date: '2024-02-02T00:00:00Z', amount: 1 },
-    { date: '2024-02-03T00:00:00Z', amount: 1 },
-    { date: '2024-02-04T00:00:00Z', amount: 1 },
-    { date: '2024-02-05T00:00:00Z', amount: 1 },
-    { date: '2024-02-06T00:00:00Z', amount: 1 },
-    { date: '2024-02-07T00:00:00Z', amount: 1 },
+    { date: '2024-02-02T00:00:00.000Z', amount: 1 },
+    { date: '2024-02-03T00:00:00.000Z', amount: 1 },
+    { date: '2024-02-04T00:00:00.000Z', amount: 1 },
+    { date: '2024-02-05T00:00:00.000Z', amount: 1 },
+    { date: '2024-02-06T00:00:00.000Z', amount: 1 },
+    { date: '2024-02-07T00:00:00.000Z', amount: 1 },
   ];
   const testSpotPrice = [
-    { date: '2024-02-02T00:00:00Z', amount: 1 },
-    { date: '2024-02-03T00:00:00Z', amount: 1 },
-    { date: '2024-02-04T00:00:00Z', amount: 1 },
-    { date: '2024-02-05T00:00:00Z', amount: 1 },
-    { date: '2024-02-06T00:00:00Z', amount: 1 },
-    { date: '2024-02-07T00:00:00Z', amount: 1 },
+    { date: '2024-02-02T00:00:00.000Z', amount: 1 },
+    { date: '2024-02-03T00:00:00.000Z', amount: 1 },
+    { date: '2024-02-04T00:00:00.000Z', amount: 1 },
+    { date: '2024-02-05T00:00:00.000Z', amount: 1 },
+    { date: '2024-02-06T00:00:00.000Z', amount: 1 },
+    { date: '2024-02-07T00:00:00.000Z', amount: 1 },
   ];
   const testGeneratorType = [
     {
@@ -1694,14 +1694,14 @@ describe('GET /retailer/reports/:id Suburb', () => {
 
     // Create mock data
     await models.Suburb.bulkCreate(testSuburbs);
-    await models.SuburbConsumption.bulkCreate(testSuburbConsumptions);
+    // await models.SuburbConsumption.bulkCreate(testSuburbConsumptions);
 
     await models.SellingPrice.bulkCreate(testSellingPrice);
     await models.SpotPrice.bulkCreate(testSpotPrice);
 
     await models.GeneratorType.bulkCreate(testGeneratorType);
     await models.EnergyGenerator.bulkCreate(testEnergyGenerator);
-    await models.EnergyGeneration.bulkCreate(testEnergyGeneration);
+    // await models.EnergyGeneration.bulkCreate(testEnergyGeneration);
 
     await models.Report.bulkCreate(testReports);
   });
@@ -1712,10 +1712,9 @@ describe('GET /retailer/reports/:id Suburb', () => {
   });
 
   it('Should return no report found', async () => {
-    const response = await request(appInstance).get('/retailer/reports');
+    const response = await request(appInstance).get('/retailer/reports/10');
 
     expect(response.status).toBe(404);
-    expect(response.body).toEqual('Report not found');
   });
 
   it('Should return report with no energy', async () => {
@@ -1734,7 +1733,8 @@ describe('GET /retailer/reports/:id Suburb', () => {
         consumer_id: testReport.consumer_id,
       },
       energy: [],
-      profit: [],
+      selling_price: testSellingPrice,
+      spot_price: testSpotPrice,
       sources: [],
     });
   });

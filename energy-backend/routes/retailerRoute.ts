@@ -890,7 +890,7 @@ router.post('/reports', async (req, res) => {
  * }
  */
 router.get('/reports/:id', async (req, res) => {
-  const { sequelize, Report } = req.app.get('models');
+  const { sequelize, Report, SellingPrice, SpotPrice } = req.app.get('models');
   const id = req.params.id;
 
   // Get the relevant row from the reports table
@@ -900,50 +900,54 @@ router.get('/reports/:id', async (req, res) => {
     return res.status(404).send('Report not found');
   }
 
-  // Generate the data for the report
-  const reportData = await generateReport(
-    report.id,
-    report.start_date,
-    report.end_date,
-    report.consumer_id,
-    report.suburb_id
+  let selling_price = await SellingPrice.findAll({
+    where: {
+      date: {
+        [Op.and]: {
+          [Op.gt]: new Date(String(report.start_date)),
+          [Op.lte]: new Date(String(report.end_date)),
+        },
+      },
+    },
+  });
+  selling_price = selling_price.map(
+    (price: { date: string; amount: string }) => ({
+      date: new Date(price.date),
+      amount: Number(price.amount),
+    })
   );
 
-  // Return the data for the report
-  res.status(200).send(reportData);
-});
+  let spot_price = await SpotPrice.findAll({
+    where: {
+      date: {
+        [Op.and]: {
+          [Op.gt]: new Date(String(report.start_date)),
+          [Op.lte]: new Date(String(report.end_date)),
+        },
+      },
+    },
+  });
+  spot_price = spot_price.map((price: { date: string; amount: string }) => ({
+    date: new Date(price.date),
+    amount: Number(price.amount),
+  }));
 
-/**
- * Generates a report
- * @param id The id of the report being generated
- * @param start_date The start date of the period to generate the report for
- * @param end_date The end date of the period to generate the report for
- * @param consumer_id The ID of the consumer to generate the report for
- * @param suburb_id The ID of the suburb to generate the report for
- * @returns Report data
- */
-async function generateReport(
-  id: number,
-  start_date: Date,
-  end_date: Date,
-  consumer_id: number,
-  suburb_id: number
-) {
   const finalReport = {
     id,
-    start_date,
-    end_date,
+    start_date: report.start_date,
+    end_date: report.end_date,
     for: {
-      suburb_id,
-      consumer_id,
+      suburb_id: report.suburb_id,
+      consumer_id: report.consumer_id,
     },
     energy: [],
-    profit: [],
+    selling_price: selling_price,
+    spot_price: spot_price,
     sources: [],
   };
 
-  // Collect all the sources
-  return finalReport;
-}
+  // Return the data for the report
+  res.status(200).send(finalReport);
+});
 
 export default router;
