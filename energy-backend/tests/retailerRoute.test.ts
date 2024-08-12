@@ -1800,6 +1800,50 @@ describe('GET /retailer/reports/:id Suburb', () => {
     });
   });
 
+  it('Should return a full report', async () => {
+    const testReport = testReports[2];
+    const response = await request(appInstance).get(
+      `/retailer/reports/${testReport.id}`
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      id: testReport.id,
+      start_date: testReport.start_date,
+      end_date: testReport.end_date,
+      for: {
+        suburb_id: testReport.suburb_id,
+        consumer_id: testReport.consumer_id,
+      },
+      energy: [],
+      selling_price: testSellingPrice,
+      spot_price: testSpotPrice,
+      sources: [
+        {
+          category: 'Brown Coal',
+          renewable: false,
+          percentage: 0.25,
+          total: 120,
+          count: 6,
+        },
+        {
+          category: 'Solar',
+          renewable: true,
+          percentage: 0.5,
+          total: 240,
+          count: 12,
+        },
+        {
+          category: 'Wind',
+          renewable: true,
+          percentage: 0.25,
+          total: 120,
+          count: 6,
+        },
+      ],
+    });
+  });
+
   it('Should return empty report', async () => {
     const testReport = testReports[1];
     const response = await request(appInstance).get(
