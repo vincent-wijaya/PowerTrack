@@ -1,5 +1,5 @@
 import express from 'express';
-import moment from 'moment';
+import moment, { Moment } from 'moment';
 import { Op } from 'sequelize';
 import { defineModels } from '../databaseModels';
 
