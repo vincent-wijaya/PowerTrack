@@ -1597,6 +1597,14 @@ describe('GET /retailer/reports/:id Suburb', () => {
       latitude: 105,
       longitude: 100,
     },
+    {
+      id: 2,
+      name: 'Test Suburb 3',
+      postcode: 3002,
+      state: 'Victoria',
+      latitude: 115,
+      longitude: 110,
+    },
   ];
   const testSuburbConsumptions = [{}];
   const testSellingPrice = [
@@ -1657,11 +1665,64 @@ describe('GET /retailer/reports/:id Suburb', () => {
       suburb_id: 1,
       generator_type_id: 2,
     },
+    // generator that shouldnt be included in any reports
+    {
+      id: 4,
+      name: 'Extra Wind Generator',
+      suburb_id: 2,
+      generator_type_id: 2,
+    },
   ];
-  const testEnergyGeneration = [{}];
+  const testEnergyGeneration = [
+    //coal energy
+    { date: '2024-02-02T00:00:00.000Z', amount: 1, energy_generator_id: 0 },
+    { date: '2024-02-03T00:00:00.000Z', amount: 1, energy_generator_id: 0 },
+    { date: '2024-02-04T00:00:00.000Z', amount: 1, energy_generator_id: 0 },
+    { date: '2024-02-05T00:00:00.000Z', amount: 1, energy_generator_id: 0 },
+    { date: '2024-02-06T00:00:00.000Z', amount: 1, energy_generator_id: 0 },
+    { date: '2024-02-07T00:00:00.000Z', amount: 1, energy_generator_id: 0 },
+    //outside of range energy
+    { date: '2024-05-06T00:00:00.000Z', amount: 1, energy_generator_id: 0 },
+    { date: '2024-05-07T00:00:00.000Z', amount: 1, energy_generator_id: 0 },
+
+    //solar 1 energy
+    { date: '2024-02-02T00:00:00.000Z', amount: 1, energy_generator_id: 1 },
+    { date: '2024-02-03T00:00:00.000Z', amount: 1, energy_generator_id: 1 },
+    { date: '2024-02-04T00:00:00.000Z', amount: 1, energy_generator_id: 1 },
+    { date: '2024-02-05T00:00:00.000Z', amount: 1, energy_generator_id: 1 },
+    { date: '2024-02-06T00:00:00.000Z', amount: 1, energy_generator_id: 1 },
+    { date: '2024-02-07T00:00:00.000Z', amount: 1, energy_generator_id: 1 },
+    //outside of range energy
+    { date: '2024-05-06T00:00:00.000Z', amount: 1, energy_generator_id: 1 },
+    { date: '2024-05-07T00:00:00.000Z', amount: 1, energy_generator_id: 1 },
+
+    // solar 2 energy
+    { date: '2024-02-02T00:00:00.000Z', amount: 1, energy_generator_id: 2 },
+    { date: '2024-02-03T00:00:00.000Z', amount: 1, energy_generator_id: 2 },
+    { date: '2024-02-04T00:00:00.000Z', amount: 1, energy_generator_id: 2 },
+    { date: '2024-02-05T00:00:00.000Z', amount: 1, energy_generator_id: 2 },
+    { date: '2024-02-06T00:00:00.000Z', amount: 1, energy_generator_id: 2 },
+    { date: '2024-02-07T00:00:00.000Z', amount: 1, energy_generator_id: 2 },
+
+    // wind energy
+    { date: '2024-02-02T00:00:00.000Z', amount: 1, energy_generator_id: 3 },
+    { date: '2024-02-03T00:00:00.000Z', amount: 1, energy_generator_id: 3 },
+    { date: '2024-02-04T00:00:00.000Z', amount: 1, energy_generator_id: 3 },
+    { date: '2024-02-05T00:00:00.000Z', amount: 1, energy_generator_id: 3 },
+    { date: '2024-02-06T00:00:00.000Z', amount: 1, energy_generator_id: 3 },
+    { date: '2024-02-07T00:00:00.000Z', amount: 1, energy_generator_id: 3 },
+
+    // extra wind energy that shouldn't appear in any reports
+    { date: '2024-02-02T00:00:00.000Z', amount: 1, energy_generator_id: 4 },
+    { date: '2024-02-03T00:00:00.000Z', amount: 1, energy_generator_id: 4 },
+    { date: '2024-02-04T00:00:00.000Z', amount: 1, energy_generator_id: 4 },
+    { date: '2024-02-05T00:00:00.000Z', amount: 1, energy_generator_id: 4 },
+    { date: '2024-02-06T00:00:00.000Z', amount: 1, energy_generator_id: 4 },
+    { date: '2024-02-07T00:00:00.000Z', amount: 1, energy_generator_id: 4 },
+  ];
 
   const testReports = [
-    // This report's suburb will have no energy
+    // This report's suburb will have no energy but will have profit
     {
       id: '0',
       start_date: '2024-02-01T00:00:00.000Z',
@@ -1669,7 +1730,7 @@ describe('GET /retailer/reports/:id Suburb', () => {
       suburb_id: '0',
       consumer_id: null,
     },
-    // This report's dates will have no entries
+    // This report's dates will have no data
     {
       id: '1',
       start_date: '2024-01-01T00:00:00.000Z',
@@ -1680,8 +1741,8 @@ describe('GET /retailer/reports/:id Suburb', () => {
     // This report will have data
     {
       id: '2',
-      start_date: '2024-01-01T00:00:00.000Z',
-      end_date: '2024-02-01T00:00:00.000Z',
+      start_date: '2024-02-01T00:00:00.000Z',
+      end_date: '2024-03-01T00:00:00.000Z',
       suburb_id: '1',
       consumer_id: null,
     },
@@ -1701,7 +1762,7 @@ describe('GET /retailer/reports/:id Suburb', () => {
 
     await models.GeneratorType.bulkCreate(testGeneratorType);
     await models.EnergyGenerator.bulkCreate(testEnergyGenerator);
-    // await models.EnergyGeneration.bulkCreate(testEnergyGeneration);
+    await models.EnergyGeneration.bulkCreate(testEnergyGeneration);
 
     await models.Report.bulkCreate(testReports);
   });
