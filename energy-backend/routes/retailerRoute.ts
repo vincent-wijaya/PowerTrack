@@ -886,7 +886,14 @@ router.post('/reports', async (req, res) => {
  * }
  */
 router.get('/reports/:id', async (req, res) => {
-  const { sequelize, Report, SellingPrice, SpotPrice } = req.app.get('models');
+  const {
+    Report,
+    SellingPrice,
+    SpotPrice,
+    EnergyGenerator,
+    EnergyGeneration,
+    GeneratorType,
+  } = req.app.get('models');
   const id = req.params.id;
 
   // Get the relevant row from the reports table
@@ -919,6 +926,106 @@ router.get('/reports/:id', async (req, res) => {
     amount: Number(price.amount),
   }));
 
+  let energy_generators = await EnergyGenerator.findAll({
+    where: {
+      suburb_id: {
+        [Op.eq]: report.suburb_id,
+      },
+    },
+  });
+  const generator_ids = energy_generators.map(
+    (generator: { id: number }) => generator.id
+  );
+
+  let generator_types = await GeneratorType.findAll({
+    where: {
+      id: generator_ids,
+    },
+  });
+  //convert into a map and set fields
+  generator_types = Object.fromEntries(
+    generator_types.map(
+      (gen_type: { id: number; renewable: boolean; category: string }) => [
+        gen_type.id,
+        {
+          category: gen_type.category,
+          renewable: gen_type.renewable,
+          percentage: 0,
+          total: 0,
+          count: 0,
+        },
+      ]
+    )
+  );
+
+  //get all the energy generation events.
+  let energy_generations = await EnergyGeneration.findAll({
+    where: { ...eventWhereClause, energy_generator_id: generator_ids },
+  });
+  //if there are no energy events, just return a blank array
+  if (energy_generations.length === 0) {
+    generator_types = [];
+  } else {
+    //Otherwise, calculate the energy we need
+
+    //conver types
+    energy_generations = energy_generations.map(
+      (event: { date: Date; amount: number; energy_generator_id: number }) => ({
+        date: moment(event.date),
+        amount: Number(event.amount),
+        energy_generator_id: Number(event.energy_generator_id),
+      })
+    );
+
+    // add the number of events and the total energy generated to each generator
+    energy_generators = energy_generators.map(
+      (generator: { id: number; generator_type_id: string }) => {
+        const genEvents = energy_generations.filter(
+          (energy_generation: { energy_generator_id: number }) =>
+            energy_generation.energy_generator_id === Number(generator.id)
+        );
+        return {
+          id: Number(generator.id),
+          generator_type_id: Number(generator.generator_type_id),
+          numEvents: genEvents.length,
+          total: rollupEvents(genEvents),
+        };
+      }
+    );
+
+    //collate the stats into the generator types
+    let totalEnergyGenerated = 0;
+    energy_generators.forEach(
+      (generator: {
+        generator_type_id: number;
+        total: number;
+        numEvents: number;
+      }) => {
+        generator_types[generator.generator_type_id].total += generator.total;
+        generator_types[generator.generator_type_id].count +=
+          generator.numEvents;
+        totalEnergyGenerated += generator.total;
+      }
+    );
+
+    // Convert to array
+    generator_types = Object.values(generator_types);
+    // Only calc percentage if we have a total
+    if (totalEnergyGenerated !== 0) {
+      generator_types.forEach(
+        (gen_type: { total: number; percentage: number }) => {
+          gen_type.percentage = gen_type.total / totalEnergyGenerated;
+        }
+      );
+    }
+
+    //Sort by category
+    generator_types = generator_types.sort(
+      (a: { category: string }, b: { category: string }) =>
+        a.category.localeCompare(b.category)
+    );
+  }
+
   const finalReport = {
     id,
     start_date: report.start_date,
@@ -930,9 +1037,10 @@ router.get('/reports/:id', async (req, res) => {
     energy: [],
     selling_price: selling_price,
     spot_price: spot_price,
-    sources: [],
+    sources: generator_types,
   };
 
+  console.log(finalReport);
   // Return the data for the report
   res.status(200).send(finalReport);
 });
