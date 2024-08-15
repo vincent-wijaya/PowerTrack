@@ -50,7 +50,7 @@ export default function ReportsTable({ id }: ReportsTableProps) {
   useEffect(() => {
     async function getData() {
       try {
-        const { headers, data } = await fetchHeadersAndData(id);
+        const { headers, data } = await fetchHeadersAndData();
         setHeaders(headers);
         setData(data);
       } catch (error) {

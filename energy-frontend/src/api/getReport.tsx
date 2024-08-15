@@ -39,7 +39,7 @@ export default async function fetchReport(id: number) {
         ]
     };
   
-    await new Promise((resolve) => setTimeout(resolve, 3000)); // Simulating a delay of 3 seconds
+    await new Promise((resolve) => setTimeout(resolve, 100)); // Simulating a delay of 3 seconds
 
     // Return the report if the id matches, otherwise return null
     return reportData.id === id ? reportData : null;

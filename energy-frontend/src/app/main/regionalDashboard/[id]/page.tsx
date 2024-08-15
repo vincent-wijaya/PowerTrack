@@ -64,6 +64,46 @@ export default function RegionalDashboard({
       <EnergyChart />
       <ProfitChart />
       <WarningTable />
+      <EnergySourceBreakdown energySources={energySourceBreakdownMockData} />
     </div>
   );
 }
+const energySourceBreakdownMockData = [
+  {
+    category: 'Fossil Fuels',
+    renewable: false,
+    percentage: 0.1033,
+    count: 148,
+  },
+  {
+    category: 'Renewable',
+    renewable: true,
+    percentage: 0.0419,
+    count: 67,
+  },
+  {
+    category: 'Renewable',
+    renewable: true,
+    percentage: 0.0419,
+    count: 67,
+  },
+  {
+    category: 'Renewable',
+    renewable: true,
+    percentage: 0.0419,
+    count: 67,
+  },
+  {
+    category: 'Renewable',
+    renewable: true,
+    percentage: 0.0419,
+    count: 67,
+  },
+  {
+    category: 'Renewable',
+    renewable: true,
+    percentage: 0.0419,
+    count: 67,
+  },
+];
+

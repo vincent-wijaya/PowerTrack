@@ -11,31 +11,60 @@ import ProfitMargin from "@/components/profitMargin";
 import WarningTable from "@/components/table/warningTable";
 import { POLLING_RATE } from "@/config";
 import { fetcher } from "@/utils";
-import { useState, useEffect, useMemo } from "react";
-import useSWR from "swr";
+import { DateTime } from 'luxon';
+import { useState, useEffect, useMemo } from 'react';
+import useSWR from 'swr';
 
+export default function IndividualReport({
+  params,
+}: {
+  params: { id: string };
+}) {
+  const reportId = parseInt(params.id, 10);
+  const { data, error } = useSWR(`report-${reportId}`, () =>
+    fetchReport(reportId)
+  );
+  const [suburbName, setSuburbName] = useState('');
+  useEffect(() => {
+    if (!data) return;
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/retailer/suburbs/${data.id}`)
+      .then((res) => res.json())
+      .then((suburbData) => console.log(suburbData));
+  }, [data]);
 
-export default function IndividualReport({ params }: { params: { id: string } }) {
-    const reportId = parseInt(params.id, 10);
-    const { data, error } = useSWR(`report-${reportId}`, () => fetchReport(reportId));
-
-    if (error) return <div>Error loading report.</div>;
-    if (!data) return <div>Loading...</div>;
-    if (data === null) return <div>No report found.</div>;
-    return (
-      <div className="text-white grid grid-cols-2 grid-rows-[min-content_1fr_1fr_min-content] gap-3 grid-flow-col">
+  if (error) return <div>Error loading report.</div>;
+  if (!data) return <div>Loading...</div>;
+  if (data === null) return <div>No report found.</div>;
+  return (
+    <div className="grid grid-cols-2 grid-rows-[min-content_min-content_1fr_1fr] gap-3 grid-flow-col">
+      <div className="col-span-2">
         <PageHeading title={`Report ${data.id}`} />
-
-        <div className="col-span-2">
-          <InfoBox title="Report Details">
-            <p>Start Date: {data.start_date}</p>
-            <p>End Date: {data.end_date}</p>
-            <p>Suburb ID: {data.for.suburb_id}</p>
-          </InfoBox>
-        </div>
-        <EnergySourceBreakdown energySources={energySourceBreakdownMockData} />
       </div>
-    );
+
+      <div className="col-span-2 text-white">
+        <p>
+          {DateTime.fromISO(data.start_date).toFormat('D')} -{' '}
+          {DateTime.fromISO(data.end_date).toFormat('D')}
+        </p>
+      </div>
+
+      <EnergyChart />
+      <ProfitChart />
+      <EnergySourceBreakdown energySources={data.sources} />
+    </div>
+    // <div className="text-white grid grid-cols-2 grid-rows-[min-content_1fr_1fr_min-content] gap-3 grid-flow-col">
+    //
+
+    //   <div className="col-span-2">
+    //     <InfoBox title="Report Details">
+    //       <p>Start Date: {data.start_date}</p>
+    //       <p>End Date: {data.end_date}</p>
+    //       <p>Suburb ID: {data.for.suburb_id}</p>
+    //     </InfoBox>
+    //   </div>
+    //   <EnergySourceBreakdown energySources={data.sources} />
+    // </div>
+  );
 }
 
 

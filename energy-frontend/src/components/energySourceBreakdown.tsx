@@ -4,15 +4,16 @@ import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { useState } from 'react';
 import { Doughnut } from 'react-chartjs-2';
 import useSWR from 'swr';
-import Dropdown from './dropDownFilter';
+import Dropdown, { DropdownOption } from './dropDownFilter';
 
 import {
   ArcElement,
   Chart as ChartJS,
-  DoughnutController
+  DoughnutController,
+  Legend,
 } from 'chart.js';
 
-ChartJS.register(DoughnutController, ArcElement);
+ChartJS.register(DoughnutController, ArcElement, Legend);
 
 type EnergySources = {
   category: string;
@@ -23,19 +24,18 @@ type EnergySources = {
 
 export default function EnergySourceBreakdown(props: {
   energySources: EnergySources;
+  showTimeRangeDropdown?: boolean;
+  onTimeRangeChange?: (value: DropdownOption) => void;
   className?: string;
 }) {
-  const [selectedTimeRange, setSelectedTimeRange] =
-    useState<string>('last_year');
-
   const url = process.env.NEXT_PUBLIC_API_URL;
-  const { data: energySourceData } = useSWR(
-    `${url}/retailer/sources`,
-    fetcher,
-    {
-      refreshInterval: POLLING_RATE,
-    }
-  );
+  // const { data: energySourceData } = useSWR(
+  //   `${url}/retailer/sources`,
+  //   fetcher,
+  //   {
+  //     refreshInterval: POLLING_RATE,
+  //   }
+  // );
 
   const colours = [
     '#9747FF',
@@ -51,10 +51,16 @@ export default function EnergySourceBreakdown(props: {
     <div
       className={`flex flex-col w-full h-full p-4 bg-itembg border border-stroke relative rounded-lg ${props.className ? props.className : ''}`}
     >
-      <Dropdown
-        onChange={setSelectedTimeRange}
-        chartTitle={'Energy Sources'}
-      />
+      {props.showTimeRangeDropdown && props.onTimeRangeChange ? (
+        <Dropdown
+          onChange={props.onTimeRangeChange}
+          chartTitle={'Energy Sources'}
+        />
+      ) : (
+        <div className="flex w-full py-4 px-2 justify-between">
+          <p className=" text-white font-semibold">{'Energy Sources'}</p>
+        </div>
+      )}
       <div className="h-full">
         <Doughnut
           className="w-full"
