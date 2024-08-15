@@ -10,6 +10,11 @@ const app = (sequelize: Sequelize) => {
 
   // Set up app
   const app = express();
+
+  // Middleware so that we can parse JSON in the request body for POST requests
+  app.use(express.json());
+
+  // Set models in app so that they can be accessed in routes
   app.set('models', models);
 
   // Add routes here

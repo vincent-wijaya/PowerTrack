@@ -1,9 +1,14 @@
+// Set node enviornment to Test
+process.env.NODE_ENV = 'test';
+
 import { Application } from 'express';
 import request from 'supertest';
 import { Sequelize } from 'sequelize';
 import app from '../app';
 import { connectToTestDb, dropTestDb } from './testDb';
 import moment from 'moment';
+import { exportsForTesting } from '../routes/retailerRoute';
+const { splitEvents } = exportsForTesting;
 
 describe('GET /retailer/consumption', () => {
   let sequelize: Sequelize;
@@ -383,10 +388,12 @@ describe('GET /retailer/generation', () => {
           generation.date < END_DATE &&
           generation.energy_generator_id === SUBURB_ID
       )
-      .map((generation) => [
-        moment(generation.date).startOf('hour').toISOString(),
-        generation.amount,
-      ]);
+      .map((generation) => {
+        return {
+          date: moment(generation.date).startOf('hour').toISOString(),
+          amount: generation.amount,
+        };
+      });
 
     const response = await request(appInstance).get(
       `/retailer/generation?suburb_id=${SUBURB_ID}&start_date=${START_DATE}&end_date=${END_DATE}`
@@ -413,10 +420,12 @@ describe('GET /retailer/generation', () => {
           generation.date <= END_DATE &&
           generation.energy_generator_id === SUBURB_ID
       )
-      .map((generation) => [
-        moment(generation.date).startOf('day').toISOString(),
-        generation.amount,
-      ]);
+      .map((generation) => {
+        return {
+          date: moment(generation.date).startOf('day').toISOString(),
+          amount: generation.amount,
+        };
+      });
 
     const response = await request(appInstance).get(
       `/retailer/generation?suburb_id=${SUBURB_ID}&start_date=${START_DATE}&end_date=${END_DATE}`
@@ -459,10 +468,12 @@ describe('GET /retailer/generation', () => {
         return acc;
       }, {});
 
-    expectedEnergy = Object.keys(expectedEnergy).map((date) => [
-      date,
-      expectedEnergy[date],
-    ]);
+    expectedEnergy = Object.keys(expectedEnergy).map((date) => {
+      return {
+        date,
+        amount: expectedEnergy[date],
+      };
+    });
 
     const response = await request(appInstance).get(
       `/retailer/generation?suburb_id=${SUBURB_ID}&start_date=${START_DATE}&end_date=${END_DATE}`
@@ -503,10 +514,12 @@ describe('GET /retailer/generation', () => {
         return acc;
       }, {});
 
-    expectedEnergy = Object.keys(expectedEnergy).map((key) => [
-      key,
-      expectedEnergy[key],
-    ]);
+    expectedEnergy = Object.keys(expectedEnergy).map((date) => {
+      return {
+        date,
+        amount: expectedEnergy[date],
+      };
+    });
 
     const response = await request(appInstance).get(
       `/retailer/generation?start_date=${START_DATE}&end_date=${END_DATE}`
@@ -1144,7 +1157,12 @@ describe('GET /retailer/generator', () => {
       return {
         energy_generator_id: parseInt(generatorId),
         energy: Object.entries(expectedResponse[generatorId].energy).map(
-          ([date, amount]) => [date, amount]
+          ([date, amount]) => {
+            return {
+              date,
+              amount,
+            };
+          }
         ),
       };
     });
@@ -1199,7 +1217,12 @@ describe('GET /retailer/generator', () => {
       return {
         energy_generator_id: parseInt(generatorId),
         energy: Object.entries(expectedResponse[generatorId].energy).map(
-          ([date, amount]) => [date, amount]
+          ([date, amount]) => {
+            return {
+              date,
+              amount,
+            };
+          }
         ),
       };
     });
@@ -1257,7 +1280,12 @@ describe('GET /retailer/generator', () => {
       return {
         energy_generator_id: parseInt(generatorId),
         energy: Object.entries(expectedResponse[generatorId].energy).map(
-          ([date, amount]) => [date, amount]
+          ([date, amount]) => {
+            return {
+              date,
+              amount,
+            };
+          }
         ),
       };
     });
@@ -1322,8 +1350,6 @@ describe('GET /retailer/suburbs', () => {
         state: 'Victoria',
         latitude: '100', // Use string for latitude
         longitude: '100', // Use string for longitude
-        createdAt: expect.any(String),
-        updatedAt: expect.any(String),
       }),
       expect.objectContaining({
         id: '2', // Use string for ID
@@ -1332,9 +1358,536 @@ describe('GET /retailer/suburbs', () => {
         state: 'Victoria',
         latitude: '105', // Use string for latitude
         longitude: '100', // Use string for longitude
-        createdAt: expect.any(String),
-        updatedAt: expect.any(String),
       }),
     ]);
+  });
+});
+
+describe('GET /retailer/reports', () => {
+  let sequelize: Sequelize;
+  let appInstance: Application;
+
+  beforeAll(async () => {
+    sequelize = await connectToTestDb();
+    appInstance = app(sequelize);
+
+    // Create mock suburbs
+    await appInstance.get('models').Suburb.bulkCreate([
+      {
+        id: 1,
+        name: 'Test Suburb 1',
+        postcode: 3000,
+        state: 'Victoria',
+        latitude: 100,
+        longitude: 100,
+      },
+      {
+        id: 2,
+        name: 'Test Suburb 2',
+        postcode: 3001,
+        state: 'Victoria',
+        latitude: 105,
+        longitude: 100,
+      },
+    ]);
+
+    // Create mock reports
+    await appInstance.get('models').Report.bulkCreate([
+      {
+        id: 1,
+        start_date: '2024-04-17T09:06:41Z',
+        end_date: '2024-04-17T09:06:41Z',
+        suburb_id: 2,
+        consumer_id: null,
+      },
+      {
+        id: 2,
+        start_date: '2024-04-18T09:06:41Z',
+        end_date: '2024-04-18T09:06:41Z',
+        suburb_id: 1,
+        consumer_id: null,
+      },
+    ]);
+  });
+
+  afterAll(async () => {
+    await sequelize.close();
+    await dropTestDb(sequelize);
+  });
+
+  it('should return a list of existing reports', async () => {
+    const response = await request(appInstance).get('/retailer/reports');
+
+    expect(response.status).toBe(200);
+    expect(response.body.reports.length).toBe(2);
+    expect(response.body.reports).toEqual([
+      expect.objectContaining({
+        id: 1,
+        startDate: '2024-04-17T09:06:41.000Z',
+        endDate: '2024-04-17T09:06:41.000Z',
+        for: {
+          suburb_id: 2,
+          consumer_id: null,
+        },
+      }),
+      expect.objectContaining({
+        id: 2,
+        startDate: '2024-04-18T09:06:41.000Z',
+        endDate: '2024-04-18T09:06:41.000Z',
+        for: {
+          suburb_id: 1,
+          consumer_id: null,
+        },
+      }),
+    ]);
+  });
+});
+
+describe('POST /retailer/reports', () => {
+  let sequelize: Sequelize;
+  let appInstance: Application;
+
+  beforeAll(async () => {
+    sequelize = await connectToTestDb();
+    appInstance = app(sequelize);
+
+    // Create mock suburb
+    await appInstance.get('models').Suburb.create({
+      id: 1,
+      name: 'Test Suburb 1',
+      postcode: 3000,
+      state: 'Victoria',
+      latitude: 100,
+      longitude: 100,
+    });
+
+    // Create mock consumer
+    await appInstance.get('models').Consumer.create({
+      id: 1,
+      street_address: '10 Test Street Melbourne Victoria 3000',
+      high_priority: false,
+      suburb_id: 1,
+    });
+  });
+
+  afterAll(async () => {
+    await sequelize.close();
+    await dropTestDb(sequelize);
+  });
+
+  it('should generate a new retailer report', async () => {
+    const START_DATE = '2024-04-01T09:00:00Z';
+    const END_DATE = '2024-04-30T09:00:00Z';
+    const SUBURB_ID = 1;
+
+    const response = await request(appInstance)
+      .post('/retailer/reports')
+      .send({
+        start_date: START_DATE,
+        end_date: END_DATE,
+        for: {
+          consumer_id: null,
+          suburb_id: SUBURB_ID,
+        },
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ id: expect.any(Number) });
+  });
+
+  it('should generate a new consumer report', async () => {
+    const START_DATE = '2024-04-01T09:00:00Z';
+    const END_DATE = '2024-04-30T09:00:00Z';
+    const CONSUMER_ID = 1;
+
+    const response = await request(appInstance)
+      .post('/retailer/reports')
+      .send({
+        start_date: START_DATE,
+        end_date: END_DATE,
+        for: {
+          consumer_id: CONSUMER_ID,
+          suburb_id: null,
+        },
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ id: expect.any(Number) });
+  });
+
+  it('should return error 400 if start date is missing', async () => {
+    const END_DATE = '2024-04-30T09:00:00Z';
+    const SUBURB_ID = 1;
+
+    const response = await request(appInstance)
+      .post('/retailer/reports')
+      .send({
+        end_date: END_DATE,
+        for: {
+          suburb_id: SUBURB_ID,
+          consumer_id: null,
+        },
+      });
+
+    expect(response.status).toBe(400);
+  });
+
+  it('should return error 400 if end date is missing', async () => {
+    const START_DATE = '2024-04-01T09:00:00Z';
+    const SUBURB_ID = 1;
+
+    const response = await request(appInstance)
+      .post('/retailer/reports')
+      .send({
+        start_date: START_DATE,
+        for: {
+          suburb_id: SUBURB_ID,
+          consumer_id: null,
+        },
+      });
+
+    expect(response.status).toBe(400);
+  });
+
+  it('should return error 400 if for object is missing', async () => {
+    const START_DATE = '2024-04-01T09:00:00Z';
+    const END_DATE = '2024-04-30T09:00:00Z';
+
+    const response = await request(appInstance).post('/retailer/reports').send({
+      start_date: START_DATE,
+      end_date: END_DATE,
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it('should return error 400 if both suburb_id and consumer_id are provided', async () => {
+    const START_DATE = '2024-04-01T09:00:00Z';
+    const END_DATE = '2024-04-30T09:00:00Z';
+    const SUBURB_ID = 1;
+    const CONSUMER_ID = 1;
+
+    const response = await request(appInstance)
+      .post('/retailer/reports')
+      .send({
+        start_date: START_DATE,
+        end_date: END_DATE,
+        for: {
+          suburb_id: SUBURB_ID,
+          consumer_id: CONSUMER_ID,
+        },
+      });
+
+    expect(response.status).toBe(400);
+  });
+});
+
+describe('GET /retailer/reports/:id Suburb', () => {
+  let sequelize: Sequelize;
+  let appInstance: Application;
+  const testSuburbs = [
+    {
+      id: 0,
+      name: 'Test Suburb 1',
+      postcode: 3000,
+      state: 'Victoria',
+      latitude: 100,
+      longitude: 100,
+    },
+    {
+      id: 1,
+      name: 'Test Suburb 2',
+      postcode: 3001,
+      state: 'Victoria',
+      latitude: 105,
+      longitude: 100,
+    },
+    {
+      id: 2,
+      name: 'Test Suburb 3',
+      postcode: 3002,
+      state: 'Victoria',
+      latitude: 115,
+      longitude: 110,
+    },
+  ];
+  const testSuburbConsumptions = [{}];
+  const testSellingPrice = [
+    { date: '2024-02-02T00:00:00.000Z', amount: 1 },
+    { date: '2024-02-03T00:00:00.000Z', amount: 1 },
+    { date: '2024-02-04T00:00:00.000Z', amount: 1 },
+    { date: '2024-02-05T00:00:00.000Z', amount: 1 },
+    { date: '2024-02-06T00:00:00.000Z', amount: 1 },
+    { date: '2024-02-07T00:00:00.000Z', amount: 1 },
+  ];
+  const testSpotPrice = [
+    { date: '2024-02-02T00:00:00.000Z', amount: 1 },
+    { date: '2024-02-03T00:00:00.000Z', amount: 1 },
+    { date: '2024-02-04T00:00:00.000Z', amount: 1 },
+    { date: '2024-02-05T00:00:00.000Z', amount: 1 },
+    { date: '2024-02-06T00:00:00.000Z', amount: 1 },
+    { date: '2024-02-07T00:00:00.000Z', amount: 1 },
+  ];
+  const testGeneratorType = [
+    {
+      id: 0,
+      category: 'Brown Coal',
+      renewable: false,
+    },
+    {
+      id: 1,
+      category: 'Solar',
+      renewable: true,
+    },
+    {
+      id: 2,
+      category: 'Wind',
+      renewable: true,
+    },
+  ];
+  const testEnergyGenerator = [
+    {
+      id: 0,
+      name: 'Coal Generator',
+      suburb_id: 1,
+      generator_type_id: 0,
+    },
+    {
+      id: 1,
+      name: 'Solar Generator 1',
+      suburb_id: 1,
+      generator_type_id: 1,
+    },
+    {
+      id: 2,
+      name: 'Solar Generator 2',
+      suburb_id: 1,
+      generator_type_id: 1,
+    },
+    {
+      id: 3,
+      name: 'Wind Generator',
+      suburb_id: 1,
+      generator_type_id: 2,
+    },
+    // generator that shouldnt be included in any reports
+    {
+      id: 4,
+      name: 'Extra Wind Generator',
+      suburb_id: 2,
+      generator_type_id: 2,
+    },
+  ];
+  const testEnergyGeneration = [
+    //coal energy
+    { date: '2024-02-02T00:00:00.000Z', amount: 1, energy_generator_id: 0 },
+    { date: '2024-02-03T00:00:00.000Z', amount: 1, energy_generator_id: 0 },
+    { date: '2024-02-04T00:00:00.000Z', amount: 1, energy_generator_id: 0 },
+    { date: '2024-02-05T00:00:00.000Z', amount: 1, energy_generator_id: 0 },
+    { date: '2024-02-06T00:00:00.000Z', amount: 1, energy_generator_id: 0 },
+    { date: '2024-02-07T00:00:00.000Z', amount: 1, energy_generator_id: 0 },
+    //outside of range energy
+    { date: '2024-05-06T00:00:00.000Z', amount: 1, energy_generator_id: 0 },
+    { date: '2024-05-07T00:00:00.000Z', amount: 1, energy_generator_id: 0 },
+
+    //solar 1 energy
+    { date: '2024-02-02T00:00:00.000Z', amount: 1, energy_generator_id: 1 },
+    { date: '2024-02-03T00:00:00.000Z', amount: 1, energy_generator_id: 1 },
+    { date: '2024-02-04T00:00:00.000Z', amount: 1, energy_generator_id: 1 },
+    { date: '2024-02-05T00:00:00.000Z', amount: 1, energy_generator_id: 1 },
+    { date: '2024-02-06T00:00:00.000Z', amount: 1, energy_generator_id: 1 },
+    { date: '2024-02-07T00:00:00.000Z', amount: 1, energy_generator_id: 1 },
+    //outside of range energy
+    { date: '2024-05-06T00:00:00.000Z', amount: 1, energy_generator_id: 1 },
+    { date: '2024-05-07T00:00:00.000Z', amount: 1, energy_generator_id: 1 },
+
+    // solar 2 energy
+    { date: '2024-02-02T00:00:00.000Z', amount: 1, energy_generator_id: 2 },
+    { date: '2024-02-03T00:00:00.000Z', amount: 1, energy_generator_id: 2 },
+    { date: '2024-02-04T00:00:00.000Z', amount: 1, energy_generator_id: 2 },
+    { date: '2024-02-05T00:00:00.000Z', amount: 1, energy_generator_id: 2 },
+    { date: '2024-02-06T00:00:00.000Z', amount: 1, energy_generator_id: 2 },
+    { date: '2024-02-07T00:00:00.000Z', amount: 1, energy_generator_id: 2 },
+
+    // wind energy
+    { date: '2024-02-02T00:00:00.000Z', amount: 1, energy_generator_id: 3 },
+    { date: '2024-02-03T00:00:00.000Z', amount: 1, energy_generator_id: 3 },
+    { date: '2024-02-04T00:00:00.000Z', amount: 1, energy_generator_id: 3 },
+    { date: '2024-02-05T00:00:00.000Z', amount: 1, energy_generator_id: 3 },
+    { date: '2024-02-06T00:00:00.000Z', amount: 1, energy_generator_id: 3 },
+    { date: '2024-02-07T00:00:00.000Z', amount: 1, energy_generator_id: 3 },
+
+    // extra wind energy that shouldn't appear in any reports
+    { date: '2024-02-02T00:00:00.000Z', amount: 1, energy_generator_id: 4 },
+    { date: '2024-02-03T00:00:00.000Z', amount: 1, energy_generator_id: 4 },
+    { date: '2024-02-04T00:00:00.000Z', amount: 1, energy_generator_id: 4 },
+    { date: '2024-02-05T00:00:00.000Z', amount: 1, energy_generator_id: 4 },
+    { date: '2024-02-06T00:00:00.000Z', amount: 1, energy_generator_id: 4 },
+    { date: '2024-02-07T00:00:00.000Z', amount: 1, energy_generator_id: 4 },
+  ];
+
+  const testReports = [
+    // This report's suburb will have no energy but will have profit
+    {
+      id: '0',
+      start_date: '2024-02-01T00:00:00.000Z',
+      end_date: '2024-03-01T00:00:00.000Z',
+      suburb_id: '0',
+      consumer_id: null,
+    },
+    // This report's dates will have no data
+    {
+      id: '1',
+      start_date: '2024-01-01T00:00:00.000Z',
+      end_date: '2024-02-01T00:00:00.000Z',
+      suburb_id: '1',
+      consumer_id: null,
+    },
+    // This report will have data
+    {
+      id: '2',
+      start_date: '2024-02-01T00:00:00.000Z',
+      end_date: '2024-03-01T00:00:00.000Z',
+      suburb_id: '1',
+      consumer_id: null,
+    },
+  ];
+
+  beforeAll(async () => {
+    sequelize = await connectToTestDb();
+    appInstance = app(sequelize);
+    const models = appInstance.get('models');
+
+    // Create mock data
+    await models.Suburb.bulkCreate(testSuburbs);
+    // await models.SuburbConsumption.bulkCreate(testSuburbConsumptions);
+
+    await models.SellingPrice.bulkCreate(testSellingPrice);
+    await models.SpotPrice.bulkCreate(testSpotPrice);
+
+    await models.GeneratorType.bulkCreate(testGeneratorType);
+    await models.EnergyGenerator.bulkCreate(testEnergyGenerator);
+    await models.EnergyGeneration.bulkCreate(testEnergyGeneration);
+
+    await models.Report.bulkCreate(testReports);
+  });
+
+  afterAll(async () => {
+    await sequelize.close();
+    await dropTestDb(sequelize);
+  });
+
+  it('Should return no report found', async () => {
+    const response = await request(appInstance).get('/retailer/reports/10');
+
+    expect(response.status).toBe(404);
+  });
+
+  it('Should return report with no energy', async () => {
+    const testReport = testReports[0];
+    const response = await request(appInstance).get(
+      `/retailer/reports/${testReport.id}`
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      id: testReport.id,
+      start_date: testReport.start_date,
+      end_date: testReport.end_date,
+      for: {
+        suburb_id: testReport.suburb_id,
+        consumer_id: testReport.consumer_id,
+      },
+      energy: [],
+      selling_price: testSellingPrice,
+      spot_price: testSpotPrice,
+      sources: [],
+    });
+  });
+
+  it('Should return a full report', async () => {
+    const testReport = testReports[2];
+    const response = await request(appInstance).get(
+      `/retailer/reports/${testReport.id}`
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      id: testReport.id,
+      start_date: testReport.start_date,
+      end_date: testReport.end_date,
+      for: {
+        suburb_id: testReport.suburb_id,
+        consumer_id: testReport.consumer_id,
+      },
+      energy: [],
+      selling_price: testSellingPrice,
+      spot_price: testSpotPrice,
+      sources: [
+        {
+          category: 'Brown Coal',
+          renewable: false,
+          percentage: 0.25,
+          total: 120,
+          count: 6,
+        },
+        {
+          category: 'Solar',
+          renewable: true,
+          percentage: 0.5,
+          total: 240,
+          count: 12,
+        },
+        {
+          category: 'Wind',
+          renewable: true,
+          percentage: 0.25,
+          total: 120,
+          count: 6,
+        },
+      ],
+    });
+  });
+
+  it.only('Should split the events correctly', async () => {
+    const testEvents = [
+      { date: moment.utc('2024-02-02T00:00:00.000Z'), amount: 1 },
+      { date: moment.utc('2024-02-03T00:00:00.000Z'), amount: 1 },
+      { date: moment.utc('2024-02-04T00:00:00.000Z'), amount: 2 },
+      { date: moment.utc('2024-02-05T00:00:00.000Z'), amount: 2 },
+      { date: moment.utc('2024-02-06T00:00:00.000Z'), amount: 1 },
+      { date: moment.utc('2024-02-07T00:00:00.000Z'), amount: 1 },
+    ];
+
+    let results = splitEvents(
+      testEvents,
+      moment.utc('2024-02-01T00:00:00.000Z'),
+      moment.utc('2024-02-08T00:00:00.000Z'),
+      8
+    );
+    console.log(results);
+    
+    console.log();
+  });
+
+  it('Should return empty report', async () => {
+    const testReport = testReports[1];
+    const response = await request(appInstance).get(
+      `/retailer/reports/${testReport.id}`
+    );
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      id: testReport.id,
+      start_date: testReport.start_date,
+      end_date: testReport.end_date,
+      for: {
+        suburb_id: testReport.suburb_id,
+        consumer_id: testReport.consumer_id,
+      },
+      energy: [],
+      selling_price: [],
+      spot_price: [],
+      sources: [],
+    });
   });
 });
