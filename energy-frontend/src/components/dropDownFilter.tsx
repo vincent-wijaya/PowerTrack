@@ -2,12 +2,19 @@
 import React from 'react';
 
 interface DropdownProps {
-  onChange: (value: string) => void;
+  onChange: (value: DropdownOption) => void;
   chartTitle: String;
 }
 
+export type DropdownOption =
+  | 'last_year'
+  | 'last_six_months'
+  | 'last_month'
+  | 'last_week'
+  | 'last_24_hours';
+
 const Dropdown: React.FC<DropdownProps> = ({ onChange, chartTitle }) => {
-  const options = [
+  const options: { label: string; value: DropdownOption }[] = [
     { label: 'Last year', value: 'last_year' },
     { label: 'Last 6 months', value: 'last_six_months' },
     { label: 'Last month', value: 'last_month' },
@@ -16,7 +23,7 @@ const Dropdown: React.FC<DropdownProps> = ({ onChange, chartTitle }) => {
   ];
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    onChange(e.target.value);
+    onChange(e.target.value as DropdownOption);
   };
 
   return (

@@ -708,6 +708,20 @@ router.get('/suburbs', async (req, res) => {
   }
 });
 
+router.get('/suburbs/:id', async (req, res) => {
+  const { sequelize, Suburb } = req.app.get('models') as DbModelType;
+  const id = req.params.id;
+  try {
+    const suburb = await Suburb.findOne({ where: { id: id } });
+    res.send(suburb);
+  } catch (error) {
+    res.status(500).send({
+      error: 'An error occurred while fetching suburbs',
+    });
+  }
+});
+
+
 /**
  * GET /retailer/reports
  *

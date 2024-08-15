@@ -1,9 +1,7 @@
 'use client';
-import React from "react";
-import useSWR from "swr";
+import React, { useState, useEffect } from "react";
 import Table from "./table"; // Adjust the import path according to your project structure
-import { fetcher } from "@/utils"; // Ensure fetcher is correctly defined in your utils
-import { POLLING_RATE } from "@/config"; // Ensure POLLING_RATE is defined in your config
+import fetchReports from "@/api/getReports";
 
 export type ReportsFetchType = {
   start_date: string;
@@ -22,28 +20,39 @@ interface ReportItem {
 }
 
 export default function ReportsTable() {
-  const { data, error } = useSWR<ReportsFetchType[]>(
-    `${process.env.NEXT_PUBLIC_API_URL}/retailer/reports`,
-    fetcher,
-    {
-      refreshInterval: POLLING_RATE,
+  const [data, setData] = useState<ReportItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const reports = await fetchReports();
+        // Transform data for the table
+        const transformedData: ReportItem[] = reports.map((report) => ({
+          start_date: report.start_date,
+          end_date: report.end_date,
+          suburb_id: report.for.suburb_id,
+          consumer_id: report.for.consumer_id,
+        }));
+        setData(transformedData);
+      } catch (err) {
+        console.error("Failed to fetch reports:", err);
+        setError("Failed to fetch reports");
+      } finally {
+        setLoading(false);
+      }
     }
-  );
-  console.log(data)
-  if (error) return <div className="text-white">Failed to load data</div>;
-  if (!data) return <div className="text-white">Loading...</div>;
 
-  // Transform data for the table
-  const transformedData: ReportItem[] = data.map((report) => ({
-    start_date: report.start_date,
-    end_date: report.end_date,
-    suburb_id: report.for.suburb_id,
-    consumer_id: report.for.consumer_id,
-  }));
+    loadData();
+  }, []); // Empty dependency array means this runs once on mount
 
-  const headers = ["start_date", "end_date", "suburb_id", "consumer_id"];
+  if (loading) return <div className="text-white">Loading...</div>;
+  if (error) return <div className="text-white">Error: {error}</div>;
+
+  const headers = ["suburb_id", "consumer_id", "start_date", "end_date"];
 
   return (
-    <Table columns={headers} data={transformedData} link={'/main/individualReport'} />
+    <Table columns={headers} data={data} link={'/main/individualReport'} />
   );
 }
