@@ -1073,5 +1073,173 @@ function rollupEvents(events: [{ date: Moment; amount: number }]) {
     0
   );
 }
+/**
+ *
+ * @param events Expects to be sorted from oldest to newest
+ * @param startDate the first date of the range
+ * @param endDate the last date of the range
+ */
+function splitEvents(
+  events: { amount: number; date: Moment }[],
+  startDate: Moment,
+  endDate: Moment,
+  interval: number
+) {
+  if (events.length === 0) {
+    return [];
+  }
+  if (events.length === 1) {
+  }
+  let results = [];
+
+  events = Array(...events); // Make a new array so we dont mutate the original one
+  events.reverse(); // flip so newest event first, and oldest event last. this means we can use it as a stack
+  //get current rate
+  let pastEvent = events.pop()!;
+  let intervalStart = pastEvent.date; //the date we are starting at
+  let intervalEnd = pastEvent.date.clone().add(interval, 'hours');
+
+  let nextEvent = events.at(-1)!;
+
+  let changePoint = pastEvent.date
+    .clone()
+    .add(nextEvent.date.diff(pastEvent.date, 'ms') / 2, 'ms');
+  //handle interval overlapping end date
+  while (intervalEnd <= endDate && events.length > 0) {
+    //while we still have events left and we have at least one interval left
+
+    if (changePoint > intervalEnd) {
+      //Change point is outside this interval so we can just finish
+      // The amount wont change so we can just generate a new entry
+      results.push({
+        start_date: intervalStart,
+        end_date: intervalEnd,
+        total: interval * pastEvent.amount,
+      });
+
+      // move to the next interval
+      intervalStart = intervalEnd;
+      intervalEnd = intervalStart.clone().add(interval, 'hours');
+      continue;
+    }
+
+    if (changePoint == intervalEnd) {
+      results.push({
+        start_date: intervalStart,
+        end_date: intervalEnd,
+        total: interval * pastEvent.amount,
+      });
+
+      // move to the next interval
+      intervalStart = intervalEnd;
+      intervalEnd = intervalStart.clone().add(interval, 'hours');
+
+      // set the next change point
+      if (events.length == 0) {
+        // if we have no more events, then we should finish this interval,
+        // then we update the event and make the next change point after the end date
+        pastEvent = nextEvent;
+        changePoint = endDate.clone().add(1, 'h');
+        break;
+      } else {
+        pastEvent = nextEvent;
+        nextEvent = events.pop()!;
+        changePoint = pastEvent.date
+          .clone()
+          .add(nextEvent.date.diff(pastEvent.date, 'ms') / 2, 'ms');
+        continue;
+      }
+    }
+
+    //change point is within this interval
+
+    let intervalTotal = 0;
+    let pointer: Moment = intervalStart;
+    while (changePoint <= intervalEnd) {
+      // go from pointer to change
+      intervalTotal +=
+        changePoint.diff(pointer, 'hours', true) * pastEvent.amount;
+      // update pointer to old change
+      pointer = changePoint;
+
+      // calc a new change
+      if (events.length == 0) {
+        // We have no more events, but we know we arent in the final interval
+        // so we just make the change point to be after the end date to simulate the rate not changing
+        pastEvent = nextEvent;
+        changePoint = endDate.clone().add(1, 'h');
+        break;
+      } else {
+        pastEvent = nextEvent;
+        nextEvent = events.pop()!;
+        changePoint = pastEvent.date
+          .clone()
+          .add(nextEvent.date.diff(pastEvent.date, 'ms') / 2, 'ms');
+      }
+    }
+
+    // now we just need to finish this interval
+    // go from pointer to interval end
+    intervalTotal +=
+      intervalEnd.diff(pointer, 'hours', true) * pastEvent.amount;
+
+    // and then we create the event
+    results.push({
+      start_date: intervalStart,
+      end_date: intervalEnd,
+      total: intervalTotal,
+    });
+
+    // move to the next interval
+    intervalStart = intervalEnd;
+    intervalEnd = intervalStart.clone().add(interval, 'hours');
+  }
+  //we have either run out of events, or the final interval has reached past the end date
+
+  //if we have no more events, just make intervals until we are on the last interval
+  if (events.length == 0) {
+    while (intervalEnd < endDate) {
+      // and then we create the event
+      results.push({
+        start_date: intervalStart,
+        end_date: intervalEnd,
+        total: interval * pastEvent.amount,
+      });
+
+      // move to the next interval
+      intervalStart = intervalEnd;
+      intervalEnd = intervalStart.clone().add(interval, 'hours');
+    }
+  }
+
+  //we have handled any remaining intervals
+
+  //if we have run out of intervals and it lined up right, we can just exit here
+  if (intervalEnd == endDate) {
+    //TODO better handling of equality
+    return results;
+  }
+
+  // we have a partial interval remaining so add it and return
+  results.push({
+    start_date: intervalStart,
+    end_date: intervalEnd,
+    total: endDate.diff(intervalStart, 'h', true) * pastEvent.amount,
+  });
+  return results;
+}
 
 export default router;
+
+// Only export these functions if the node enviornment is set to testing
+export let exportsForTesting: {
+  splitEvents: (
+    events: { amount: number; date: Moment }[],
+    startDate: Moment,
+    endDate: Moment,
+    interval: number
+  ) => { start_date: Moment; end_date: Moment; total: number }[];
+};
+if (process.env.NODE_ENV === 'test') {
+  exportsForTesting = { splitEvents };
+}

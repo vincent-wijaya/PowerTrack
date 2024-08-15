@@ -1,9 +1,14 @@
+// Set node enviornment to Test
+process.env.NODE_ENV = 'test';
+
 import { Application } from 'express';
 import request from 'supertest';
 import { Sequelize } from 'sequelize';
 import app from '../app';
 import { connectToTestDb, dropTestDb } from './testDb';
 import moment from 'moment';
+import { exportsForTesting } from '../routes/retailerRoute';
+const { splitEvents } = exportsForTesting;
 
 describe('GET /retailer/consumption', () => {
   let sequelize: Sequelize;
@@ -1842,6 +1847,27 @@ describe('GET /retailer/reports/:id Suburb', () => {
         },
       ],
     });
+  });
+
+  it.only('Should split the events correctly', async () => {
+    const testEvents = [
+      { date: moment.utc('2024-02-02T00:00:00.000Z'), amount: 1 },
+      { date: moment.utc('2024-02-03T00:00:00.000Z'), amount: 1 },
+      { date: moment.utc('2024-02-04T00:00:00.000Z'), amount: 2 },
+      { date: moment.utc('2024-02-05T00:00:00.000Z'), amount: 2 },
+      { date: moment.utc('2024-02-06T00:00:00.000Z'), amount: 1 },
+      { date: moment.utc('2024-02-07T00:00:00.000Z'), amount: 1 },
+    ];
+
+    let results = splitEvents(
+      testEvents,
+      moment.utc('2024-02-01T00:00:00.000Z'),
+      moment.utc('2024-02-08T00:00:00.000Z'),
+      8
+    );
+    console.log(results);
+    
+    console.log();
   });
 
   it('Should return empty report', async () => {
