@@ -17,7 +17,7 @@ type ProfitMarginFetchType = {
   selling_prices: { date: string; amount: number }[];
 };
 
-export default function RegionalDashboard({ params }: { params: { id: string } }) {
+export default function RegionalDashboard({ params }: { params: { id: number } }) {
   const { data: profitMarginFetch }: { data: ProfitMarginFetchType } = useSWR(
     `${process.env.NEXT_PUBLIC_API_URL}/retailer/profitMargin`,
     fetcher,
@@ -44,7 +44,7 @@ export default function RegionalDashboard({ params }: { params: { id: string } }
     <div className="grid grid-cols-2 grid-rows-[min-content_1fr_1fr_min-content] gap-3 grid-flow-col">
       <div>
         <div className="flex justify-between items-center mb-3">
-          <PageHeading title={`Region - ${decodeURI(params.id)}`} />
+          <PageHeading title={`Region - ${decodeURI((params.id.toString()))}`} />
           <div className="text-red-600 font-semibold text-xl">Power Outage</div>
         </div>
         <div className="flex justify-between gap-3">
@@ -57,7 +57,7 @@ export default function RegionalDashboard({ params }: { params: { id: string } }
 
       <EnergyChart />
       <ProfitChart />
-      <WarningTable />
+      <WarningTable suburb_id={params.id}/>
     </div>
   );
 }

@@ -8,7 +8,6 @@ interface TableProps {
 }
 
 export default function Table({ columns, data, link }: TableProps) {
-  
   // Check if link is true, if so, add 'Action' header
   const updatedColumns = link ? [...columns, "Action"] : columns;
 

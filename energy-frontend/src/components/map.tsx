@@ -78,13 +78,11 @@ export default function Map(props: { className?: string }) {
           if (!response.ok) {
             throw new Error('Failed to fetch combined JSON data');
           }
-          const suburbs: FeatureCollection = await response.json();
-          console.log(suburbs);
-
+          const suburbs : FeatureCollection = await response.json();
+  
           // Map over the energy consumption data to filter features from combined JSON
           const geoJSONPromises = body.energy.map(async (item) => {
             // Find the feature based on suburb_id
-            console.log(suburbs.features);
             const feature = suburbs.features.find(
               (f) => f.properties.id === item.suburb_id.toString()
             );
