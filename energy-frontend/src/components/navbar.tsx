@@ -18,7 +18,7 @@ export default function Navbar({ isOpen }: InfoBoxProps) {
   return (
     <>
       {!isOpen && ( // Only render the Navbar if isHidden is false
-        <div className="h-screen inline-flex flex-col justify-between items-start border-navbarbg bg-navbarbg">
+        <div className="flex  flex-col justify-between items-start border-navbarbg bg-navbarbg">
           {/* start of top of search bar */}
           <div className="flex flex-col items-start self-stretch">
             {/* start of top of profile */}
