@@ -3,6 +3,7 @@ export default async function fetchReports() {
     // Simulated data for demonstration purposes
     const reports = [
       {
+        id: 1,
         start_date: "2024-04-17T09:06:41Z",
         end_date: "2024-04-17T09:06:41Z",
         for: {
@@ -11,6 +12,7 @@ export default async function fetchReports() {
         },
       },
       {
+        id: 2,
         start_date: "2024-05-17T09:06:41Z",
         end_date: "2024-05-17T09:06:41Z",
         for: {

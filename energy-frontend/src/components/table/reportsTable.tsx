@@ -5,6 +5,7 @@ import { DateTime } from 'luxon';
 import { POLLING_RATE } from '@/config';
 import { fetcher } from '@/utils';
 import useSWR from "swr";
+import fetchReports from "@/api/getReports";
 
 type ReportsFetchType = {
   id: string;
@@ -27,15 +28,21 @@ interface ReportItem {
 export default function ReportsTable() {
   // Use SWR for data fetching
   const { data, error } = useSWR<{ reports: ReportsFetchType[] }>(
-    `${process.env.NEXT_PUBLIC_API_URL}/retailer/reports`,
-    fetcher,
-    { refreshInterval: POLLING_RATE }
+    //`${process.env.NEXT_PUBLIC_API_URL}/retailer/reports`,
+    //fetcher,
+    //{ refreshInterval: POLLING_RATE }
+    'reports',
+    fetchReports,
+    {refreshInterval : 0}
   );
 
   console.log("REPORTS", data)
   // Transform the fetched data for the table
-  const transformedData: ReportItem[] = data && Array.isArray(data.reports)
-    ? data.reports.map((report) => ({
+  // TODO, replace data w/ data.reports in lines 44 & 45
+
+
+  const transformedData: ReportItem[] = data && Array.isArray(data)
+    ? data.map((report) => ({
         id: report.id,
         start_date: DateTime.fromISO(report.start_date).toFormat('D'),
         end_date: DateTime.fromISO(report.end_date).toFormat('D'),
