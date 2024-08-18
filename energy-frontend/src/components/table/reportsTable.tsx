@@ -1,9 +1,13 @@
 'use client';
-import React, { useState, useEffect } from "react";
+import React from "react";
 import Table from "./table"; // Adjust the import path according to your project structure
-import fetchReports from "@/api/getReports";
+import { DateTime } from 'luxon';
+import { POLLING_RATE } from '@/config';
+import { fetcher } from '@/utils';
+import useSWR from "swr";
 
-export type ReportsFetchType = {
+type ReportsFetchType = {
+  id: string;
   start_date: string;
   end_date: string;
   for: {
@@ -13,6 +17,7 @@ export type ReportsFetchType = {
 };
 
 interface ReportItem {
+  id: string;
   start_date: string;
   end_date: string;
   suburb_id: number;
@@ -20,39 +25,31 @@ interface ReportItem {
 }
 
 export default function ReportsTable() {
-  const [data, setData] = useState<ReportItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Use SWR for data fetching
+  const { data, error } = useSWR<{ reports: ReportsFetchType[] }>(
+    `${process.env.NEXT_PUBLIC_API_URL}/retailer/reports`,
+    fetcher,
+    { refreshInterval: POLLING_RATE }
+  );
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const reports = await fetchReports();
-        // Transform data for the table
-        const transformedData: ReportItem[] = reports.map((report) => ({
-          start_date: report.start_date,
-          end_date: report.end_date,
-          suburb_id: report.for.suburb_id,
-          consumer_id: report.for.consumer_id,
-        }));
-        setData(transformedData);
-      } catch (err) {
-        console.error("Failed to fetch reports:", err);
-        setError("Failed to fetch reports");
-      } finally {
-        setLoading(false);
-      }
-    }
+  console.log("REPORTS", data)
+  // Transform the fetched data for the table
+  const transformedData: ReportItem[] = data && Array.isArray(data.reports)
+    ? data.reports.map((report) => ({
+        id: report.id,
+        start_date: DateTime.fromISO(report.start_date).toFormat('D'),
+        end_date: DateTime.fromISO(report.end_date).toFormat('D'),
+        suburb_id: report.for.suburb_id,
+        consumer_id: report.for.consumer_id,
+      }))
+    : [];
 
-    loadData();
-  }, []); // Empty dependency array means this runs once on mount
+  if (!data && !error) return <div className="text-white">Loading...</div>;
+  if (error) return <div className="text-white">Error: {error.message}</div>;
 
-  if (loading) return <div className="text-white">Loading...</div>;
-  if (error) return <div className="text-white">Error: {error}</div>;
-
-  const headers = ["suburb_id", "consumer_id", "start_date", "end_date"];
+  const headers = ["id", "Suburb ID", "consumer ID", "Start Date", "End Date"];
 
   return (
-    <Table columns={headers} data={data} link={'/main/individualReport'} />
+    <Table columns={headers} data={transformedData} link={'/main/individualReport'} />
   );
 }

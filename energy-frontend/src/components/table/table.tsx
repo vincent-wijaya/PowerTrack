@@ -41,10 +41,10 @@ export default function Table({ columns, data, link }: TableProps) {
             ))}
             {link && (
               <td
-                className="px-3 py-8 items-start gap-8 flex-1 self-stretch border-stroke border-r-2 border-b-2 bg-purple"
+                className="px-3 py-8 items-start gap-8 flex-1 self-stretch border-stroke border-r-2 border-b-2"
                 key={`action-${rowIndex}`}
               >
-                <div className="font-inter text-white">
+                <div className="font-inter text-center text-white bg-purple p-2 rounded-lg">
                     <Link href={`${link}/${row[columns[0].toLowerCase()]}` }>
                     View
                     </Link>
