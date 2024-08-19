@@ -13,7 +13,9 @@ import { POLLING_RATE } from "@/config";
 import { fetcher } from "@/utils";
 import { DateTime } from 'luxon';
 import { useState, useEffect, useMemo } from 'react';
+import { exportToPDF } from '@/utils';  // Import the utility function
 import useSWR from 'swr';
+
 
 export default function IndividualReport({
   params,
@@ -38,14 +40,18 @@ export default function IndividualReport({
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/retailer/suburbs/${data.id}`)
       .then((suburbData) => console.log(suburbData));
   }, [data]);
-
+  console.log("data", data)
+  
   if (error) return <div>Error loading report.</div>;
   if (!data) return <div className="text-white">Loading...</div>;
   if (data === null) return <div>No report found.</div>;
+  
   return (
-    <>
+    <div className="bg-bgmain" id="contentToExport">
       <PageHeading title={`Report ${data.id}`} />
-
+      <div className="text-white py-2">
+        {DateTime.fromISO(data.start_date).toFormat('D')} - {DateTime.fromISO(data.end_date).toFormat('D')}
+      </div>
       <div className="grid grid-flow-col grid-cols-2 gap-3">
         <div className="flex flex-col gap-3">
           <div className="flex justify-between gap-3 h-[128px]">
@@ -58,6 +64,9 @@ export default function IndividualReport({
           <InfoBox title={spendage} description="Money Spent on energy"/>
           </div>
           <EnergySourceBreakdown energySources={data.sources} />
+          <button onClick={() => exportToPDF('contentToExport')} className="p-4 w-full h-1/4 bg-purple text-white text-center rounded-lg mt-4">
+            Export to PDF
+          </button>
           </div>
         <div className="flex flex-col gap-3">
           <EnergyChart className=""/>
@@ -94,7 +103,7 @@ export default function IndividualReport({
           </div>
         </div>
       </div> */}
-    </>
+    </div>
   );
 }
 
