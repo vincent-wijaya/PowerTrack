@@ -28,12 +28,11 @@ export default function IndividualReport({
   useEffect(() => {
     if (!data) return;
     fetch(`${process.env.NEXT_PUBLIC_API_URL}/retailer/suburbs/${data.id}`)
-      .then((res) => res.json())
       .then((suburbData) => console.log(suburbData));
   }, [data]);
 
   if (error) return <div>Error loading report.</div>;
-  if (!data) return <div>Loading...</div>;
+  if (!data) return <div className="text-white">Loading...</div>;
   if (data === null) return <div>No report found.</div>;
   return (
     <div className="grid grid-cols-2 grid-rows-[min-content_min-content_1fr_1fr] gap-3 grid-flow-col">
