@@ -6,6 +6,7 @@ import { POLLING_RATE } from '@/config';
 import { fetcher } from '@/utils';
 import useSWR from "swr";
 import fetchReports from "@/api/getReports";
+import PageHeading from "../pageHeading";
 
 type ReportsFetchType = {
   id: string;
@@ -51,12 +52,15 @@ export default function ReportsTable() {
       }))
     : [];
 
-  if (!data && !error) return <div className="text-white">Loading...</div>;
+  if (!data && !error) return <div className="text-white">Reports Loading...</div>;
   if (error) return <div className="text-white">Error: {error.message}</div>;
 
-  const headers = ["id", "Suburb ID", "consumer ID", "Start Date", "End Date"];
+  const headers = ["ID", "Suburb ID", "consumer ID", "Start Date", "End Date"];
 
   return (
-    <Table columns={headers} data={transformedData} link={'/main/individualReport'} />
+    <>
+      <PageHeading title="Reports" />
+      <Table columns={headers} data={transformedData} link={'/main/individualReport'} />
+    </>
   );
 }

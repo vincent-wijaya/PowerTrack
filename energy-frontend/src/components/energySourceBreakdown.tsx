@@ -49,7 +49,7 @@ export default function EnergySourceBreakdown(props: {
 
   return (
     <div
-      className={`flex flex-col w-full h-full p-4 bg-itembg border border-stroke relative rounded-lg ${props.className ? props.className : ''}`}
+      className={`flex flex-col w-full h-[600px]" p-4 bg-itembg border border-stroke relative rounded-lg ${props.className ? props.className : ''}`}
     >
       {props.showTimeRangeDropdown && props.onTimeRangeChange ? (
         <Dropdown

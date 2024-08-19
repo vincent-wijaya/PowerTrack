@@ -21,6 +21,14 @@ export default function IndividualReport({
   params: { id: string };
 }) {
   const reportId = parseInt(params.id, 10);
+  const averageProfitkwh = "$0.40"
+  const averagePM = "10%"
+  const greenEnergyGoal = "20%"
+  const greenEnergyUsage = "76%"
+  const profitted = "$1000"
+  const revenue = "$10,000"
+  const spendage = "$9000"
+
   const { data, error } = useSWR(`report-${reportId}`, () =>
     fetchReport(reportId)
   );
@@ -35,37 +43,60 @@ export default function IndividualReport({
   if (!data) return <div className="text-white">Loading...</div>;
   if (data === null) return <div>No report found.</div>;
   return (
-    <div className="grid grid-cols-2 grid-rows-[min-content_min-content_1fr_1fr] gap-3 grid-flow-col">
-      <div className="col-span-2">
-        <PageHeading title={`Report ${data.id}`} />
+    <>
+      <PageHeading title={`Report ${data.id}`} />
+
+      <div className="grid grid-flow-col grid-cols-2 gap-3">
+        <div className="flex flex-col gap-3">
+          <div className="flex justify-between gap-3 h-[128px]">
+          <InfoBox title={averageProfitkwh} description="Average Profit per kwh sold when bought"/>
+          <InfoBox title={averagePM} description="Average Profit Margin"/>
+          <InfoBox title={greenEnergyGoal} description="Of green energy goal met"/>
+          <InfoBox title={greenEnergyUsage} description="Green Energy Usage"/>
+          <InfoBox title={profitted} description="Profitted"/>
+          <InfoBox title={revenue} description="Revenue made"/>
+          <InfoBox title={spendage} description="Money Spent on energy"/>
+          </div>
+          <EnergySourceBreakdown energySources={data.sources} />
+          </div>
+        <div className="flex flex-col gap-3">
+          <EnergyChart className=""/>
+          <ProfitChart />
+        </div>
+        {/* <div className="p-4 bg-itembg border border-stroke rounded-lg">
+          <EnergyChart />
+        </div>
+        <div className="p-4 bg-itembg border border-stroke rounded-lg">
+          <ProfitChart />
+        </div> */}
       </div>
 
-      <div className="col-span-2 text-white">
-        <p>
-          {DateTime.fromISO(data.start_date).toFormat('D')} -{' '}
-          {DateTime.fromISO(data.end_date).toFormat('D')}
-        </p>
-      </div>
-
-      <EnergyChart />
-      <ProfitChart />
-      <EnergySourceBreakdown energySources={data.sources} />
-    </div>
-    // <div className="text-white grid grid-cols-2 grid-rows-[min-content_1fr_1fr_min-content] gap-3 grid-flow-col">
-    //
-
-    //   <div className="col-span-2">
-    //     <InfoBox title="Report Details">
-    //       <p>Start Date: {data.start_date}</p>
-    //       <p>End Date: {data.end_date}</p>
-    //       <p>Suburb ID: {data.for.suburb_id}</p>
-    //     </InfoBox>
-    //   </div>
-    //   <EnergySourceBreakdown energySources={data.sources} />
-    // </div>
+      {/* <div className="h-screen px-10 grid grid-cols-2 gap-8 py-10">
+        <div className="gap-8 py-10">
+          <div className="h-1/6 gap-2 grid grid-cols-3">
+            <InfoBox title="48%" description="of green energy goal met" />
+            <InfoBox title="3" description="Warnings" />
+            <InfoBox title="3" description="Suggestions" />
+          </div>
+          <div className="h-1/3 mt-8 p-4 bg-itembg border border-stroke rounded-lg">
+            <Map />
+          </div>
+          <div className="h-1/3 gap-2 py-10">
+            <WarningTable />
+          </div>
+        </div>
+        <div className="gap-8 py-10">
+          <div className="ml-8 p-4 bg-itembg border border-stroke rounded-lg">
+            <EnergyChart />
+          </div>
+          <div className="ml-8 mt-4 p-4 bg-itembg border border-stroke rounded-lg">
+            <ProfitChart />
+          </div>
+        </div>
+      </div> */}
+    </>
   );
 }
-
 
 
 const energySourceBreakdownMockData = [

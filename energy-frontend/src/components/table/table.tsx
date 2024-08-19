@@ -13,9 +13,9 @@ export default function Table({ columns, data, link }: TableProps) {
   const updatedColumns = link ? [...columns, "Action"] : columns;
 
   return (
-    <table className="table-auto border-stroke border-r-2">
-      <thead className="">
-        <tr className="">
+    <table className="w-full table-auto border-stroke border-r-2">
+      <thead>
+        <tr>
         {updatedColumns.map((column, columnIndex) => (
           <th
             className="p-4 items-start gap-8  border-stroke border-2"
@@ -28,13 +28,13 @@ export default function Table({ columns, data, link }: TableProps) {
       </thead>
       <tbody className="items-start bg-itembg">
         {data.map((row, rowIndex) => (
-          <tr key={rowIndex} className="">
+          <tr key={rowIndex}>
             {columns.map((column, columnIndex) => (
               <td
                 className="px-3 py-8 items-start gap-8 border-stroke border-r-2 border-l-2 border-b-2"
                 key={columnIndex}
               >
-                <div className="font-inter text-white">
+                <div className="font-inter text-center text-white">
                   {(row[column.toLowerCase().replace(' ','_')])}
                 </div>
               </td>
