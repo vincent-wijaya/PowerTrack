@@ -1,0 +1,44 @@
+/* calendar-styles.css */
+
+/* Style for the entire calendar */
+.react-calendar {
+  background: #001d31; /* Dark background for the entire calendar */
+  color: #fff; /* White text for the calendar */
+}
+
+/* Style for each day tile */
+.react-calendar__tile {
+  background: #001d31; /* Grey background for each day */
+  color: #fff; /* White text for each day */
+}
+
+/* Style for the active day tile */
+.react-calendar__tile--active {
+  background: #fff; /* White background for the selected range */
+  color: #f41e1e; /* Red text for the selected range */
+}
+
+/* Style for the day tile on hover */
+.react-calendar__tile--hover {
+  background: #666; /* Dark grey background on hover */
+}
+
+/* Style for the weekday labels (Mon, Tue, etc.) */
+.react-calendar__month-view__weekdays {
+  color: #d3d3d3; /* Light grey text for weekday labels */
+}
+
+/* Style for the month and year labels */
+.react-calendar__navigation {
+  color: #d3d3d3; /* Light grey text for month/year labels */
+}
+
+/* Style for the month/year navigation buttons */
+.react-calendar__navigation button {
+  color: #d3d3d3; /* Light grey text for navigation buttons */
+}
+
+/* Style for the month/year navigation button when hovered */
+.react-calendar__navigation button:hover {
+  background: #666; /* Dark grey background on hover */
+}

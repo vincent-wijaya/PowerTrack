@@ -9,6 +9,7 @@ module.exports = {
     extend: {
       colors: {
         mainbg: '#011625',
+        calendarbg:"#001d31",
         itembg: '#001D31',
         stroke: '#36434E',
         purple: '#9747FF',
