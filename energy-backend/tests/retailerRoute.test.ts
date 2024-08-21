@@ -1865,7 +1865,6 @@ describe('GET /retailer/reports/:id Suburb', () => {
       '2024-02-08T00:00:00.000Z',
       12
     );
-    // We have to turn moment dates back into strings
     let expectedResults = [
       {
         start_date: '2024-02-02T00:00:00Z',

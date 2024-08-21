@@ -721,7 +721,6 @@ router.get('/suburbs/:id', async (req, res) => {
   }
 });
 
-
 /**
  * GET /retailer/reports
  *
@@ -1116,15 +1115,24 @@ function splitEvents(
 
   events.reverse(); // flip so newest event first, and oldest event last. this means we can use it as a stack
   //get current rate
+  let intervalStart = startDate.clone(); //the date we are starting at
+  let intervalEnd = startDate.clone().add(interval, 'hours');
+
   let pastEvent = events.pop()!;
-  let intervalStart = pastEvent.date; //the date we are starting at
-  let intervalEnd = pastEvent.date.clone().add(interval, 'hours');
 
-  let nextEvent = events.at(-1)!;
+  let nextEvent: { amount: number; date: Moment };
+  let changePoint: Moment;
+  if (events.length === 0) {
+    nextEvent = pastEvent;
+    changePoint = endDate.clone().add(1, 'd');
+  } else {
+    nextEvent = events.pop()!;
 
-  let changePoint = pastEvent.date
-    .clone()
-    .add(nextEvent.date.diff(pastEvent.date, 'ms') / 2, 'ms');
+    changePoint = pastEvent.date
+      .clone()
+      .add(nextEvent.date.diff(pastEvent.date, 'ms') / 2, 'ms');
+  }
+
   //handle interval overlapping end date
   while (intervalEnd <= endDate && events.length > 0) {
     //while we still have events left and we have at least one interval left
