@@ -1849,7 +1849,7 @@ describe('GET /retailer/reports/:id Suburb', () => {
     });
   });
 
-  it.only('Should split the events correctly', async () => {
+  it('Should split the events correctly. event>interval', async () => {
     const testEvents = [
       { date: '2024-02-02T00:00:00.000Z', amount: 1 },
       { date: '2024-02-03T00:00:00.000Z', amount: 1 },
@@ -1867,64 +1867,105 @@ describe('GET /retailer/reports/:id Suburb', () => {
     );
     let expectedResults = [
       {
-        start_date: '2024-02-02T00:00:00Z',
-        end_date: '2024-02-02T12:00:00Z',
+        start_date: '2024-02-01T00:00:00.000Z',
+        end_date: '2024-02-01T12:00:00.000Z',
         total: 12,
       },
       {
-        start_date: '2024-02-02T12:00:00Z',
-        end_date: '2024-02-03T00:00:00Z',
+        start_date: '2024-02-01T12:00:00.000Z',
+        end_date: '2024-02-02T00:00:00.000Z',
         total: 12,
       },
       {
-        start_date: '2024-02-03T00:00:00Z',
-        end_date: '2024-02-03T12:00:00Z',
+        start_date: '2024-02-02T00:00:00.000Z',
+        end_date: '2024-02-02T12:00:00.000Z',
         total: 12,
       },
       {
-        start_date: '2024-02-03T12:00:00Z',
-        end_date: '2024-02-04T00:00:00Z',
+        start_date: '2024-02-02T12:00:00.000Z',
+        end_date: '2024-02-03T00:00:00.000Z',
+        total: 12,
+      },
+      {
+        start_date: '2024-02-03T00:00:00.000Z',
+        end_date: '2024-02-03T12:00:00.000Z',
+        total: 12,
+      },
+      {
+        start_date: '2024-02-03T12:00:00.000Z',
+        end_date: '2024-02-04T00:00:00.000Z',
         total: 24,
       },
       {
-        start_date: '2024-02-04T00:00:00Z',
-        end_date: '2024-02-04T12:00:00Z',
+        start_date: '2024-02-04T00:00:00.000Z',
+        end_date: '2024-02-04T12:00:00.000Z',
         total: 24,
       },
       {
-        start_date: '2024-02-04T12:00:00Z',
-        end_date: '2024-02-05T00:00:00Z',
+        start_date: '2024-02-04T12:00:00.000Z',
+        end_date: '2024-02-05T00:00:00.000Z',
         total: 24,
       },
       {
-        start_date: '2024-02-05T00:00:00Z',
-        end_date: '2024-02-05T12:00:00Z',
+        start_date: '2024-02-05T00:00:00.000Z',
+        end_date: '2024-02-05T12:00:00.000Z',
         total: 24,
       },
       {
-        start_date: '2024-02-05T12:00:00Z',
-        end_date: '2024-02-06T00:00:00Z',
+        start_date: '2024-02-05T12:00:00.000Z',
+        end_date: '2024-02-06T00:00:00.000Z',
         total: 12,
       },
       {
-        start_date: '2024-02-06T00:00:00Z',
-        end_date: '2024-02-06T12:00:00Z',
+        start_date: '2024-02-06T00:00:00.000Z',
+        end_date: '2024-02-06T12:00:00.000Z',
         total: 12,
       },
       {
-        start_date: '2024-02-06T12:00:00Z',
-        end_date: '2024-02-07T00:00:00Z',
+        start_date: '2024-02-06T12:00:00.000Z',
+        end_date: '2024-02-07T00:00:00.000Z',
         total: 12,
       },
       {
-        start_date: '2024-02-07T00:00:00Z',
-        end_date: '2024-02-07T12:00:00Z',
+        start_date: '2024-02-07T00:00:00.000Z',
+        end_date: '2024-02-07T12:00:00.000Z',
         total: 12,
       },
+    ];
+    console.log(results);
+    expect(results).toEqual(expectedResults);
+  });
+  it('Should split the events correctly. event<interval', async () => {
+    const testEvents = [
+      { date: '2024-02-02T00:00:00.000Z', amount: 1 },
+      { date: '2024-02-03T00:00:00.000Z', amount: 1 },
+      { date: '2024-02-04T00:00:00.000Z', amount: 2 },
+      { date: '2024-02-05T00:00:00.000Z', amount: 2 },
+      { date: '2024-02-06T00:00:00.000Z', amount: 1 },
+      { date: '2024-02-07T00:00:00.000Z', amount: 1 },
+    ];
+
+    let results = splitEvents(
+      testEvents,
+      '2024-02-01T00:00:00.000Z',
+      '2024-02-07T00:00:00.000Z',
+      48
+    );
+    let expectedResults = [
       {
-        start_date: '2024-02-07T12:00:00Z',
-        end_date: '2024-02-08T00:00:00Z',
-        total: 12,
+        start_date: '2024-02-01T00:00:00.000Z',
+        end_date: '2024-02-03T00:00:00.000Z',
+        total: 48,
+      },
+      {
+        start_date: '2024-02-03T00:00:00.000Z',
+        end_date: '2024-02-05T00:00:00.000Z',
+        total: 84,
+      },
+      {
+        start_date: '2024-02-05T00:00:00.000Z',
+        end_date: '2024-02-07T00:00:00.000Z',
+        total: 60,
       },
     ];
     expect(results).toEqual(expectedResults);
