@@ -1244,7 +1244,7 @@ function splitEvents(
   //we have handled any remaining intervals
 
   //if we have run out of intervals and it lined up right, we can just exit here
-  if (intervalEnd == endDate) {
+  if (intervalEnd.isSameOrAfter(endDate)) {
     //TODO better handling of equality
     return results;
   }
