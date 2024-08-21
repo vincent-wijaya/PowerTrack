@@ -1094,19 +1094,26 @@ function rollupEvents(events: [{ date: Moment; amount: number }]) {
  * @param endDate the last date of the range
  */
 function splitEvents(
-  events: { amount: number; date: Moment }[],
-  startDate: Moment,
-  endDate: Moment,
+  eventsRaw: { amount: number; date: string }[],
+  startDateStr: string,
+  endDateStr: string,
   interval: number
 ) {
-  if (events.length === 0) {
+  if (eventsRaw.length === 0) {
     return [];
-  }
-  if (events.length === 1) {
   }
   let results = [];
 
-  events = Array(...events); // Make a new array so we dont mutate the original one
+  //convert to moments
+  let events: { amount: number; date: Moment }[] = Array(...eventsRaw).map(
+    ({ amount, date }) => ({
+      amount,
+      date: moment.utc(date),
+    })
+  );
+  let startDate = moment.utc(startDateStr);
+  let endDate = moment.utc(endDateStr);
+
   events.reverse(); // flip so newest event first, and oldest event last. this means we can use it as a stack
   //get current rate
   let pastEvent = events.pop()!;
@@ -1126,8 +1133,8 @@ function splitEvents(
       //Change point is outside this interval so we can just finish
       // The amount wont change so we can just generate a new entry
       results.push({
-        start_date: intervalStart,
-        end_date: intervalEnd,
+        start_date: intervalStart.toISOString(),
+        end_date: intervalEnd.toISOString(),
         total: interval * pastEvent.amount,
       });
 
@@ -1139,8 +1146,8 @@ function splitEvents(
 
     if (changePoint == intervalEnd) {
       results.push({
-        start_date: intervalStart,
-        end_date: intervalEnd,
+        start_date: intervalStart.toISOString(),
+        end_date: intervalEnd.toISOString(),
         total: interval * pastEvent.amount,
       });
 
@@ -1199,8 +1206,8 @@ function splitEvents(
 
     // and then we create the event
     results.push({
-      start_date: intervalStart,
-      end_date: intervalEnd,
+      start_date: intervalStart.toISOString(),
+      end_date: intervalEnd.toISOString(),
       total: intervalTotal,
     });
 
@@ -1215,8 +1222,8 @@ function splitEvents(
     while (intervalEnd < endDate) {
       // and then we create the event
       results.push({
-        start_date: intervalStart,
-        end_date: intervalEnd,
+        start_date: intervalStart.toISOString(),
+        end_date: intervalEnd.toISOString(),
         total: interval * pastEvent.amount,
       });
 
@@ -1236,8 +1243,8 @@ function splitEvents(
 
   // we have a partial interval remaining so add it and return
   results.push({
-    start_date: intervalStart,
-    end_date: intervalEnd,
+    start_date: intervalStart.toISOString(),
+    end_date: intervalEnd.toISOString(),
     total: endDate.diff(intervalStart, 'h', true) * pastEvent.amount,
   });
   return results;
@@ -1248,11 +1255,11 @@ export default router;
 // Only export these functions if the node enviornment is set to testing
 export let exportsForTesting: {
   splitEvents: (
-    events: { amount: number; date: Moment }[],
-    startDate: Moment,
-    endDate: Moment,
+    events: { amount: number; date: string }[],
+    startDate: string,
+    endDate: string,
     interval: number
-  ) => { start_date: Moment; end_date: Moment; total: number }[];
+  ) => { start_date: string; end_date: string; total: number }[];
 };
 if (process.env.NODE_ENV === 'test') {
   exportsForTesting = { splitEvents };
