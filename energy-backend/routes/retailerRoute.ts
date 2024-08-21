@@ -906,12 +906,17 @@ router.get('/reports/:id', async (req, res) => {
     EnergyGenerator,
     EnergyGeneration,
     GeneratorType,
+    SuburbConsumption,
   } = req.app.get('models');
   const id = req.params.id;
 
   // Get the relevant row from the reports table
   const report = await Report.findByPk(id);
+  let timeGranularity = 24; //granularity of the events in hours
 
+  function intervalSorter(a: any, b: any) {
+    return new Date(a.start_date).valueOf() - new Date(b.start_date).valueOf();
+  }
   if (!report) {
     return res.status(404).send('Report not found');
   }
@@ -928,16 +933,29 @@ router.get('/reports/:id', async (req, res) => {
   let selling_price = await SellingPrice.findAll({ where: eventWhereClause });
   selling_price = selling_price.map(
     (price: { date: string; amount: string }) => ({
-      date: new Date(price.date),
+      date: new Date(price.date).toISOString(),
       amount: Number(price.amount),
     })
   );
+  let splitSellingPrice = splitEvents(
+    selling_price,
+    String(report.start_date),
+    String(report.end_date),
+    timeGranularity
+  ).sort(intervalSorter);
 
   let spot_price = await SpotPrice.findAll({ where: eventWhereClause });
   spot_price = spot_price.map((price: { date: string; amount: string }) => ({
-    date: new Date(price.date),
+    date: new Date(price.date).toISOString(),
     amount: Number(price.amount),
   }));
+
+  let splitSpotPrice = splitEvents(
+    spot_price,
+    String(report.start_date),
+    String(report.end_date),
+    timeGranularity
+  ).sort(intervalSorter);
 
   let energy_generators = await EnergyGenerator.findAll({
     where: {
@@ -975,20 +993,78 @@ router.get('/reports/:id', async (req, res) => {
   let energy_generations = await EnergyGeneration.findAll({
     where: { ...eventWhereClause, energy_generator_id: generator_ids },
   });
+
+  //convert types
+  energy_generations = energy_generations.map(
+    (event: { date: Date; amount: number; energy_generator_id: number }) => ({
+      date: moment.utc(event.date),
+      amount: Number(event.amount),
+      energy_generator_id: Number(event.energy_generator_id),
+    })
+  );
+
+  let energySplits = splitEvents(
+    energy_generations,
+    String(report.start_date),
+    String(report.end_date),
+    timeGranularity
+  ).sort(intervalSorter);
+
+  //get all the energy consumption events.
+  let suburb_consumptions = await SuburbConsumption.findAll({
+    where: { ...eventWhereClause, suburb_id: report.suburb_id },
+  });
+
+  //convert types
+  suburb_consumptions = suburb_consumptions
+    .map(
+      (event: { date: Date; amount: number; energy_generator_id: number }) => ({
+        date: moment.utc(event.date),
+        amount: Number(event.amount),
+      })
+    )
+    .sort(intervalSorter);
+
+  let consumptionSplits = splitEvents(
+    suburb_consumptions,
+    String(report.start_date),
+    String(report.end_date),
+    timeGranularity
+  );
+
+  let energy: {}[];
+  if (energySplits.length == 0 && consumptionSplits.length == 0) {
+    // We have no data so we will just return blank
+    energy = [];
+  } else if (consumptionSplits.length != 0) {
+    energy = consumptionSplits.map(({ start_date, end_date, total }) => ({
+      start_date,
+      end_date,
+      consumption: total,
+      generation: null,
+    }));
+  } else if (energySplits.length != 0) {
+    energy = energySplits.map(({ start_date, end_date, total }) => ({
+      start_date,
+      end_date,
+      consumption: null,
+      generation: total,
+    }));
+  } else {
+    // we have both energy and consumption data.
+    energy = energySplits.map(({ start_date, end_date, total }, index) => ({
+      start_date,
+      end_date,
+      generation: total,
+      consumption: consumptionSplits[index].total,
+    }));
+  }
+
   //if there are no energy events, just return a blank array
   if (energy_generations.length === 0) {
     generator_types = [];
   } else {
     //Otherwise, calculate the energy we need
-
-    //conver types
-    energy_generations = energy_generations.map(
-      (event: { date: Date; amount: number; energy_generator_id: number }) => ({
-        date: moment(event.date),
-        amount: Number(event.amount),
-        energy_generator_id: Number(event.energy_generator_id),
-      })
-    );
 
     // add the number of events and the total energy generated to each generator
     energy_generators = energy_generators.map(
@@ -1047,9 +1123,9 @@ router.get('/reports/:id', async (req, res) => {
       suburb_id: report.suburb_id,
       consumer_id: report.consumer_id,
     },
-    energy: [],
-    selling_price: selling_price,
-    spot_price: spot_price,
+    energy: energy,
+    selling_price: splitSellingPrice,
+    spot_price: splitSpotPrice,
     sources: generator_types,
   };
 
