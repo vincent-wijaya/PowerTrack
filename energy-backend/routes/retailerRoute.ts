@@ -1036,14 +1036,16 @@ router.get('/reports/:id', async (req, res) => {
   if (energySplits.length == 0 && consumptionSplits.length == 0) {
     // We have no data so we will just return blank
     energy = [];
-  } else if (consumptionSplits.length != 0) {
+  } else if (energySplits.length == 0) {
+    // we only have consumption data
     energy = consumptionSplits.map(({ start_date, end_date, total }) => ({
       start_date,
       end_date,
       consumption: total,
       generation: null,
     }));
-  } else if (energySplits.length != 0) {
+  } else if (consumptionSplits.length == 0) {
+    // we only have generation data
     energy = energySplits.map(({ start_date, end_date, total }) => ({
       start_date,
       end_date,
