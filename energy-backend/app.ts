@@ -4,6 +4,7 @@ import cors from 'cors';
 
 import exampleRoute from './routes/exampleRoute';
 import retailerRoute from './routes/retailerRoute';
+import consumerRoute from './routes/consumerRoute';
 import { defineModels } from './databaseModels';
 
 const app = (sequelize: Sequelize) => {
@@ -22,6 +23,7 @@ const app = (sequelize: Sequelize) => {
   // Add routes here
   app.use('/', exampleRoute);
   app.use('/retailer', retailerRoute);
+  app.use('/consumer', consumerRoute);
 
   return app;
 };
