@@ -6,7 +6,8 @@ import EnergyChart from '@/components/energyChart';
 import ProfitChart from '@/components/profitChart';
 import ProfitMargin from '@/components/profitMargin';
 
-export default function MainDashboard() {
+export default function MainDashboard({ params }: { params: { id: string } }) {
+  const numId = parseInt(params.id);
   return (
     <>
       <PageHeading title="Home" />
@@ -29,8 +30,7 @@ export default function MainDashboard() {
               description=""
             />
           </div>
-          <Map className="h-[400px]" />
-          <WarningTable />
+          <WarningTable consumer_id={numId} />
         </div>
         <div className="flex flex-col gap-3">
           <EnergyChart
