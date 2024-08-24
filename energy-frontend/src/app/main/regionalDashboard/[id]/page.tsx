@@ -1,7 +1,7 @@
-'use client'
+'use client';
 
-import Headings from "@/app/main/template";
-import EnergyChart from "@/components/energyChart";
+import Headings from '@/app/main/template';
+import EnergyChart from '@/components/energyChart';
 import EnergySourceBreakdown from '@/components/energySourceBreakdown';
 import InfoBox from '@/components/infoBox';
 import PageHeading from '@/components/pageHeading';
@@ -12,6 +12,7 @@ import { POLLING_RATE } from '@/config';
 import { fetcher } from '@/utils';
 import { useState, useEffect, useMemo } from 'react';
 import useSWR from 'swr';
+import ReportFormButton from '@/components/reportFormButton';
 
 type ProfitMarginFetchType = {
   spot_prices: { date: string; amount: number }[];
@@ -38,34 +39,42 @@ export default function RegionalDashboard({
     }) || '$0.00';
 
   return (
-    <div className="grid grid-cols-2 grid-rows-[min-content_1fr_1fr_min-content] gap-3 grid-flow-col">
-      <div>
-        <div className="flex justify-between items-center mb-3">
-          <PageHeading title={`Region - ${decodeURI(params.id)}`} />
-          <div className="text-red-600 font-semibold text-xl">Power Outage</div>
+    <>
+      <div className="grid grid-cols-2 grid-rows-[min-content_1fr_1fr_min-content] gap-3 grid-flow-col">
+        <div>
+          <div className="flex justify-between items-center mb-3">
+            <PageHeading title={`Region - ${decodeURI(params.id)}`} />
+            <div className="text-red-600 font-semibold text-xl">
+              Power Outage
+            </div>
+          </div>
+          <div className="flex justify-between gap-3">
+            <InfoBox
+              title={currentSpotPrice}
+              description="Price of electricity per kW/h"
+            />
+            <ProfitMargin />
+            <InfoBox
+              title="20%"
+              description="Of green energy goal met"
+            />
+            <InfoBox
+              title="1"
+              description="Warnings"
+            />
+          </div>
         </div>
-        <div className="flex justify-between gap-3">
-          <InfoBox
-            title={currentSpotPrice}
-            description="Price of electricity per kW/h"
-          />
-          <ProfitMargin />
-          <InfoBox
-            title="20%"
-            description="Of green energy goal met"
-          />
-          <InfoBox
-            title="1"
-            description="Warnings"
-          />
-        </div>
-      </div>
 
-      <EnergyChart />
-      <ProfitChart />
-      <WarningTable />
-      <EnergySourceBreakdown energySources={energySourceBreakdownMockData} />
-    </div>
+        <EnergyChart />
+        <ProfitChart />
+        <WarningTable />
+        <EnergySourceBreakdown energySources={energySourceBreakdownMockData} />
+      </div>
+      <ReportFormButton
+        id={params.id.toString()}
+        type="suburb"
+      />
+    </>
   );
 }
 const energySourceBreakdownMockData = [
@@ -106,4 +115,3 @@ const energySourceBreakdownMockData = [
     count: 67,
   },
 ];
-

@@ -3,8 +3,27 @@ import React, { useState } from 'react';
 import Calendar from 'react-calendar'; // Make sure to install react-calendar
 import './calendar.css'; // Import your calendar styles
 import Link from 'next/link';
+import { fetcher } from '@/utils';
+import useSWR from 'swr';
+import { POLLING_RATE } from '@/config';
 
-const ReportForm = () => {
+const ReportForm = (props: { id: string; type: string }) => {
+  const mainurl = process.env.NEXT_PUBLIC_API_URL;
+  const url: string = (() => {
+    switch (props.type) {
+      case 'consumer':
+        return `${mainurl}/retailer/consumer/${props.id}/data`; // Fetch data for a specific consumer
+      case 'suburb':
+        return `${mainurl}/retailer/suburb/${props.id}/data`; // Fetch data for a specific suburb
+      default:
+        return 'null';
+    }
+  })();
+
+  const { data, error } = useSWR(url, fetcher, {
+    refreshInterval: POLLING_RATE,
+  });
+
   const [dateRange, setDateRange] = useState<[Date, Date]>([
     new Date(),
     new Date(),
@@ -43,13 +62,14 @@ const ReportForm = () => {
           {/* Search Column */}
           <div className="flex flex-col justify-between bg-itembg p-4 rounded">
             <h2 className="text-white bg-mainbg text-lg mb-2">Specified For</h2>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full  border-gray-300 rounded-md shadow-sm px-2 py-1"
-              placeholder="Search..."
-            />
+            <div className="w-full text-white border-gray-300 rounded-md shadow-sm px-2 py-1">
+              {props.id}
+            </div>
+            {/* <div className="w-full text-white border-gray-300 rounded-md shadow-sm px-2 py-1">
+              {props.type === 'consumer'
+                ? `${data.address} ${data.suburb_post_code} ${data.suburb_name}`
+                : `${data.name} ${data.postcode} ${data.state}`}
+            </div>  commented out until i can link api*/}
             <div></div>
           </div>
 
