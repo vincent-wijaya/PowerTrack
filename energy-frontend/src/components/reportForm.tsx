@@ -1,4 +1,5 @@
 'use client';
+import { useRouter } from 'next/navigation'; // Import useRouter
 import React, { useState } from 'react';
 import Calendar from 'react-calendar'; // Make sure to install react-calendar
 import './calendar.css'; // Import your calendar styles
@@ -6,15 +7,21 @@ import Link from 'next/link';
 import { fetcher } from '@/utils';
 import useSWR from 'swr';
 import { POLLING_RATE } from '@/config';
+import { useEffect } from 'react';
 
 const ReportForm = (props: { id: string; type: string }) => {
+  const router = useRouter(); // Initialize useRouter
+
+  const [consumerData, setConsumerData] = useState({});
+  const [suburbData, setSuburbData] = useState({});
+
   const mainurl = process.env.NEXT_PUBLIC_API_URL;
   const url: string = (() => {
     switch (props.type) {
       case 'consumer':
-        return `${mainurl}/retailer/consumer/${props.id}/data`; // Fetch data for a specific consumer
+        return `${mainurl}/retailer/consumers?consumer_id=${props.id}`; // Fetch data for a specific consumer
       case 'suburb':
-        return `${mainurl}/retailer/suburb/${props.id}/data`; // Fetch data for a specific suburb
+        return `${mainurl}/retailer/suburbs/${props.id}`; // Fetch data for a specific suburb
       default:
         return 'null';
     }
@@ -23,6 +30,15 @@ const ReportForm = (props: { id: string; type: string }) => {
   const { data, error } = useSWR(url, fetcher, {
     refreshInterval: POLLING_RATE,
   });
+
+  useEffect(() => {
+    if (!data) return;
+    if (props.type == 'consumer') {
+      setConsumerData(data.consumers[0]);
+    } else if (props.type == 'suburb') {
+      setSuburbData(data);
+    }
+  }, [data]);
 
   const [dateRange, setDateRange] = useState<[Date, Date]>([
     new Date(),
@@ -34,10 +50,42 @@ const ReportForm = (props: { id: string; type: string }) => {
     setDateRange(dates);
   };
 
-  const handleSubmit = () => {
-    // Handle submit logic here
-    console.log('Submitted:', { searchTerm, dateRange });
+  const handleSubmit = async () => {
+    const start_date = dateRange[0].toISOString();
+    const end_date = dateRange[1].toISOString();
+
+    const forObj = {
+      suburb_id: props.type === 'suburb' ? props.id : undefined,
+      consumer_id: props.type === 'consumer' ? props.id : undefined,
+    };
+
+    try {
+      const response = await fetch(`${mainurl}/retailer/reports`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          start_date,
+          end_date,
+          for: forObj,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorMessage = await response.text();
+        console.error('Error creating report:', errorMessage);
+      } else {
+        const reportData = await response.json();
+        router.push(`/main/individualReport/${reportData.id.toString()}`);
+        console.log('Report created successfully:', reportData);
+      }
+    } catch (error) {
+      console.error('Failed to create report:', error);
+    }
   };
+
+  console.log(data);
 
   const handleCancel = () => {
     // Handle cancel logic here
@@ -62,14 +110,14 @@ const ReportForm = (props: { id: string; type: string }) => {
           {/* Search Column */}
           <div className="flex flex-col justify-between bg-itembg p-4 rounded">
             <h2 className="text-white bg-mainbg text-lg mb-2">Specified For</h2>
-            <div className="w-full text-white border-gray-300 rounded-md shadow-sm px-2 py-1">
-              {props.id}
-            </div>
             {/* <div className="w-full text-white border-gray-300 rounded-md shadow-sm px-2 py-1">
+              {props.id}
+            </div> */}
+            <div className="w-full text-white border-gray-300 rounded-md shadow-sm px-2 py-1">
               {props.type === 'consumer'
-                ? `${data.address} ${data.suburb_post_code} ${data.suburb_name}`
-                : `${data.name} ${data.postcode} ${data.state}`}
-            </div>  commented out until i can link api*/}
+                ? `${consumerData.address} ${consumerData.suburb_post_code} ${consumerData.suburb_name}`
+                : `${suburbData.name} ${suburbData.postcode} ${suburbData.state}`}
+            </div>
             <div></div>
           </div>
 

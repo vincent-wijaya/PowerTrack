@@ -653,7 +653,7 @@ router.get('/consumers', async (req, res) => {
     });
   } else if (consumer_id) {
     // Return specific consumer
-    consumers = await Consumer.findAll({
+    consumers = await Consumer.findOne({
       where: {
         id: consumer_id,
       },
