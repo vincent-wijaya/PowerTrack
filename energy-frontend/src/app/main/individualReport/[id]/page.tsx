@@ -31,7 +31,7 @@ export default function IndividualReport({
   const revenue = '$10,000';
   const spendage = '$9000';
 
-  //test api code
+  //test api code delete later
   const { data, error } = useSWR(`report-${reportId}`, () =>
     fetchReport(reportId)
   );
