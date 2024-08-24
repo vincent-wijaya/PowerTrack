@@ -32,6 +32,7 @@ export default function MainDashboard() {
         <div className="flex flex-col gap-3">
           <EnergyChart className="" />
           <ProfitChart />
+          <ReportFormButton /> {/* Place the button component here */}
         </div>
         <div className="flex flex-col gap-3"></div>
 
@@ -65,7 +66,6 @@ export default function MainDashboard() {
           </div>
         </div>
       </div> */}
-      <ReportFormButton /> {/* Place the button component here */}
     </>
   );
 }
