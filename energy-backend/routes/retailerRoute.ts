@@ -721,7 +721,6 @@ router.get('/suburbs/:id', async (req, res) => {
   }
 });
 
-
 /**
  * GET /retailer/reports
  *
@@ -907,12 +906,17 @@ router.get('/reports/:id', async (req, res) => {
     EnergyGenerator,
     EnergyGeneration,
     GeneratorType,
+    SuburbConsumption,
   } = req.app.get('models');
   const id = req.params.id;
 
   // Get the relevant row from the reports table
   const report = await Report.findByPk(id);
+  let timeGranularity = 24; //granularity of the events in hours
 
+  function intervalSorter(a: any, b: any) {
+    return new Date(a.start_date).valueOf() - new Date(b.start_date).valueOf();
+  }
   if (!report) {
     return res.status(404).send('Report not found');
   }
@@ -929,16 +933,29 @@ router.get('/reports/:id', async (req, res) => {
   let selling_price = await SellingPrice.findAll({ where: eventWhereClause });
   selling_price = selling_price.map(
     (price: { date: string; amount: string }) => ({
-      date: new Date(price.date),
+      date: new Date(price.date).toISOString(),
       amount: Number(price.amount),
     })
   );
+  let splitSellingPrice = splitEvents(
+    selling_price,
+    String(report.start_date),
+    String(report.end_date),
+    timeGranularity
+  ).sort(intervalSorter);
 
   let spot_price = await SpotPrice.findAll({ where: eventWhereClause });
   spot_price = spot_price.map((price: { date: string; amount: string }) => ({
-    date: new Date(price.date),
+    date: new Date(price.date).toISOString(),
     amount: Number(price.amount),
   }));
+
+  let splitSpotPrice = splitEvents(
+    spot_price,
+    String(report.start_date),
+    String(report.end_date),
+    timeGranularity
+  ).sort(intervalSorter);
 
   let energy_generators = await EnergyGenerator.findAll({
     where: {
@@ -976,20 +993,80 @@ router.get('/reports/:id', async (req, res) => {
   let energy_generations = await EnergyGeneration.findAll({
     where: { ...eventWhereClause, energy_generator_id: generator_ids },
   });
+
+  //convert types
+  energy_generations = energy_generations.map(
+    (event: { date: Date; amount: number; energy_generator_id: number }) => ({
+      date: moment.utc(event.date),
+      amount: Number(event.amount),
+      energy_generator_id: Number(event.energy_generator_id),
+    })
+  );
+
+  let energySplits = splitEvents(
+    energy_generations,
+    String(report.start_date),
+    String(report.end_date),
+    timeGranularity
+  ).sort(intervalSorter);
+
+  //get all the energy consumption events.
+  let suburb_consumptions = await SuburbConsumption.findAll({
+    where: { ...eventWhereClause, suburb_id: report.suburb_id },
+  });
+
+  //convert types
+  suburb_consumptions = suburb_consumptions
+    .map(
+      (event: { date: Date; amount: number; energy_generator_id: number }) => ({
+        date: moment.utc(event.date),
+        amount: Number(event.amount),
+      })
+    )
+    .sort(intervalSorter);
+
+  let consumptionSplits = splitEvents(
+    suburb_consumptions,
+    String(report.start_date),
+    String(report.end_date),
+    timeGranularity
+  );
+
+  let energy: {}[];
+  if (energySplits.length == 0 && consumptionSplits.length == 0) {
+    // We have no data so we will just return blank
+    energy = [];
+  } else if (energySplits.length == 0) {
+    // we only have consumption data
+    energy = consumptionSplits.map(({ start_date, end_date, total }) => ({
+      start_date,
+      end_date,
+      consumption: total,
+      generation: null,
+    }));
+  } else if (consumptionSplits.length == 0) {
+    // we only have generation data
+    energy = energySplits.map(({ start_date, end_date, total }) => ({
+      start_date,
+      end_date,
+      consumption: null,
+      generation: total,
+    }));
+  } else {
+    // we have both energy and consumption data.
+    energy = energySplits.map(({ start_date, end_date, total }, index) => ({
+      start_date,
+      end_date,
+      generation: total,
+      consumption: consumptionSplits[index].total,
+    }));
+  }
+
   //if there are no energy events, just return a blank array
   if (energy_generations.length === 0) {
     generator_types = [];
   } else {
     //Otherwise, calculate the energy we need
-
-    //conver types
-    energy_generations = energy_generations.map(
-      (event: { date: Date; amount: number; energy_generator_id: number }) => ({
-        date: moment(event.date),
-        amount: Number(event.amount),
-        energy_generator_id: Number(event.energy_generator_id),
-      })
-    );
 
     // add the number of events and the total energy generated to each generator
     energy_generators = energy_generators.map(
@@ -1048,9 +1125,9 @@ router.get('/reports/:id', async (req, res) => {
       suburb_id: report.suburb_id,
       consumer_id: report.consumer_id,
     },
-    energy: [],
-    selling_price: selling_price,
-    spot_price: spot_price,
+    energy: energy,
+    selling_price: splitSellingPrice,
+    spot_price: splitSpotPrice,
     sources: generator_types,
   };
 
@@ -1094,30 +1171,46 @@ function rollupEvents(events: [{ date: Moment; amount: number }]) {
  * @param endDate the last date of the range
  */
 function splitEvents(
-  events: { amount: number; date: Moment }[],
-  startDate: Moment,
-  endDate: Moment,
+  eventsRaw: { amount: number; date: string }[],
+  startDateStr: string,
+  endDateStr: string,
   interval: number
 ) {
-  if (events.length === 0) {
+  if (eventsRaw.length === 0) {
     return [];
-  }
-  if (events.length === 1) {
   }
   let results = [];
 
-  events = Array(...events); // Make a new array so we dont mutate the original one
+  //convert to moments
+  let events: { amount: number; date: Moment }[] = Array(...eventsRaw).map(
+    ({ amount, date }) => ({
+      amount,
+      date: moment.utc(date),
+    })
+  );
+  let startDate = moment.utc(startDateStr);
+  let endDate = moment.utc(endDateStr);
+
   events.reverse(); // flip so newest event first, and oldest event last. this means we can use it as a stack
   //get current rate
+  let intervalStart = startDate.clone(); //the date we are starting at
+  let intervalEnd = startDate.clone().add(interval, 'hours');
+
   let pastEvent = events.pop()!;
-  let intervalStart = pastEvent.date; //the date we are starting at
-  let intervalEnd = pastEvent.date.clone().add(interval, 'hours');
 
-  let nextEvent = events.at(-1)!;
+  let nextEvent: { amount: number; date: Moment };
+  let changePoint: Moment;
+  if (events.length === 0) {
+    nextEvent = pastEvent;
+    changePoint = endDate.clone().add(1, 'd');
+  } else {
+    nextEvent = events.pop()!;
 
-  let changePoint = pastEvent.date
-    .clone()
-    .add(nextEvent.date.diff(pastEvent.date, 'ms') / 2, 'ms');
+    changePoint = pastEvent.date
+      .clone()
+      .add(nextEvent.date.diff(pastEvent.date, 'ms') / 2, 'ms');
+  }
+
   //handle interval overlapping end date
   while (intervalEnd <= endDate && events.length > 0) {
     //while we still have events left and we have at least one interval left
@@ -1126,8 +1219,8 @@ function splitEvents(
       //Change point is outside this interval so we can just finish
       // The amount wont change so we can just generate a new entry
       results.push({
-        start_date: intervalStart,
-        end_date: intervalEnd,
+        start_date: intervalStart.toISOString(),
+        end_date: intervalEnd.toISOString(),
         total: interval * pastEvent.amount,
       });
 
@@ -1139,8 +1232,8 @@ function splitEvents(
 
     if (changePoint == intervalEnd) {
       results.push({
-        start_date: intervalStart,
-        end_date: intervalEnd,
+        start_date: intervalStart.toISOString(),
+        end_date: intervalEnd.toISOString(),
         total: interval * pastEvent.amount,
       });
 
@@ -1199,8 +1292,8 @@ function splitEvents(
 
     // and then we create the event
     results.push({
-      start_date: intervalStart,
-      end_date: intervalEnd,
+      start_date: intervalStart.toISOString(),
+      end_date: intervalEnd.toISOString(),
       total: intervalTotal,
     });
 
@@ -1215,8 +1308,8 @@ function splitEvents(
     while (intervalEnd < endDate) {
       // and then we create the event
       results.push({
-        start_date: intervalStart,
-        end_date: intervalEnd,
+        start_date: intervalStart.toISOString(),
+        end_date: intervalEnd.toISOString(),
         total: interval * pastEvent.amount,
       });
 
@@ -1229,15 +1322,15 @@ function splitEvents(
   //we have handled any remaining intervals
 
   //if we have run out of intervals and it lined up right, we can just exit here
-  if (intervalEnd == endDate) {
+  if (intervalEnd.isSameOrAfter(endDate)) {
     //TODO better handling of equality
     return results;
   }
 
   // we have a partial interval remaining so add it and return
   results.push({
-    start_date: intervalStart,
-    end_date: intervalEnd,
+    start_date: intervalStart.toISOString(),
+    end_date: intervalEnd.toISOString(),
     total: endDate.diff(intervalStart, 'h', true) * pastEvent.amount,
   });
   return results;
@@ -1248,11 +1341,11 @@ export default router;
 // Only export these functions if the node enviornment is set to testing
 export let exportsForTesting: {
   splitEvents: (
-    events: { amount: number; date: Moment }[],
-    startDate: Moment,
-    endDate: Moment,
+    events: { amount: number; date: string }[],
+    startDate: string,
+    endDate: string,
     interval: number
-  ) => { start_date: Moment; end_date: Moment; total: number }[];
+  ) => { start_date: string; end_date: string; total: number }[];
 };
 if (process.env.NODE_ENV === 'test') {
   exportsForTesting = { splitEvents };

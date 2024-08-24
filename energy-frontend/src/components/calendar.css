@@ -1,0 +1,84 @@
+/* calendar-styles.css */
+
+/* Style for the entire calendar */
+.react-calendar {
+  background: #001d31; /* Dark background for the entire calendar */
+  color: #fff; /* White text for the calendar */
+}
+
+/* Style for each day tile */
+.react-calendar__tile {
+  background: #001d31; /* Grey background for each day */
+  color: #fff; /* White text for each day */
+  padding: 6px;
+  padding-block: 8px;
+  font-size: 15px;
+  margin-bottom: 6px;
+  transition: ease;
+  transition-duration: 0.3s;
+}
+
+/* Style for the active day tile */
+.react-calendar__tile--active {
+  background: #000;
+  color: #fff;
+}
+
+/* Style for start day tile of active range */
+.react-calendar__tile--rangeStart {
+  background: #9847ff;
+  color: #fff;
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
+}
+
+/* Style for end day tile of active range */
+.react-calendar__tile--rangeEnd {
+  background: #9847ff;
+  color: #fff;
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+
+/* Style for the day tile on hover */
+.react-calendar__tile--hover {
+  background: #666; /* Dark grey background on hover */
+  color: #fff;
+}
+
+/* Style for the start day tile on hover range */
+.react-calendar__tile--hoverStart {
+  background: #434343;
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
+  border-top-right-radius: 0px;
+  border-bottom-right-radius: 0px;
+
+}
+
+/* Style for the end day tile on hover range */
+.react-calendar__tile--hoverEnd {
+  background: #434343;
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+
+/* Style for the weekday labels (Mon, Tue, etc.) */
+.react-calendar__month-view__weekdays {
+  color: #d3d3d3; /* Light grey text for weekday labels */
+}
+
+/* Style for the month and year labels */
+.react-calendar__navigation {
+  color: #d3d3d3; /* Light grey text for month/year labels */
+}
+
+/* Style for the month/year navigation buttons */
+.react-calendar__navigation button {
+  color: #d3d3d3; /* Light grey text for navigation buttons */
+}
+
+/* Style for the month/year navigation button when hovered */
+.react-calendar__navigation button:hover {
+  background: #666; /* Dark grey background on hover */
+}

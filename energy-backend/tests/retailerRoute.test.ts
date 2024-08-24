@@ -1611,7 +1611,14 @@ describe('GET /retailer/reports/:id Suburb', () => {
       longitude: 110,
     },
   ];
-  const testSuburbConsumptions = [{}];
+  const testSuburbConsumptions = [
+    { date: '2024-02-02T00:00:00.000Z', amount: 1, suburb_id: 1 },
+    { date: '2024-02-03T00:00:00.000Z', amount: 1, suburb_id: 1 },
+    { date: '2024-02-04T00:00:00.000Z', amount: 1, suburb_id: 1 },
+    { date: '2024-02-05T00:00:00.000Z', amount: 1, suburb_id: 1 },
+    { date: '2024-02-06T00:00:00.000Z', amount: 1, suburb_id: 1 },
+    { date: '2024-02-07T00:00:00.000Z', amount: 1, suburb_id: 1 },
+  ];
   const testSellingPrice = [
     { date: '2024-02-02T00:00:00.000Z', amount: 1 },
     { date: '2024-02-03T00:00:00.000Z', amount: 1 },
@@ -1760,7 +1767,7 @@ describe('GET /retailer/reports/:id Suburb', () => {
 
     // Create mock data
     await models.Suburb.bulkCreate(testSuburbs);
-    // await models.SuburbConsumption.bulkCreate(testSuburbConsumptions);
+    await models.SuburbConsumption.bulkCreate(testSuburbConsumptions);
 
     await models.SellingPrice.bulkCreate(testSellingPrice);
     await models.SpotPrice.bulkCreate(testSpotPrice);
@@ -1811,6 +1818,7 @@ describe('GET /retailer/reports/:id Suburb', () => {
       `/retailer/reports/${testReport.id}`
     );
 
+    console.log(response.body);
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
       id: testReport.id,
@@ -1820,9 +1828,460 @@ describe('GET /retailer/reports/:id Suburb', () => {
         suburb_id: testReport.suburb_id,
         consumer_id: testReport.consumer_id,
       },
-      energy: [],
-      selling_price: testSellingPrice,
-      spot_price: testSpotPrice,
+      energy: [
+        {
+          start_date: '2024-02-01T11:00:00.000Z',
+          end_date: '2024-02-02T11:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-02T11:00:00.000Z',
+          end_date: '2024-02-03T11:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-03T11:00:00.000Z',
+          end_date: '2024-02-04T11:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-04T11:00:00.000Z',
+          end_date: '2024-02-05T11:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-05T11:00:00.000Z',
+          end_date: '2024-02-06T11:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-06T11:00:00.000Z',
+          end_date: '2024-02-07T11:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-07T11:00:00.000Z',
+          end_date: '2024-02-08T11:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-08T11:00:00.000Z',
+          end_date: '2024-02-09T11:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-09T11:00:00.000Z',
+          end_date: '2024-02-10T11:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-10T11:00:00.000Z',
+          end_date: '2024-02-11T11:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-11T11:00:00.000Z',
+          end_date: '2024-02-12T11:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-12T11:00:00.000Z',
+          end_date: '2024-02-13T11:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-13T11:00:00.000Z',
+          end_date: '2024-02-14T11:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-14T11:00:00.000Z',
+          end_date: '2024-02-15T11:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-15T11:00:00.000Z',
+          end_date: '2024-02-16T11:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-16T11:00:00.000Z',
+          end_date: '2024-02-17T11:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-17T11:00:00.000Z',
+          end_date: '2024-02-18T11:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-18T11:00:00.000Z',
+          end_date: '2024-02-19T11:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-19T11:00:00.000Z',
+          end_date: '2024-02-20T11:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-20T11:00:00.000Z',
+          end_date: '2024-02-21T11:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-21T11:00:00.000Z',
+          end_date: '2024-02-22T11:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-22T11:00:00.000Z',
+          end_date: '2024-02-23T11:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-23T11:00:00.000Z',
+          end_date: '2024-02-24T11:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-24T11:00:00.000Z',
+          end_date: '2024-02-25T11:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-25T11:00:00.000Z',
+          end_date: '2024-02-26T11:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-26T11:00:00.000Z',
+          end_date: '2024-02-27T11:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-27T11:00:00.000Z',
+          end_date: '2024-02-28T11:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-28T11:00:00.000Z',
+          end_date: '2024-02-29T11:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+      ],
+      selling_price: [
+        {
+          start_date: '2024-02-01T11:00:00.000Z',
+          end_date: '2024-02-02T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-02T11:00:00.000Z',
+          end_date: '2024-02-03T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-03T11:00:00.000Z',
+          end_date: '2024-02-04T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-04T11:00:00.000Z',
+          end_date: '2024-02-05T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-05T11:00:00.000Z',
+          end_date: '2024-02-06T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-06T11:00:00.000Z',
+          end_date: '2024-02-07T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-07T11:00:00.000Z',
+          end_date: '2024-02-08T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-08T11:00:00.000Z',
+          end_date: '2024-02-09T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-09T11:00:00.000Z',
+          end_date: '2024-02-10T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-10T11:00:00.000Z',
+          end_date: '2024-02-11T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-11T11:00:00.000Z',
+          end_date: '2024-02-12T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-12T11:00:00.000Z',
+          end_date: '2024-02-13T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-13T11:00:00.000Z',
+          end_date: '2024-02-14T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-14T11:00:00.000Z',
+          end_date: '2024-02-15T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-15T11:00:00.000Z',
+          end_date: '2024-02-16T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-16T11:00:00.000Z',
+          end_date: '2024-02-17T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-17T11:00:00.000Z',
+          end_date: '2024-02-18T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-18T11:00:00.000Z',
+          end_date: '2024-02-19T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-19T11:00:00.000Z',
+          end_date: '2024-02-20T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-20T11:00:00.000Z',
+          end_date: '2024-02-21T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-21T11:00:00.000Z',
+          end_date: '2024-02-22T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-22T11:00:00.000Z',
+          end_date: '2024-02-23T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-23T11:00:00.000Z',
+          end_date: '2024-02-24T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-24T11:00:00.000Z',
+          end_date: '2024-02-25T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-25T11:00:00.000Z',
+          end_date: '2024-02-26T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-26T11:00:00.000Z',
+          end_date: '2024-02-27T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-27T11:00:00.000Z',
+          end_date: '2024-02-28T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-28T11:00:00.000Z',
+          end_date: '2024-02-29T11:00:00.000Z',
+          total: 24,
+        },
+      ],
+      spot_price: [
+        {
+          start_date: '2024-02-01T11:00:00.000Z',
+          end_date: '2024-02-02T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-02T11:00:00.000Z',
+          end_date: '2024-02-03T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-03T11:00:00.000Z',
+          end_date: '2024-02-04T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-04T11:00:00.000Z',
+          end_date: '2024-02-05T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-05T11:00:00.000Z',
+          end_date: '2024-02-06T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-06T11:00:00.000Z',
+          end_date: '2024-02-07T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-07T11:00:00.000Z',
+          end_date: '2024-02-08T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-08T11:00:00.000Z',
+          end_date: '2024-02-09T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-09T11:00:00.000Z',
+          end_date: '2024-02-10T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-10T11:00:00.000Z',
+          end_date: '2024-02-11T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-11T11:00:00.000Z',
+          end_date: '2024-02-12T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-12T11:00:00.000Z',
+          end_date: '2024-02-13T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-13T11:00:00.000Z',
+          end_date: '2024-02-14T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-14T11:00:00.000Z',
+          end_date: '2024-02-15T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-15T11:00:00.000Z',
+          end_date: '2024-02-16T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-16T11:00:00.000Z',
+          end_date: '2024-02-17T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-17T11:00:00.000Z',
+          end_date: '2024-02-18T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-18T11:00:00.000Z',
+          end_date: '2024-02-19T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-19T11:00:00.000Z',
+          end_date: '2024-02-20T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-20T11:00:00.000Z',
+          end_date: '2024-02-21T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-21T11:00:00.000Z',
+          end_date: '2024-02-22T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-22T11:00:00.000Z',
+          end_date: '2024-02-23T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-23T11:00:00.000Z',
+          end_date: '2024-02-24T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-24T11:00:00.000Z',
+          end_date: '2024-02-25T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-25T11:00:00.000Z',
+          end_date: '2024-02-26T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-26T11:00:00.000Z',
+          end_date: '2024-02-27T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-27T11:00:00.000Z',
+          end_date: '2024-02-28T11:00:00.000Z',
+          total: 24,
+        },
+        {
+          start_date: '2024-02-28T11:00:00.000Z',
+          end_date: '2024-02-29T11:00:00.000Z',
+          total: 24,
+        },
+      ],
       sources: [
         {
           category: 'Brown Coal',
@@ -1849,25 +2308,126 @@ describe('GET /retailer/reports/:id Suburb', () => {
     });
   });
 
-  it.only('Should split the events correctly', async () => {
+  it('Should split the events correctly. event>interval', async () => {
     const testEvents = [
-      { date: moment.utc('2024-02-02T00:00:00.000Z'), amount: 1 },
-      { date: moment.utc('2024-02-03T00:00:00.000Z'), amount: 1 },
-      { date: moment.utc('2024-02-04T00:00:00.000Z'), amount: 2 },
-      { date: moment.utc('2024-02-05T00:00:00.000Z'), amount: 2 },
-      { date: moment.utc('2024-02-06T00:00:00.000Z'), amount: 1 },
-      { date: moment.utc('2024-02-07T00:00:00.000Z'), amount: 1 },
+      { date: '2024-02-02T00:00:00.000Z', amount: 1 },
+      { date: '2024-02-03T00:00:00.000Z', amount: 1 },
+      { date: '2024-02-04T00:00:00.000Z', amount: 2 },
+      { date: '2024-02-05T00:00:00.000Z', amount: 2 },
+      { date: '2024-02-06T00:00:00.000Z', amount: 1 },
+      { date: '2024-02-07T00:00:00.000Z', amount: 1 },
     ];
 
     let results = splitEvents(
       testEvents,
-      moment.utc('2024-02-01T00:00:00.000Z'),
-      moment.utc('2024-02-08T00:00:00.000Z'),
-      8
+      '2024-02-01T00:00:00.000Z',
+      '2024-02-08T00:00:00.000Z',
+      12
     );
+    let expectedResults = [
+      {
+        start_date: '2024-02-01T00:00:00.000Z',
+        end_date: '2024-02-01T12:00:00.000Z',
+        total: 12,
+      },
+      {
+        start_date: '2024-02-01T12:00:00.000Z',
+        end_date: '2024-02-02T00:00:00.000Z',
+        total: 12,
+      },
+      {
+        start_date: '2024-02-02T00:00:00.000Z',
+        end_date: '2024-02-02T12:00:00.000Z',
+        total: 12,
+      },
+      {
+        start_date: '2024-02-02T12:00:00.000Z',
+        end_date: '2024-02-03T00:00:00.000Z',
+        total: 12,
+      },
+      {
+        start_date: '2024-02-03T00:00:00.000Z',
+        end_date: '2024-02-03T12:00:00.000Z',
+        total: 12,
+      },
+      {
+        start_date: '2024-02-03T12:00:00.000Z',
+        end_date: '2024-02-04T00:00:00.000Z',
+        total: 24,
+      },
+      {
+        start_date: '2024-02-04T00:00:00.000Z',
+        end_date: '2024-02-04T12:00:00.000Z',
+        total: 24,
+      },
+      {
+        start_date: '2024-02-04T12:00:00.000Z',
+        end_date: '2024-02-05T00:00:00.000Z',
+        total: 24,
+      },
+      {
+        start_date: '2024-02-05T00:00:00.000Z',
+        end_date: '2024-02-05T12:00:00.000Z',
+        total: 24,
+      },
+      {
+        start_date: '2024-02-05T12:00:00.000Z',
+        end_date: '2024-02-06T00:00:00.000Z',
+        total: 12,
+      },
+      {
+        start_date: '2024-02-06T00:00:00.000Z',
+        end_date: '2024-02-06T12:00:00.000Z',
+        total: 12,
+      },
+      {
+        start_date: '2024-02-06T12:00:00.000Z',
+        end_date: '2024-02-07T00:00:00.000Z',
+        total: 12,
+      },
+      {
+        start_date: '2024-02-07T00:00:00.000Z',
+        end_date: '2024-02-07T12:00:00.000Z',
+        total: 12,
+      },
+    ];
     console.log(results);
-    
-    console.log();
+    expect(results).toEqual(expectedResults);
+  });
+  it('Should split the events correctly. event<interval', async () => {
+    const testEvents = [
+      { date: '2024-02-02T00:00:00.000Z', amount: 1 },
+      { date: '2024-02-03T00:00:00.000Z', amount: 1 },
+      { date: '2024-02-04T00:00:00.000Z', amount: 2 },
+      { date: '2024-02-05T00:00:00.000Z', amount: 2 },
+      { date: '2024-02-06T00:00:00.000Z', amount: 1 },
+      { date: '2024-02-07T00:00:00.000Z', amount: 1 },
+    ];
+
+    let results = splitEvents(
+      testEvents,
+      '2024-02-01T00:00:00.000Z',
+      '2024-02-07T00:00:00.000Z',
+      48
+    );
+    let expectedResults = [
+      {
+        start_date: '2024-02-01T00:00:00.000Z',
+        end_date: '2024-02-03T00:00:00.000Z',
+        total: 48,
+      },
+      {
+        start_date: '2024-02-03T00:00:00.000Z',
+        end_date: '2024-02-05T00:00:00.000Z',
+        total: 84,
+      },
+      {
+        start_date: '2024-02-05T00:00:00.000Z',
+        end_date: '2024-02-07T00:00:00.000Z',
+        total: 60,
+      },
+    ];
+    expect(results).toEqual(expectedResults);
   });
 
   it('Should return empty report', async () => {
