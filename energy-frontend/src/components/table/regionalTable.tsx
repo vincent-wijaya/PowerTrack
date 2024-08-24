@@ -13,7 +13,7 @@ async function fetchHeadersAndData(): Promise<{ headers: string[], data: DataIte
   return new Promise((resolve) => {
     setTimeout(() => {
       resolve({
-        headers: ["suburb", "sal"], //TODO change suburb and sal the other way
+        headers: ["sal", "suburb"], //TODO change suburb and sal the other way
         data: [
           { sal: 22158, suburb: "Richmond"},
           { sal: 22303, suburb: "South Yarra"},

@@ -66,6 +66,11 @@ export default function MainDashboard() {
           </div>
         </div>
       </div> */}
+      <ReportFormButton
+        id="some id"
+        type="nation"
+      />{' '}
+      {/* Place the button component here */}
     </>
   );
 }

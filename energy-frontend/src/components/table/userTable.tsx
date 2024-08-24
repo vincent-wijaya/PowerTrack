@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import Table from "./table";
 
 type DataItem = {
-  id: number;
+  consumer_id: number;
   priority: string;
   address: string;
 };
@@ -14,11 +14,11 @@ async function fetchHeadersAndData(): Promise<{ headers: string[], data: DataIte
   return new Promise((resolve) => {
     setTimeout(() => {
       resolve({
-        headers: ["id", "priority", "address"],
+        headers: ["consumer_id", "priority", "address"],
         data: [
-          { id: 1, priority: "High", address: "54, Dawes Road" },
-          { id: 2, priority: "High", address: "6 Sunnsyside Road" },
-          { id: 3, priority: "Low", address: "Central" }
+          { consumer_id: 1, priority: "High", address: "54, Dawes Road" },
+          { consumer_id: 2, priority: "High", address: "6 Sunnsyside Road" },
+          { consumer_id: 3, priority: "Low", address: "Central" }
         ]
       });
     }, 1000); // Simulating network delay
