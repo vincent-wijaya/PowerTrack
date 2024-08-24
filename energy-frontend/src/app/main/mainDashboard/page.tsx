@@ -64,11 +64,7 @@ export default function MainDashboard() {
             <ProfitChart />
           </div>
         </div>
-      </div> */}
-      <ReportFormButton
-        id="some id"
-        type="nation"
-      />{' '}
+      </div> */}{' '}
       {/* Place the button component here */}
     </>
   );
