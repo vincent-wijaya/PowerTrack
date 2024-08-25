@@ -1,0 +1,68 @@
+import moment from 'moment';
+
+/**
+ * Determines the temporal granularity based on the period between start and end dates.
+ * As written on the API specification document:
+ * - weekly: greater than or equal to 1 month
+ * - daily: between 1 week and 1 month
+ * - hourly: less than 1 week
+ * 
+ * @param startDate start date of period
+ * @param endDate end date of period
+ * @returns the name of the temporal granularity as in the API specification document, and the adverb
+ *  version of the word that is used for the sequelize date-truncating function 'date_trunc'.
+ */
+export function getTemporalGranularity(
+  startDate: string,
+  endDate: string
+): { name: string; sequelize: string } {
+  let dateDifference = moment(endDate).diff(startDate);
+  if (moment.duration(dateDifference).asMonths() >= 1) {
+    return {
+      name: 'weekly',
+      sequelize: 'week',
+    };
+  } else if (moment.duration(dateDifference).asWeeks() >= 1) {
+    return {
+      name: 'daily',
+      sequelize: 'day',
+    };
+  } else {
+    return {
+      name: 'hourly',
+      sequelize: 'hour',
+    };
+  }
+}
+
+/**
+ * Provides the multiplier to convert the energy amount from kW to kWh.
+ * 
+ * Multiplies the energy amount (kW) with the number of hours in the period based on the temporal granularity (h)
+ * to obtain the amount in kWh.
+ * 
+ * Multipliers:
+ * - weekly: 7 * 24 = 168 hours
+ * - daily: 24 hours
+ * - hourly: 1 hour
+ * 
+ * @param granularity the temporal granularity of the period
+ * @returns a multiplier of the number of hours in the period
+ */
+export function kWhConversionMultiplier(granularity: string): number {
+  const WEEK_HOURS = 7 * 24;
+  const DAY_HOURS = 24;
+  const HOUR_HOURS = 1;
+
+  switch (granularity) {
+    case 'weekly':
+      return WEEK_HOURS;
+    case 'daily':
+      return DAY_HOURS;
+    case 'hourly':
+      return HOUR_HOURS;
+    default:
+      console.error('Temporal granularity type invalid.');
+      return 0;
+  }
+}
