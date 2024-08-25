@@ -2,6 +2,7 @@ import express from 'express';
 import moment from 'moment';
 import { Op } from 'sequelize';
 import { defineModels } from '../databaseModels';
+import { kWhConversionMultiplier, getTemporalGranularity } from '../utils/utils';
 
 const router = express.Router();
 
@@ -65,88 +66,157 @@ router.get('/map', async (req, res) => {
 
 router.get('/consumption', async (req, res) => {
   // Retrieve energy consumption for a suburb or consumer over a period of time
-  const { suburb_id, consumer_id, start_date, end_date } = req.query;
+  let { suburb_id, consumer_id, start_date, end_date } = req.query;
   const { sequelize, SuburbConsumption, ConsumerConsumption } =
     req.app.get('models');
 
-  let date_where_clause;
-  if (start_date !== undefined && end_date !== undefined) {
-    date_where_clause = {
-      [Op.between]: [new Date(String(start_date)), new Date(String(end_date))],
-    };
-  } else if (start_date !== undefined) {
-    date_where_clause = {
-      [Op.gte]: new Date(String(start_date)),
-    };
-  } else if (end_date !== undefined) {
-    date_where_clause = {
-      [Op.lte]: new Date(String(end_date)),
-    };
-  } else {
-    date_where_clause = {
-      [Op.ne]: null,
-    };
+  // If no date range is provided, return error 400
+  if (!start_date) {
+    return res.status(400).send({
+      error: 'Start date must be provided.',
+    });
   }
+
+  // If no end date is provided, set it to the current date
+  if (!end_date) {
+    end_date = moment().toISOString();
+  }
+
+  // If start date format is invalid, return error 400 and check if time is included
+  if (!moment(String(start_date), moment.ISO_8601, true).isValid()) {
+    return res.status(400).send({
+      error: 'Invalid start date format. Provide dates in ISO string format.',
+    });
+  }
+
+  // If end date format is invalid, return error 400 and check if time is included
+  if (!moment(String(end_date), moment.ISO_8601, true).isValid()) {
+    return res.status(400).send({
+      error: 'Invalid end date format. Provide dates in ISO string format.',
+    });
+  }
+
+  // If the start date is after the end date, return error 400
+  if (start_date > end_date) {
+    return res.status(400).send({
+      error: 'Invalid start date provided.',
+    });
+  }
+
+  // Determine the date granularity based on the date range
+  let dateGranularity: { name: string; sequelize: string } =
+    getTemporalGranularity(String(start_date), String(end_date));
+  let dateWhere: any = {};
+  // Set the date range to be within the start and end dates
+  dateWhere = {
+    [Op.and]: {
+      [Op.gt]: moment(String(start_date)).toISOString(),
+      [Op.lte]: moment(String(end_date)).toISOString(),
+    },
+  };
 
   let consumptions;
 
   if (suburb_id && consumer_id) {
-    return res
-      .status(400)
-      .send('Cannot specify both suburb_id and consumer_id');
+    return res.status(400).send({
+      error: 'Cannot specify both suburb_id and consumer_id.',
+    });
   } else if (suburb_id) {
     consumptions = await SuburbConsumption.findAll({
+      attributes: [
+        [sequelize.fn('AVG', sequelize.col('amount')), 'amount'], // Averages the amount of energy generated
+        [
+          sequelize.fn(
+            'date_trunc',
+            dateGranularity.sequelize,
+            sequelize.col('date')
+          ),
+          'truncatedDate',
+        ], // Truncate the date based on the date granularity
+      ],
+      group: ['truncatedDate'],
       where: {
         suburb_id: suburb_id,
-        date: date_where_clause,
+        date: dateWhere,
       },
+      order: [['truncatedDate', 'ASC']],
     });
   } else if (consumer_id) {
     consumptions = await ConsumerConsumption.findAll({
+      attributes: [
+        [sequelize.fn('AVG', sequelize.col('amount')), 'amount'], // Averages the amount of energy consumed
+        [
+          sequelize.fn(
+            'date_trunc',
+            dateGranularity.sequelize,
+            sequelize.col('date')
+          ),
+          'truncatedDate',
+        ], // Truncate the date based on the date granularity
+      ],
+      group: ['truncatedDate'],
       where: {
         consumer_id: consumer_id,
-        date: date_where_clause,
+        date: dateWhere,
       },
+      order: [['truncatedDate', 'ASC']],
     });
   } else {
     // Return nation-wide totals
     consumptions = await SuburbConsumption.findAll({
       attributes: [
         'suburb_id',
-        [sequelize.fn('SUM', sequelize.col('amount')), 'amount'],
+        [sequelize.fn('AVG', sequelize.col('amount')), 'amount'], // Averages the amount of energy consumed
+        [
+          sequelize.fn(
+            'date_trunc',
+            dateGranularity.sequelize,
+            sequelize.col('date')
+          ),
+          'truncatedDate',
+        ], // Truncate the date based on the date granularity
       ],
+      group: ['truncatedDate', 'suburb_id'],
       where: {
-        date: {
-          [Op.between]: [
-            start_date
-              ? new Date(String(start_date))
-              : new Date('1970-01-01T00:00:00Z'),
-            end_date
-              ? new Date(String(end_date))
-              : new Date('9999-01-01T00:00:00Z'),
-          ],
-        },
+        date: dateWhere,
       },
-      group: ['suburb_id'],
-    });
-    consumptions = consumptions.map((x: any) => {
-      return {
-        suburb_id: x.suburb_id,
-        start_date: start_date,
-        end_date: end_date,
-        amount: x.amount,
-      };
     });
   }
-  res.send({
-    energy: consumptions,
+
+  // Prepare the data to be returned
+  let returnData: any = {
+    start_date: start_date,
+    end_date: end_date,
+    energy: [],
+  };
+
+  // Insert suburb_id or consumer_id to the return data (if provided)
+  if (suburb_id) {
+    returnData.suburb_id = Number(suburb_id);
+  } else if (consumer_id) {
+    returnData.consumer_id = Number(consumer_id);
+  }
+
+  // Extract the total generation value from the result
+  consumptions.forEach((consumption: any) => {
+    const date = moment(consumption.dataValues.truncatedDate).toISOString();
+
+    // Add the date and amount of energy generated to the return data
+    returnData.energy.push({
+      date,
+      amount:
+        Number(consumption.dataValues.amount) *
+        kWhConversionMultiplier(dateGranularity.name),  // Converts the energy consumed into kWh based on the temporal granularity
+    });
   });
+
+  return res.status(200).send(returnData);
 });
 
 /**
  * GET /retailer/generation
  *
- * Retrieve energy generation data for a suburb over a period of time.
+ * Retrieve average energy generation data for a suburb over a period of time in kWh.
  * Based on the time period, the data is aggregated by hour, day, or week.
  *
  * Query parameters:
@@ -156,18 +226,26 @@ router.get('/consumption', async (req, res) => {
  *
  * Response format:
  * {
- *  suburb_id: number, // The ID of the suburb (if provided)
- *  energy: [ [string, number], ... ] // An array of [date, amount] pairs, where the string is the ISO date and the number is the amount of energy generated.
+ *   suburb_id: number, // The ID of the suburb (if provided)
+ *   start_date: string, // The start date input
+ *   end_date: string, // The end date input (now if not provided)
+ *   energy: [ 
+ *     { date: string, amount: number }, // An array of { date: string, amount: number } objects of the date converted based on granularity and the amount of energy generated.
+ *   ] 
  * }
  *
  * Example response:
  * {
- *  suburb_id: 1,
- *  energy: [
- *    ["2022-01-01T12:30Z", 100],
- *    ["2022-01-01T13:30Z", 120],
- *    ...
- *  ]
+ *   suburb_id: 1,
+ *   start_date: '2024-01-01T05:00:00Z',
+ *   end_date: '2024-01-01T10:00:00Z',
+ *   energy: [
+ *     {
+ *         date: '2024-01-01T08:00:00Z',
+ *         amount: 1000,
+ *     },
+ *     ...
+ *   ]
  * }
  */
 router.get('/generation', async (req, res) => {
@@ -215,7 +293,8 @@ router.get('/generation', async (req, res) => {
       return res.status(400).send('Invalid start date provided.');
 
     // Define where clause for date range
-    let dateGranularity: any = null;
+    let dateGranularity: { name: string; sequelize: string } =
+      getTemporalGranularity(String(start_date), String(end_date));
     let dateWhere: any = {};
     // Set the date range to be within the start and end dates
     dateWhere.date = {
@@ -225,22 +304,16 @@ router.get('/generation', async (req, res) => {
       },
     };
 
-    // Determine the date granularity based on the date range
-    let dateDifference = moment(String(end_date)).diff(String(start_date));
-    if (moment.duration(dateDifference).asMonths() >= 1) {
-      dateGranularity = 'week';
-    } else if (moment.duration(dateDifference).asWeeks() >= 1) {
-      dateGranularity = 'day';
-    } else {
-      dateGranularity = 'hour';
-    }
-
     // Retrieve energy generation data based on the date granularity
     const result = await EnergyGeneration.findAll({
       attributes: [
-        [sequelize.fn('SUM', sequelize.col('amount')), 'amount'], // Sum the amount of energy generated
+        [sequelize.fn('AVG', sequelize.col('amount')), 'amount'], // Average the amount of energy generated
         [
-          sequelize.fn('date_trunc', dateGranularity, sequelize.col('date')),
+          sequelize.fn(
+            'date_trunc',
+            dateGranularity.sequelize,
+            sequelize.col('date')
+          ),
           'truncatedDate',
         ], // Truncate the date based on the date granularity
       ],
@@ -279,7 +352,9 @@ router.get('/generation', async (req, res) => {
       // Add the date and amount of energy generated to the return data
       returnData.energy.push({
         date,
-        amount: Number(generation.dataValues.amount),
+        amount:
+          Number(generation.dataValues.amount) *
+          kWhConversionMultiplier(dateGranularity.name),  // Converts energy generation from kW to kWh based on temporal granularity
       });
     });
 
@@ -302,15 +377,21 @@ router.get('/generation', async (req, res) => {
  * - end_date: The end date of the period to retrieve data for in ISO format. If not provided, the current date will be used.
  *
  * Response format:
+ * {
+ *   suburb_id: number, // The ID of the suburb (if provided)
+ *   start_date: string, // The start date input
+ *   end_date: string, // The end date input (now if not provided)
+ *   energy: [ { date: string, amount: number }, ... ] // An array of { date: string, amount: number } objects of the date converted based on granularity and the amount of energy generated.
+ * }
+ * Response format:
  *  {
  *    suburb_id: number, // The ID of the suburb (if provided)
  *    generators: [
  *      {
  *        energy_generator_id: number, // The ID of the energy generator
- *        energy: [
- *          [date: string, amount: number], // The date in ISO format and amount of energy generated
- *          ...
- *        ]
+ *        energy: [ 
+ *          { date: string, amount: number },  // An array of { date: string, amount: number } objects of the date converted based on granularity and the amount of energy generated.
+ *        ] 
  *      },
  *      ...
  *    ]
@@ -319,12 +400,16 @@ router.get('/generation', async (req, res) => {
  * Example response (hourly time granularity):
  *  {
  *    suburb_id: 1,
+ *    start_date: '2024-01-01T05:00:00Z',
+ *    end_date: '2024-01-01T10:00:00Z',
  *    generators: [
  *      {
  *        energy_generator_id: 1,
  *        energy: [
- *          ["2022-01-01T00:00:00Z", 100],
- *          ["2022-01-01T01:00:00Z", 120],
+ *          {
+ *            date: '2024-01-01T08:00:00Z',
+ *            amount: 1000,
+ *          },
  *        ]
  *      },
  *    ]
@@ -352,8 +437,9 @@ router.get('/generator', async (req, res) => {
       };
     }
 
-    // Define where clause for date range
-    let dateGranularity: any = null;
+    // Determine the date granularity based on the date range
+    let dateGranularity: { name: string; sequelize: string } =
+      getTemporalGranularity(String(start_date), String(end_date));
     let dateWhere: any = {};
 
     // If start_date is not provided, return error 400
@@ -393,24 +479,16 @@ router.get('/generator', async (req, res) => {
       },
     };
 
-    // Determine the date granularity based on the date range
-    let dateDifference = moment(String(end_date)).diff(
-      moment(String(start_date))
-    );
-    if (moment.duration(dateDifference).asMonths() >= 1) {
-      dateGranularity = 'week';
-    } else if (moment.duration(dateDifference).asWeeks() >= 1) {
-      dateGranularity = 'day';
-    } else {
-      dateGranularity = 'hour';
-    }
-
     // Retrieve energy generation data based on the date granularity
     const result = await EnergyGeneration.findAll({
       attributes: [
-        [sequelize.fn('SUM', sequelize.col('amount')), 'amount'], // Sum the amount of energy generated
+        [sequelize.fn('AVG', sequelize.col('amount')), 'amount'], // Averages the amount of energy generated
         [
-          sequelize.fn('date_trunc', dateGranularity, sequelize.col('date')),
+          sequelize.fn(
+            'date_trunc',
+            dateGranularity.sequelize,
+            sequelize.col('date')
+          ),
           'truncatedDate',
         ], // Truncate the date based on the date granularity
         'energy_generator_id', // Include the energy generator ID
@@ -451,7 +529,9 @@ router.get('/generator', async (req, res) => {
     result.forEach((generator: any) => {
       const generatorId = generator.dataValues.energy_generator_id;
       const date = moment(generator.dataValues.truncatedDate).toISOString();
-      const amount = Number(generator.dataValues.amount);
+      const amount =
+        Number(generator.dataValues.amount) *
+        kWhConversionMultiplier(dateGranularity.name); // Convert energy generated into kWh based on the temporal granularity
 
       // If the generator ID is not in the return data, add it
       // Adds the generator ID and an empty array for the energy data
