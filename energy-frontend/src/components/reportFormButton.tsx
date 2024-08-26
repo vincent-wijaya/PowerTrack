@@ -15,7 +15,7 @@ const ReportFormButton = (props: { id: string; type: string }) => {
         },
       }}
     >
-      <button className="fixed bottom-4 right-4 z-50 px-4 py-2 bg-purple text-white rounded shadow-md">
+      <button className="px-4 py-2 bg-purple text-white rounded shadow-md">
         Generate Report
       </button>
     </Link>
