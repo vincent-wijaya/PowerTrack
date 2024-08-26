@@ -89,7 +89,7 @@ export default function RegionalTable() {
       <Table
         columns={headers}
         data={filteredData}
-        link={'userDashboard'}
+        link={'regionalDashboard'}
       />
     </div>
   );
