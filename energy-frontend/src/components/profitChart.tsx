@@ -51,7 +51,7 @@ function ProfitChart(props: { className?: string }) {
   };
 
   return (
-    <div className={`bg-itembg border border-stroke rounded-lg p-4 ${props.className ? props.className : ""}`}>
+    <div className={`w-full bg-itembg border border-stroke rounded-lg p-4 ${props.className ? props.className : ""}`}>
       <div className="justify-center items-center">
         <div className="drop-shadow-md border-chartBorder ">
           <Dropdown onChange={handleTimeRangeChange} chartTitle={"Profit Analysis"} />

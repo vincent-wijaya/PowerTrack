@@ -51,7 +51,7 @@ function EnergyChart(props: { className?: string }) {
 
   return (
     <div>
-      <div className="flex justify-center items-center ">
+      <div className="w-full flex justify-center items-center ">
         <div className="w-full bg-itembg border border-stroke rounded-lg p-4">
           <Dropdown
             onChange={handleTimeRangeChange}
