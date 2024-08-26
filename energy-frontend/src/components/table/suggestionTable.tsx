@@ -1,6 +1,6 @@
-"use client";
-import React, { useEffect, useState } from "react";
-import Table from "./table";
+'use client';
+import React, { useEffect, useState } from 'react';
+import Table from './table';
 
 type DataItem = {
   id: number;
@@ -8,28 +8,28 @@ type DataItem = {
   location: string;
 };
 
-
 // Mock function to fetch headers and data
-async function fetchHeadersAndData(): Promise<{ headers: string[], data: DataItem[] }> {
+async function fetchHeadersAndData(): Promise<{
+  headers: string[];
+  data: DataItem[];
+}> {
   return new Promise((resolve) => {
     setTimeout(() => {
       resolve({
-        headers: ["id", "Description", "Location"],
+        headers: ['id', 'Description', 'Location'],
         data: [
-          { id: 1, description: "power outage", location: "54, Dawes Road" },
-          { id: 2, description: "power outage", location: "6 Sunnsyside Road" },
-          { id: 3, description: "power outage", location: "Central" }
-        ]
+          { id: 1, description: 'power outage', location: '54, Dawes Road' },
+          { id: 2, description: 'power outage', location: '6 Sunnsyside Road' },
+          { id: 3, description: 'power outage', location: 'Central' },
+        ],
       });
     }, 1000); // Simulating network delay
   });
 }
 
-
 export default function SuggestionTable() {
   const [headers, setHeaders] = useState<string[]>([]);
   const [data, setData] = useState<DataItem[]>([]);
-
 
   useEffect(() => {
     async function getData() {
@@ -38,7 +38,7 @@ export default function SuggestionTable() {
         setHeaders(headers);
         setData(data);
       } catch (error) {
-        console.error("Failed to fetch data", error);
+        console.error('Failed to fetch data', error);
       }
     }
 
@@ -52,9 +52,13 @@ export default function SuggestionTable() {
 
     // Clean up interval on component unmount
     return () => clearInterval(interval);
-  }, [])
+  }, []);
 
-    return (
-        <Table columns={headers} data={data} link={'userDashboard'}/>
-    )
+  return (
+    <Table
+      columns={headers}
+      data={data}
+      link={'userDashboard'}
+    />
+  );
 }

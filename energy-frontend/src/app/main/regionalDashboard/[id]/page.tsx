@@ -1,4 +1,5 @@
 'use client';
+'use client';
 
 import Headings from '@/app/main/template';
 import EnergyChart from '@/components/energyChart';
@@ -32,6 +33,20 @@ export default function RegionalDashboard({
     }
   );
 
+  function calculateProfitMargin(
+    profitMarginFetch: ProfitMarginFetchType
+  ): number {
+    if (!profitMarginFetch) return 0;
+    const lastSpotPrice = profitMarginFetch.spot_prices.at(-1)?.amount;
+    const lastSellingPrice = profitMarginFetch.selling_prices.at(-1)?.amount;
+    if (lastSpotPrice === undefined || lastSellingPrice === undefined) {
+      return 0;
+    } else {
+      return Math.round(
+        ((lastSellingPrice - lastSpotPrice) / lastSellingPrice) * 100
+      );
+    }
+  }
   const currentSpotPrice =
     profitMarginFetch?.spot_prices?.at(-1)?.amount?.toLocaleString('en-AU', {
       style: 'currency',
@@ -65,9 +80,8 @@ export default function RegionalDashboard({
           </div>
         </div>
 
-        <EnergyChart />
         <ProfitChart />
-        <WarningTable />
+        <WarningTable/> {/*add sububr id to table here*/}
         <EnergySourceBreakdown energySources={energySourceBreakdownMockData} />
       </div>
       <ReportFormButton

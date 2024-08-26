@@ -1,61 +1,64 @@
-export default async function fetchWarnings(id: number | null = null) {
-    const data = {
-        warnings: [
-            {
-              id: 20457,
-              goal: 'green energy',
-              category: 'fossil fuel',
-              description: 'warning blah blah',
-              suggestion: 'suggestion',
-              data: {}
-            },
-            {
-              id: 20456,
-              goal: 'green energy',
-              category: 'fossil fuel',
-              description: 'warning blah blah',
-              suggestion: 'suggestion',
-              data: {}
-            },
-            {
-              id: 20455,
-              goal: 'green energy',
-              category: 'fossil fuel',
-              description: 'warning blah blah',
-              suggestion: 'suggestion',
-              data: {}
-            },
-            {
-              id: 20454,
-              goal: 'green energy',
-              category: 'fossil fuel',
-              description: 'warning blah blah',
-              suggestion: 'suggestion',
-              data: {}
-            },
-            {
-              id: 20453,
-              goal: 'green energy',
-              category: 'fossil fuel',
-              description: 'warning blah blah',
-              suggestion: 'suggestion',
-              data: {}
-            },
-          ],
-    }
-    
-    await new Promise((resolve) => setTimeout(resolve, 3000)); // Simulating a delay of 3 seconds
+export default async function fetchWarnings(
+  suburb_id: number | null = null,
+  consumer_id: number | null = null
+) {
+  const data = {
+    warnings: [
+      {
+        suburb_id: 1,
+        category: 'outage_hp',
+        description: 'Energy outage for high priority consumer',
+        data: {
+          consumer_id: 1,
+          address: '123 Example Street, Melbourne VIC 3000',
+        },
+        suggestion:
+          'Prioritise re-establishing energy for priority consumer at address 123 Example Street, Melbourne VIC 3000.',
+      },
+      {
+        suburb_id: 2,
+        category: 'outage_lp',
+        description: 'Energy outage for low priority consumer',
+        data: {
+          consumer_id: 2,
+          address: '456 Sample Avenue, Melbourne VIC 3000',
+        },
+        suggestion:
+          'Restore energy for low priority consumer at address 456 Sample Avenue, Melbourne VIC 3000.',
+      },
+      {
+        suburb_id: 3,
+        category: 'outage_mp',
+        description: 'Energy outage for medium priority consumer',
+        data: {
+          consumer_id: 3,
+          address: '789 Example Road, Melbourne VIC 3000',
+        },
+        suggestion:
+          'Ensure energy restoration for medium priority consumer at address 789 Example Road, Melbourne VIC 3000.',
+      },
+    ],
+  };
 
-    if (id !== undefined && id !== null) {
-        // Filter the warnings by id and return
-        const warning = data.warnings.find((item) => item.id === id);
-        if (warning) {
-        return [warning]; // Always return an array, even if it's a single item
-        } else {
-        throw new Error(`Warning with ID ${id} not found`);
-        }
+  await new Promise((resolve) => setTimeout(resolve, 3000)); // Simulating a delay of 3 seconds
+  if (suburb_id !== null) {
+    const warning = data.warnings.find((item) => item.suburb_id === suburb_id);
+    if (warning) {
+      return [warning]; // Always return an array, even if it's a single item
     } else {
-        // Return all warnings if no id is provided
-        return { warnings: data.warnings };
+      throw new Error(`Suburb with ID ${suburb_id} not found`);
     }
+  } else if (consumer_id !== null) {
+    const consumer_warnings = data.warnings.filter(
+      (item) => item.data.consumer_id.toString() === consumer_id.toString()
+    );
+
+    if (consumer_warnings.length > 0) {
+      return consumer_warnings;
+    } else {
+      throw new Error(`Warnings for consumer ID ${consumer_id} not found`);
+    }
+  } else {
+    return { warnings: data.warnings };
+  }
 }

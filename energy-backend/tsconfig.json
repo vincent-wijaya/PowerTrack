@@ -5,7 +5,7 @@
     "outDir": "./dist", // Output directory for compiled JavaScript files
     "esModuleInterop": true,
     "strict": true, // Enable all strict type-checking options
-    "sourceMap": true,
+    "sourceMap": true
   },
   "include": ["**/*.ts"], // Include all files in the src directory
   "exclude": ["node_modules"] // Exclude the node_modules directory

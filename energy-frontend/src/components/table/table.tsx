@@ -1,5 +1,5 @@
-import React from "react";
-import Link from "next/link"
+import React from 'react';
+import Link from 'next/link';
 
 interface TableProps {
   columns: string[];
@@ -8,9 +8,8 @@ interface TableProps {
 }
 
 export default function Table({ columns, data, link }: TableProps) {
-  
   // Check if link is true, if so, add 'Action' header
-  const updatedColumns = link ? [...columns, "Action"] : columns;
+  const updatedColumns = link ? [...columns, 'Action'] : columns;
 
   return (
     <table className="w-full table-auto border-stroke border-r-2">
@@ -34,8 +33,8 @@ export default function Table({ columns, data, link }: TableProps) {
                 className="px-3 py-8 items-start gap-8 border-stroke border-r-2 border-l-2 border-b-2"
                 key={columnIndex}
               >
-                <div className="font-inter text-center text-white">
-                  {(row[column.toLowerCase().replace(' ','_')])}
+                <div className="font-inter text-white">
+                  {row[column.toLowerCase().replace(' ', '_')].toString()}
                 </div>
               </td>
             ))}
@@ -47,7 +46,7 @@ export default function Table({ columns, data, link }: TableProps) {
                 <div className="font-inter text-center text-white bg-purple p-2 rounded-lg">
                     <Link href={`${link}/${row[columns[0].toLowerCase()]}` }>
                     View
-                    </Link>
+                  </Link>
                 </div>
               </td>
             )}

@@ -9,10 +9,33 @@ import { connectToTestDb, dropTestDb } from './testDb';
 import moment from 'moment';
 import { exportsForTesting } from '../routes/retailerRoute';
 const { splitEvents } = exportsForTesting;
+import { kWhConversionMultiplier } from '../utils/utils';
 
 describe('GET /retailer/consumption', () => {
   let sequelize: Sequelize;
   let appInstance: Application;
+
+  const mockSuburbConsumptionData = [
+    { suburb_id: 1, date: '2024-04-17T09:00:00Z', amount: 1000 },
+    { suburb_id: 1, date: '2024-04-18T09:05:00Z', amount: 1100 },
+    { suburb_id: 1, date: '2024-04-19T09:10:00Z', amount: 1200 },
+    { suburb_id: 1, date: '2024-04-20T09:15:00Z', amount: 1300 },
+    { suburb_id: 2, date: '2024-04-17T09:00:00Z', amount: 1400 },
+    { suburb_id: 2, date: '2024-05-17T09:05:00Z', amount: 1500 },
+    { suburb_id: 2, date: '2024-06-17T09:10:00Z', amount: 1600 },
+    { suburb_id: 2, date: '2024-07-17T09:15:00Z', amount: 1700 },
+  ];
+
+  const mockConsumerConsumptionData = [
+    { consumer_id: 1, date: '2024-04-17T09:00:00Z', amount: 1000 },
+    { consumer_id: 1, date: '2024-04-18T09:05:00Z', amount: 1100 },
+    { consumer_id: 1, date: '2024-04-19T09:10:00Z', amount: 1200 },
+    { consumer_id: 1, date: '2024-04-20T09:15:00Z', amount: 1300 },
+    { consumer_id: 2, date: '2024-04-17T09:00:00Z', amount: 1400 },
+    { consumer_id: 2, date: '2024-05-17T09:05:00Z', amount: 1500 },
+    { consumer_id: 2, date: '2024-06-17T09:10:00Z', amount: 1600 },
+    { consumer_id: 2, date: '2024-07-17T09:15:00Z', amount: 1700 },
+  ];
 
   beforeAll(async () => {
     // Set up and connect to test database
@@ -20,38 +43,51 @@ describe('GET /retailer/consumption', () => {
     appInstance = app(sequelize);
 
     // Insert prerequesite data for tests
-    await appInstance.get('models').Suburb.create({
-      id: 1,
-      name: 'Test Suburb',
-      postcode: 3000,
-      state: 'Victoria',
-      latitude: 0,
-      longitude: 0,
-    });
-    await appInstance.get('models').SuburbConsumption.bulkCreate([
-      { suburb_id: 1, date: '2024-04-17T09:00:00Z', amount: 1000 },
-      { suburb_id: 1, date: '2024-04-17T09:05:00Z', amount: 1100 },
-      { suburb_id: 1, date: '2024-04-17T09:10:00Z', amount: 1200 },
-      { suburb_id: 1, date: '2024-04-17T09:15:00Z', amount: 1300 },
+    await appInstance.get('models').Suburb.bulkCreate([
+      {
+        id: 1,
+        name: 'Test Suburb',
+        postcode: 3000,
+        state: 'Victoria',
+        latitude: 0,
+        longitude: 0,
+      },
+      {
+        id: 2,
+        name: 'Test Suburb 2',
+        postcode: 3001,
+        state: 'Victoria',
+        latitude: 0,
+        longitude: 0,
+      },
     ]);
+    await appInstance
+      .get('models')
+      .SuburbConsumption.bulkCreate(mockSuburbConsumptionData);
     await appInstance.get('models').SellingPrice.create({
       id: 1,
       date: '2024-04-01T09:00:00Z',
       amount: 0.25,
     });
-    await appInstance.get('models').Consumer.create({
-      id: 1,
-      street_address: '10 Test Street Melbourne Victoria 3000',
-      high_priority: false,
-      selling_price_id: 1,
-      suburb_id: 1,
-    });
-    await appInstance.get('models').ConsumerConsumption.bulkCreate([
-      { consumer_id: 1, date: '2024-04-17T09:00:00Z', amount: 1000 },
-      { consumer_id: 1, date: '2024-04-17T09:05:00Z', amount: 1100 },
-      { consumer_id: 1, date: '2024-04-17T09:10:00Z', amount: 1200 },
-      { consumer_id: 1, date: '2024-04-17T09:15:00Z', amount: 1300 },
+    await appInstance.get('models').Consumer.bulkCreate([
+      {
+        id: 1,
+        street_address: '10 Test Street Melbourne Victoria 3000',
+        high_priority: false,
+        selling_price_id: 1,
+        suburb_id: 1,
+      },
+      {
+        id: 2,
+        street_address: '11 Test Street Melbourne Victoria 3000',
+        high_priority: false,
+        selling_price_id: 1,
+        suburb_id: 1,
+      },
     ]);
+    await appInstance
+      .get('models')
+      .ConsumerConsumption.bulkCreate(mockConsumerConsumptionData);
   });
 
   afterAll(async () => {
@@ -60,111 +96,338 @@ describe('GET /retailer/consumption', () => {
     await dropTestDb(sequelize);
   });
 
+  it('should return error 400 if start_date is missing', async () => {
+    const response = await request(appInstance).get('/retailer/consumption');
+
+    expect(response.status).toBe(400);
+  });
+
+  it('should return error 400 if invalid start_date format is provided', async () => {
+    const START_DATE = '01/01/2024'; // Invalid date format
+
+    const response = await request(appInstance).get(
+      `/retailer/consumption?start_date=${START_DATE}`
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it('should return error 400 if invalid end_date format is provided', async () => {
+    const START_DATE = '2024-01-01T09:00:00Z';
+    const END_DATE = '01/01/2024'; // Invalid date format
+
+    const response = await request(appInstance).get(
+      `/retailer/consumption?start_date=${START_DATE}&end_date=${END_DATE}`
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it('should return error 400 if future start date is provided', async () => {
+    const START_DATE = '2099-01-01T09:00:00Z'; // Future date
+
+    const response = await request(appInstance).get(
+      `/retailer/consumption?start_date=${START_DATE}`
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it('should return error 400 if both consumer_id and suburb_id are provided', async () => {
+    const START_DATE = '2024-01-01T09:00:00Z';
+    const CONSUMER_ID = 1;
+    const SUBURB_ID = 1;
+
+    const response = await request(appInstance).get(
+      `/retailer/consumption?consumer_id=${CONSUMER_ID}&suburb_id=${SUBURB_ID}&start_date=${START_DATE}`
+    );
+
+    expect(response.status).toBe(400);
+  });
+
   it('should return non-empty data for a suburb', async () => {
     // Insert sample data into the database
-    const SuburbConsumption = appInstance.get('models').SuburbConsumption;
+    const START_DATE = '2024-04-17T09:05:00Z';
+    const END_DATE = '2024-04-17T09:11:00Z';
+    const SUBURB_ID = 1;
 
-    const suburbConsumptionData = await SuburbConsumption.findAll({
-      where: { suburb_id: 1 },
+    const adjustedSuburbConsumptionData = mockSuburbConsumptionData.map(
+      (consumption) => {
+        return {
+          ...consumption,
+          truncatedDate: moment(consumption.date).startOf('hour').toISOString(),
+        };
+      }
+    );
+
+    // Aggregate the data by hour
+    let expectedEnergy = adjustedSuburbConsumptionData
+      .filter(
+        (consumption) =>
+          moment(START_DATE) < moment(consumption.date) &&
+          moment(consumption.date) <= moment(END_DATE) &&
+          consumption.suburb_id === SUBURB_ID
+      )
+      .reduce((acc: any, consumption: any) => {
+        if (!acc[consumption.truncatedDate]) {
+          acc[consumption.truncatedDate] = {
+            consumption: 0,
+            count: 0,
+          };
+        }
+        acc[consumption.truncatedDate].consumption += consumption.amount;
+        acc[consumption.truncatedDate].count++;
+        return acc;
+      }, {});
+
+    expectedEnergy = Object.keys(expectedEnergy).map((date) => {
+      return {
+        date,
+        amount:
+          (expectedEnergy[date].consumption / expectedEnergy[date].count) *
+          kWhConversionMultiplier('hourly'), // Gets the average amount
+      };
     });
 
     const response = await request(appInstance).get(
-      '/retailer/consumption?suburb_id=1&start_date=2024-04-17T09:05:00Z&end_date=2024-04-17T09:11:00Z'
+      `/retailer/consumption?suburb_id=${SUBURB_ID}&start_date=${START_DATE}&end_date=${END_DATE}`
     );
 
     console.log(`API response status: ${response.status}`);
     expect(response.status).toBe(200);
     console.log(`API response: ${JSON.stringify(response.body)}`);
-    expect([
-      suburbConsumptionData[1].toJSON(),
-      suburbConsumptionData[2].toJSON(),
-    ]).toEqual(
-      response.body.energy.map((x: Object) =>
-        SuburbConsumption.build(x).toJSON()
-      )
-    );
+    expect(response.body).toEqual({
+      suburb_id: SUBURB_ID,
+      start_date: START_DATE,
+      end_date: END_DATE,
+      energy: expectedEnergy,
+    });
   });
 
-  it('should return consumer data for all time', async () => {
-    const SuburbConsumption = appInstance.get('models').SuburbConsumption;
-    const suburbConsumptionData = await SuburbConsumption.findAll({
-      where: { suburb_id: 1 },
+  it('should return non-empty data for a consumer with weekly granularity', async () => {
+    const START_DATE = '2024-03-17T09:05:00Z';
+    const END_DATE = '2024-08-17T09:11:00Z';
+    const CONSUMER_ID = 1;
+
+    const adjustedConsumerConsumptionData = mockConsumerConsumptionData.map(
+      (consumption) => {
+        return {
+          ...consumption,
+          truncatedDate: moment(consumption.date)
+            .startOf('isoWeek')
+            .toISOString(),
+        };
+      }
+    );
+
+    let expectedEnergy = adjustedConsumerConsumptionData
+      .filter(
+        (consumption) =>
+          consumption.date > START_DATE &&
+          consumption.date <= END_DATE &&
+          consumption.consumer_id === CONSUMER_ID
+      )
+      .reduce((acc: any, consumption: any) => {
+        if (!acc[consumption.truncatedDate]) {
+          acc[consumption.truncatedDate] = {
+            amount: 0,
+            count: 0,
+          };
+        }
+        acc[consumption.truncatedDate].amount += consumption.amount;
+        acc[consumption.truncatedDate].count++;
+        return acc;
+      }, {});
+
+    expectedEnergy = Object.keys(expectedEnergy).map((date) => {
+      return {
+        date,
+        amount:
+          (expectedEnergy[date].amount / expectedEnergy[date].count) *
+          kWhConversionMultiplier('weekly'), // Gets the average amount
+      };
     });
 
     const response = await request(appInstance).get(
-      '/retailer/consumption?suburb_id=1'
+      `/retailer/consumption?consumer_id=${CONSUMER_ID}&start_date=${START_DATE}&end_date=${END_DATE}`
     );
 
     console.log(`API response status: ${response.status}`);
     expect(response.status).toBe(200);
     console.log(`API response: ${JSON.stringify(response.body)}`);
-    expect(
-      suburbConsumptionData.map((x: typeof SuburbConsumption) => x.toJSON())
-    ).toEqual(
-      response.body.energy.map((x: Object) =>
-        SuburbConsumption.build(x).toJSON()
-      )
-    );
+    expect(response.body).toEqual({
+      consumer_id: CONSUMER_ID,
+      start_date: START_DATE,
+      end_date: END_DATE,
+      energy: expectedEnergy,
+    });
   });
 
-  it('should return non-empty data for a consumer', async () => {
-    // Insert sample data into the database
-    const ConsumerConsumption = appInstance.get('models').ConsumerConsumption;
-    const consumerConsumptionData = await ConsumerConsumption.findAll();
+  it('should return non-empty data for a consumer with daily granularity', async () => {
+    const START_DATE = '2024-04-13T09:05:00Z';
+    const END_DATE = '2024-04-21T09:11:00Z';
+    const CONSUMER_ID = 1;
+
+    const adjustedConsumerConsumptionData = mockConsumerConsumptionData.map(
+      (consumption) => {
+        return {
+          ...consumption,
+          truncatedDate: moment(consumption.date).startOf('day').toISOString(),
+        };
+      }
+    );
+
+    let expectedEnergy = adjustedConsumerConsumptionData
+      .filter(
+        (consumption) =>
+          consumption.date > START_DATE &&
+          consumption.date < END_DATE &&
+          consumption.consumer_id === CONSUMER_ID
+      )
+      .reduce((acc: any, consumption: any) => {
+        if (!acc[consumption.truncatedDate]) {
+          acc[consumption.truncatedDate] = {
+            amount: 0,
+            count: 0,
+          };
+        }
+        acc[consumption.truncatedDate].amount += consumption.amount;
+        acc[consumption.truncatedDate].count++;
+        return acc;
+      }, {});
+
+    expectedEnergy = Object.keys(expectedEnergy).map((date) => {
+      return {
+        date,
+        amount:
+          (expectedEnergy[date].amount / expectedEnergy[date].count) *
+          kWhConversionMultiplier('daily'), // Gets the average amount
+      };
+    });
 
     const response = await request(appInstance).get(
-      '/retailer/consumption?consumer_id=1&start_date=2024-04-17T09:05:00Z&end_date=2024-04-17T09:11:00Z'
+      `/retailer/consumption?consumer_id=${CONSUMER_ID}&start_date=${START_DATE}&end_date=${END_DATE}`
     );
 
     console.log(`API response status: ${response.status}`);
     expect(response.status).toBe(200);
     console.log(`API response: ${JSON.stringify(response.body)}`);
-    expect([
-      consumerConsumptionData[1].toJSON(),
-      consumerConsumptionData[2].toJSON(),
-    ]).toEqual(
-      response.body.energy.map((x: Object) =>
-        ConsumerConsumption.build(x).toJSON()
-      )
-    );
+    expect(response.body).toEqual({
+      consumer_id: CONSUMER_ID,
+      start_date: START_DATE,
+      end_date: END_DATE,
+      energy: expectedEnergy,
+    });
   });
 
-  it('should return consumer data for all time', async () => {
-    const ConsumerConsumption = appInstance.get('models').ConsumerConsumption;
-    const consumerConsumptionData = await ConsumerConsumption.findAll();
+  it('should return non-empty data for a consumer with hourly granularity', async () => {
+    const START_DATE = '2024-04-17T09:05:00Z';
+    const END_DATE = '2024-04-17T09:11:00Z';
+    const CONSUMER_ID = 1;
+
+    const adjustedConsumerConsumptionData = mockConsumerConsumptionData.map(
+      (consumption) => {
+        return {
+          ...consumption,
+          truncatedDate: moment(consumption.date).startOf('hour').toISOString(),
+        };
+      }
+    );
+
+    let expectedEnergy = adjustedConsumerConsumptionData
+      .filter(
+        (consumption) =>
+          consumption.date > START_DATE &&
+          consumption.date < END_DATE &&
+          consumption.consumer_id === CONSUMER_ID
+      )
+      .reduce((acc: any, consumption: any) => {
+        if (!acc[consumption.truncatedDate]) {
+          acc[consumption.truncatedDate] = {
+            amount: 0,
+            count: 0,
+          };
+        }
+        acc[consumption.truncatedDate].amount += consumption.amount;
+        acc[consumption.truncatedDate].count++;
+        return acc;
+      }, {});
+
+    expectedEnergy = Object.keys(expectedEnergy).map((date) => {
+      return {
+        date,
+        amount:
+          (expectedEnergy[date].amount / expectedEnergy[date].count) *
+          kWhConversionMultiplier('hourly'), // Gets the average amount
+      };
+    });
 
     const response = await request(appInstance).get(
-      '/retailer/consumption?consumer_id=1'
+      `/retailer/consumption?consumer_id=${CONSUMER_ID}&start_date=${START_DATE}&end_date=${END_DATE}`
     );
 
     console.log(`API response status: ${response.status}`);
     expect(response.status).toBe(200);
     console.log(`API response: ${JSON.stringify(response.body)}`);
-    expect(
-      consumerConsumptionData.map((x: typeof ConsumerConsumption) => x.toJSON())
-    ).toEqual(
-      response.body.energy.map((x: Object) =>
-        ConsumerConsumption.build(x).toJSON()
-      )
-    );
+    expect(response.body).toEqual({
+      consumer_id: CONSUMER_ID,
+      start_date: START_DATE,
+      end_date: END_DATE,
+      energy: expectedEnergy,
+    });
   });
 
   it('should return data for nation-wide consumption', async () => {
+    const START_DATE = '2024-04-17T09:05:00Z';
+    const END_DATE = '2024-04-17T09:11:00Z';
+
+    const adjustedSuburbConsumptionData = mockSuburbConsumptionData.map(
+      (consumption) => {
+        return {
+          ...consumption,
+          truncatedDate: moment(consumption.date).startOf('hour').toISOString(),
+        };
+      }
+    );
+
+    let expectedEnergy = adjustedSuburbConsumptionData
+      .filter(
+        (consumption) =>
+          consumption.date > START_DATE && consumption.date < END_DATE
+      )
+      .reduce((acc: any, consumption: any) => {
+        if (!acc[consumption.truncatedDate]) {
+          acc[consumption.truncatedDate] = {
+            amount: 0,
+            count: 0,
+          };
+        }
+        acc[consumption.truncatedDate].amount += consumption.amount;
+        acc[consumption.truncatedDate].count++;
+        return acc;
+      }, {});
+
+    expectedEnergy = Object.keys(expectedEnergy).map((date) => {
+      return {
+        date,
+        amount:
+          (expectedEnergy[date].amount / expectedEnergy[date].count) *
+          kWhConversionMultiplier('hourly'), // Gets the average amount
+      };
+    });
+
     const response = await request(appInstance).get(
-      '/retailer/consumption?start_date=2024-04-17T09:05:00Z&end_date=2024-04-17T09:11:00Z'
+      `/retailer/consumption?start_date=${START_DATE}&end_date=${END_DATE}`
     );
 
     console.log(`API response status: ${response.status}`);
     expect(response.status).toBe(200);
     console.log(`API response: ${JSON.stringify(response.body)}`);
-    expect([
-      {
-        suburb_id: '1',
-        start_date: '2024-04-17T09:05:00Z',
-        end_date: '2024-04-17T09:11:00Z',
-        amount: '2300',
-      },
-    ]).toEqual(response.body.energy);
+    expect(response.body).toEqual({
+      start_date: START_DATE,
+      end_date: END_DATE,
+      energy: expectedEnergy,
+    });
   });
 });
 
@@ -244,23 +507,37 @@ describe('GET /retailer/generation', () => {
   let appInstance: Application;
 
   const mockGenerationData = [
-    { energy_generator_id: 1, date: '2023-01-01T09:00:00Z', amount: 100 },
-    { energy_generator_id: 1, date: '2023-02-01T09:00:00Z', amount: 200 },
-    { energy_generator_id: 1, date: '2023-03-01T09:00:00Z', amount: 300 },
-    { energy_generator_id: 1, date: '2023-04-01T09:00:00Z', amount: 400 },
+    { energy_generator_id: 1, date: '2024-01-01T09:00:00Z', amount: 100 },
+    { energy_generator_id: 1, date: '2024-01-01T09:30:00Z', amount: 200 },
+    { energy_generator_id: 1, date: '2024-02-01T09:00:00Z', amount: 200 },
+    { energy_generator_id: 1, date: '2024-02-01T09:30:00Z', amount: 300 },
+    { energy_generator_id: 1, date: '2024-03-01T09:00:00Z', amount: 300 },
+    { energy_generator_id: 1, date: '2024-03-01T09:30:00Z', amount: 400 },
+    { energy_generator_id: 1, date: '2024-04-01T09:00:00Z', amount: 400 },
+    { energy_generator_id: 1, date: '2024-04-01T09:30:00Z', amount: 500 },
 
-    { energy_generator_id: 1, date: '2023-06-01T09:00:00Z', amount: 500 },
-    { energy_generator_id: 1, date: '2023-06-02T10:00:00Z', amount: 500 },
-    { energy_generator_id: 1, date: '2023-06-03T11:00:00Z', amount: 500 },
+    { energy_generator_id: 1, date: '2024-06-01T09:00:00Z', amount: 500 },
+    { energy_generator_id: 1, date: '2024-06-01T12:00:00Z', amount: 800 },
+    { energy_generator_id: 1, date: '2024-06-02T10:00:00Z', amount: 500 },
+    { energy_generator_id: 1, date: '2024-06-02T12:00:00Z', amount: 800 },
+    { energy_generator_id: 1, date: '2024-06-03T11:00:00Z', amount: 500 },
+    { energy_generator_id: 1, date: '2024-06-03T12:00:00Z', amount: 800 },
 
-    { energy_generator_id: 2, date: '2023-01-01T09:00:00Z', amount: 100 },
-    { energy_generator_id: 2, date: '2023-02-01T09:00:00Z', amount: 200 },
-    { energy_generator_id: 2, date: '2023-03-01T09:00:00Z', amount: 300 },
-    { energy_generator_id: 2, date: '2023-04-01T09:00:00Z', amount: 400 },
+    { energy_generator_id: 2, date: '2024-01-01T09:00:00Z', amount: 100 },
+    { energy_generator_id: 2, date: '2024-01-02T09:00:00Z', amount: 300 },
+    { energy_generator_id: 2, date: '2024-02-01T09:00:00Z', amount: 200 },
+    { energy_generator_id: 2, date: '2024-02-02T09:00:00Z', amount: 400 },
+    { energy_generator_id: 2, date: '2024-03-01T09:00:00Z', amount: 300 },
+    { energy_generator_id: 2, date: '2024-03-02T09:00:00Z', amount: 500 },
+    { energy_generator_id: 2, date: '2024-04-01T09:00:00Z', amount: 400 },
+    { energy_generator_id: 2, date: '2024-04-02T09:00:00Z', amount: 600 },
 
-    { energy_generator_id: 2, date: '2023-06-01T09:00:00Z', amount: 500 },
-    { energy_generator_id: 2, date: '2023-06-02T09:00:00Z', amount: 500 },
-    { energy_generator_id: 2, date: '2023-06-03T09:00:00Z', amount: 500 },
+    { energy_generator_id: 2, date: '2024-06-01T09:00:00Z', amount: 500 },
+    { energy_generator_id: 2, date: '2024-06-01T09:30:00Z', amount: 1000 },
+    { energy_generator_id: 2, date: '2024-06-02T09:00:00Z', amount: 500 },
+    { energy_generator_id: 2, date: '2024-06-02T09:30:00Z', amount: 1000 },
+    { energy_generator_id: 2, date: '2024-06-03T09:00:00Z', amount: 500 },
+    { energy_generator_id: 2, date: '2024-06-03T09:30:00Z', amount: 1000 },
   ];
 
   beforeAll(async () => {
@@ -376,24 +653,46 @@ describe('GET /retailer/generation', () => {
     expect(response.status).toBe(400);
   });
 
-  it('should return with status and the generation between 1 Jun 2023 and 3 Jun 2023 with hourly granularity', async () => {
+  it('should return with status and the generation with hourly granularity', async () => {
     const SUBURB_ID = 1;
     const START_DATE = '2023-06-01T08:00:00Z';
     const END_DATE = '2023-06-03T12:00:00Z';
 
-    const expectedEnergy = mockGenerationData
+    const adjustedGenerationData = mockGenerationData.map((generation) => {
+      return {
+        ...generation,
+        truncatedDate: moment(generation.date).startOf('hour').toISOString(),
+      };
+    });
+
+    // Aggregate the data by week
+    let expectedEnergy = adjustedGenerationData
       .filter(
         (generation) =>
-          generation.date > START_DATE &&
-          generation.date < END_DATE &&
+          moment(START_DATE) < moment(generation.date) &&
+          moment(generation.date) <= moment(END_DATE) &&
           generation.energy_generator_id === SUBURB_ID
       )
-      .map((generation) => {
-        return {
-          date: moment(generation.date).startOf('hour').toISOString(),
-          amount: generation.amount,
-        };
-      });
+      .reduce((acc: any, generation: any) => {
+        if (!acc[generation.truncatedDate]) {
+          acc[generation.truncatedDate] = {
+            amount: 0,
+            count: 0,
+          };
+        }
+        acc[generation.truncatedDate].amount += generation.amount;
+        acc[generation.truncatedDate].count++;
+        return acc;
+      }, {});
+
+    expectedEnergy = Object.keys(expectedEnergy).map((date) => {
+      return {
+        date,
+        amount:
+          (expectedEnergy[date].amount / expectedEnergy[date].count) *
+          kWhConversionMultiplier('hourly'), // Gets the average amount
+      };
+    });
 
     const response = await request(appInstance).get(
       `/retailer/generation?suburb_id=${SUBURB_ID}&start_date=${START_DATE}&end_date=${END_DATE}`
@@ -413,19 +712,41 @@ describe('GET /retailer/generation', () => {
     const START_DATE = '2023-06-01T08:00:00Z';
     const END_DATE = '2023-06-08T08:00:00Z';
 
-    const expectedEnergy = mockGenerationData
+    const adjustedGenerationData = mockGenerationData.map((generation) => {
+      return {
+        ...generation,
+        truncatedDate: moment(generation.date).startOf('day').toISOString(),
+      };
+    });
+
+    // Aggregate the data by week
+    let expectedEnergy = adjustedGenerationData
       .filter(
         (generation) =>
-          generation.date > START_DATE &&
-          generation.date <= END_DATE &&
+          moment(START_DATE) < moment(generation.date) &&
+          moment(generation.date) <= moment(END_DATE) &&
           generation.energy_generator_id === SUBURB_ID
       )
-      .map((generation) => {
-        return {
-          date: moment(generation.date).startOf('day').toISOString(),
-          amount: generation.amount,
-        };
-      });
+      .reduce((acc: any, generation: any) => {
+        if (!acc[generation.truncatedDate]) {
+          acc[generation.truncatedDate] = {
+            amount: 0,
+            count: 0,
+          };
+        }
+        acc[generation.truncatedDate].amount += generation.amount;
+        acc[generation.truncatedDate].count++;
+        return acc;
+      }, {});
+
+    expectedEnergy = Object.keys(expectedEnergy).map((date) => {
+      return {
+        date,
+        amount:
+          (expectedEnergy[date].amount / expectedEnergy[date].count) *
+          kWhConversionMultiplier('daily'), // Gets the average amount
+      };
+    });
 
     const response = await request(appInstance).get(
       `/retailer/generation?suburb_id=${SUBURB_ID}&start_date=${START_DATE}&end_date=${END_DATE}`
@@ -452,7 +773,7 @@ describe('GET /retailer/generation', () => {
       };
     });
 
-    // Aggregate the data by week
+    // Aggregate the data by week and averaging the amount
     let expectedEnergy = adjustedGenerationData
       .filter(
         (generation) =>
@@ -462,16 +783,22 @@ describe('GET /retailer/generation', () => {
       )
       .reduce((acc: any, generation: any) => {
         if (!acc[generation.truncatedDate]) {
-          acc[generation.truncatedDate] = 0;
+          acc[generation.truncatedDate] = {
+            amount: 0,
+            count: 0,
+          };
         }
-        acc[generation.truncatedDate] += generation.amount;
+        acc[generation.truncatedDate].amount += generation.amount;
+        acc[generation.truncatedDate].count++;
         return acc;
       }, {});
 
     expectedEnergy = Object.keys(expectedEnergy).map((date) => {
       return {
         date,
-        amount: expectedEnergy[date],
+        amount:
+          (expectedEnergy[date].amount / expectedEnergy[date].count) *
+          kWhConversionMultiplier('weekly'), // Gets the average amount
       };
     });
 
@@ -488,7 +815,7 @@ describe('GET /retailer/generation', () => {
     });
   });
 
-  it('should return nationwide total with weekly granularity', async () => {
+  it('should return nationwide average with weekly granularity', async () => {
     const START_DATE = '2023-01-01T08:00:00Z';
     const END_DATE = '2023-08-01T08:00:00Z';
 
@@ -508,16 +835,22 @@ describe('GET /retailer/generation', () => {
       )
       .reduce((acc: any, generation: any) => {
         if (!acc[generation.truncatedDate]) {
-          acc[generation.truncatedDate] = 0;
+          acc[generation.truncatedDate] = {
+            amount: 0,
+            count: 0,
+          };
         }
-        acc[generation.truncatedDate] += generation.amount;
+        acc[generation.truncatedDate].amount += generation.amount;
+        acc[generation.truncatedDate].count++;
         return acc;
       }, {});
 
     expectedEnergy = Object.keys(expectedEnergy).map((date) => {
       return {
         date,
-        amount: expectedEnergy[date],
+        amount:
+          (expectedEnergy[date].amount / expectedEnergy[date].count) *
+          kWhConversionMultiplier('weekly'), // Gets the average amount
       };
     });
 
@@ -892,6 +1225,282 @@ describe('GET /retailer/warnings - category high_cost', () => {
   });
 });
 
+describe('GET /retailer/warnings - category high_usage', () => {
+  let sequelize: Sequelize;
+  let appInstance: Application;
+
+  beforeAll(async () => {
+    // Set up and connect to test database
+    sequelize = await connectToTestDb();
+    appInstance = app(sequelize);
+
+    // Insert prerequesite data for tests
+    await appInstance.get('models').Suburb.bulkCreate([
+      {
+        id: 1,
+        name: 'Test Suburb',
+        postcode: 3000,
+        state: 'Victoria',
+        latitude: 100,
+        longitude: 100,
+      },
+      {
+        id: 2,
+        name: 'Test Suburb 2',
+        postcode: 3001,
+        state: 'Victoria',
+        latitude: 100,
+        longitude: 100,
+      },
+    ]);
+    await appInstance.get('models').GeneratorType.create({
+      id: 1,
+      category: 'Natural Gas Pipeline',
+      renewable: false,
+    });
+    await appInstance.get('models').EnergyGenerator.bulkCreate([
+      {
+        id: 1,
+        name: 'Test Generator 1',
+        generator_type_id: 1,
+        suburb_id: 1,
+      },
+      {
+        id: 2,
+        name: 'Test Generator 2',
+        generator_type_id: 1,
+        suburb_id: 2,
+      },
+    ]);
+
+    await appInstance.get('models').SuburbConsumption.create({
+      amount: 10,
+      date: new Date().toISOString(),
+      suburb_id: 1,
+    });
+    await appInstance.get('models').SuburbConsumption.create({
+      amount: 8,
+      date: new Date().toISOString(),
+      suburb_id: 2,
+    });
+    await appInstance.get('models').EnergyGeneration.create({
+      amount: 10,
+      date: new Date().toISOString(),
+      energy_generator_id: 1,
+    });
+    await appInstance.get('models').EnergyGeneration.create({
+      amount: 10,
+      date: new Date().toISOString(),
+      energy_generator_id: 2,
+    });
+    await appInstance.get('models').GoalType.create({
+      id: 1,
+      category: 'profit',
+      description:
+        'I want to sell most/all of the energy I buy. Sell energy for more than I bought it for.',
+      target_type: 'retailer',
+    });
+    await appInstance.get('models').WarningType.create({
+      id: 1,
+      goal_type_id: 1,
+      category: 'high_usage',
+      description: 'Too much energy used in the grid',
+      trigger_greater_than: true,
+      target: 0.85,
+    });
+  });
+
+  afterAll(async () => {
+    // Drop the test database
+    await sequelize.close();
+    await dropTestDb(sequelize);
+  });
+
+  it('should not return a high_usage warning', async () => {
+    const response = await request(appInstance).get(
+      '/retailer/warnings?suburb_id=2'
+    );
+
+    expect(response.status).toBe(200);
+
+    let relevantWarnings = response.body.warnings.filter(
+      (warning: any) => warning.category === 'high_usage'
+    );
+    expect(relevantWarnings).toEqual([]);
+  });
+
+  it('should return a high_usage warning', async () => {
+    const response = await request(appInstance).get(
+      '/retailer/warnings?suburb_id=1'
+    );
+
+    expect(response.status).toBe(200);
+    let relevantWarnings = response.body.warnings.filter(
+      (warning: any) => warning.category === 'high_usage'
+    );
+    expect(relevantWarnings.length).toBe(1);
+    expect(relevantWarnings[0].data).toEqual({
+      energy_utilised_percentage: 1,
+    });
+  });
+
+  it('should return an high_usage warning (with no suburb or consumer provided', async () => {
+    const response = await request(appInstance).get('/retailer/warnings');
+
+    expect(response.status).toBe(200);
+    let relevantWarnings = response.body.warnings.filter(
+      (warning: any) => warning.category === 'high_usage'
+    );
+    expect(relevantWarnings.length).toBe(1);
+    expect(relevantWarnings[0].data).toEqual({
+      energy_utilised_percentage: 0.9,
+    });
+  });
+});
+
+describe('GET /retailer/warnings - category low_usage', () => {
+  let sequelize: Sequelize;
+  let appInstance: Application;
+
+  beforeAll(async () => {
+    // Set up and connect to test database
+    sequelize = await connectToTestDb();
+    appInstance = app(sequelize);
+
+    // Insert prerequesite data for tests
+    await appInstance.get('models').Suburb.bulkCreate([
+      {
+        id: 1,
+        name: 'Test Suburb',
+        postcode: 3000,
+        state: 'Victoria',
+        latitude: 100,
+        longitude: 100,
+      },
+      {
+        id: 2,
+        name: 'Test Suburb 2',
+        postcode: 3001,
+        state: 'Victoria',
+        latitude: 100,
+        longitude: 100,
+      },
+    ]);
+    await appInstance.get('models').GeneratorType.create({
+      id: 1,
+      category: 'Natural Gas Pipeline',
+      renewable: false,
+    });
+    await appInstance.get('models').EnergyGenerator.bulkCreate([
+      {
+        id: 1,
+        name: 'Test Generator 1',
+        generator_type_id: 1,
+        suburb_id: 1,
+      },
+      {
+        id: 2,
+        name: 'Test Generator 2',
+        generator_type_id: 1,
+        suburb_id: 2,
+      },
+    ]);
+
+    await appInstance.get('models').SuburbConsumption.create({
+      amount: 1,
+      date: new Date().toISOString(),
+      suburb_id: 1,
+    });
+    await appInstance.get('models').SuburbConsumption.create({
+      amount: 1,
+      date: new Date().toISOString(),
+      suburb_id: 1,
+    });
+    await appInstance.get('models').SuburbConsumption.create({
+      amount: 10,
+      date: new Date().toISOString(),
+      suburb_id: 2,
+    });
+    await appInstance.get('models').EnergyGeneration.create({
+      amount: 10,
+      date: new Date().toISOString(),
+      energy_generator_id: 1,
+    });
+    await appInstance.get('models').EnergyGeneration.create({
+      amount: 10,
+      date: new Date().toISOString(),
+      energy_generator_id: 1,
+    });
+    await appInstance.get('models').EnergyGeneration.create({
+      amount: 10,
+      date: new Date().toISOString(),
+      energy_generator_id: 2,
+    });
+    await appInstance.get('models').GoalType.create({
+      id: 1,
+      category: 'profit',
+      description:
+        'I want to sell most/all of the energy I buy. Sell energy for more than I bought it for.',
+      target_type: 'retailer',
+    });
+    await appInstance.get('models').WarningType.create({
+      id: 1,
+      goal_type_id: 1,
+      category: 'low_usage',
+      description: 'Too much unused energy in the grid',
+      trigger_greater_than: false,
+      target: 0.5,
+    });
+  });
+
+  afterAll(async () => {
+    // Drop the test database
+    await sequelize.close();
+    await dropTestDb(sequelize);
+  });
+
+  it('should not return a low_usage warning', async () => {
+    const response = await request(appInstance).get(
+      '/retailer/warnings?suburb_id=2'
+    );
+
+    expect(response.status).toBe(200);
+
+    let relevantWarnings = response.body.warnings.filter(
+      (warning: any) => warning.category === 'low_usage'
+    );
+    expect(relevantWarnings).toEqual([]);
+  });
+
+  it('should return a low_usage warning', async () => {
+    const response = await request(appInstance).get(
+      '/retailer/warnings?suburb_id=1'
+    );
+
+    expect(response.status).toBe(200);
+    let relevantWarnings = response.body.warnings.filter(
+      (warning: any) => warning.category === 'low_usage'
+    );
+    expect(relevantWarnings.length).toBe(1);
+    expect(relevantWarnings[0].data).toEqual({
+      energy_utilised_percentage: 0.1,
+    });
+  });
+
+  it('should return an low_usage warning (with no suburb or consumer provided', async () => {
+    const response = await request(appInstance).get('/retailer/warnings');
+
+    expect(response.status).toBe(200);
+    let relevantWarnings = response.body.warnings.filter(
+      (warning: any) => warning.category === 'low_usage'
+    );
+    expect(relevantWarnings.length).toBe(1);
+    expect(relevantWarnings[0].data).toEqual({
+      energy_utilised_percentage: 0.4,
+    });
+  });
+});
+
 describe('GET /retailer/consumers', () => {
   let sequelize: Sequelize;
   let appInstance: Application;
@@ -988,22 +1597,36 @@ describe('GET /retailer/generator', () => {
 
   const mockEnergyGenerations = [
     { energy_generator_id: 1, date: '2024-01-01T09:00:00Z', amount: 100 },
+    { energy_generator_id: 1, date: '2024-01-01T09:30:00Z', amount: 200 },
     { energy_generator_id: 1, date: '2024-02-01T09:00:00Z', amount: 200 },
+    { energy_generator_id: 1, date: '2024-02-01T09:30:00Z', amount: 300 },
     { energy_generator_id: 1, date: '2024-03-01T09:00:00Z', amount: 300 },
+    { energy_generator_id: 1, date: '2024-03-01T09:30:00Z', amount: 400 },
     { energy_generator_id: 1, date: '2024-04-01T09:00:00Z', amount: 400 },
+    { energy_generator_id: 1, date: '2024-04-01T09:30:00Z', amount: 500 },
 
     { energy_generator_id: 1, date: '2024-06-01T09:00:00Z', amount: 500 },
+    { energy_generator_id: 1, date: '2024-06-01T12:00:00Z', amount: 800 },
     { energy_generator_id: 1, date: '2024-06-02T10:00:00Z', amount: 500 },
+    { energy_generator_id: 1, date: '2024-06-02T12:00:00Z', amount: 800 },
     { energy_generator_id: 1, date: '2024-06-03T11:00:00Z', amount: 500 },
+    { energy_generator_id: 1, date: '2024-06-03T12:00:00Z', amount: 800 },
 
     { energy_generator_id: 2, date: '2024-01-01T09:00:00Z', amount: 100 },
+    { energy_generator_id: 2, date: '2024-01-02T09:00:00Z', amount: 300 },
     { energy_generator_id: 2, date: '2024-02-01T09:00:00Z', amount: 200 },
+    { energy_generator_id: 2, date: '2024-02-02T09:00:00Z', amount: 400 },
     { energy_generator_id: 2, date: '2024-03-01T09:00:00Z', amount: 300 },
+    { energy_generator_id: 2, date: '2024-03-02T09:00:00Z', amount: 500 },
     { energy_generator_id: 2, date: '2024-04-01T09:00:00Z', amount: 400 },
+    { energy_generator_id: 2, date: '2024-04-02T09:00:00Z', amount: 600 },
 
     { energy_generator_id: 2, date: '2024-06-01T09:00:00Z', amount: 500 },
+    { energy_generator_id: 2, date: '2024-06-01T09:30:00Z', amount: 1000 },
     { energy_generator_id: 2, date: '2024-06-02T09:00:00Z', amount: 500 },
+    { energy_generator_id: 2, date: '2024-06-02T09:30:00Z', amount: 1000 },
     { energy_generator_id: 2, date: '2024-06-03T09:00:00Z', amount: 500 },
+    { energy_generator_id: 2, date: '2024-06-03T09:30:00Z', amount: 1000 },
   ];
 
   beforeAll(async () => {
@@ -1124,7 +1747,14 @@ describe('GET /retailer/generator', () => {
     const START_DATE = '2024-06-01T09:00:00Z';
     const END_DATE = '2024-07-10T11:00:00Z';
 
-    let expectedResponse = mockEnergyGenerations
+    const adjustedGenerationData = mockEnergyGenerations.map((generation) => {
+      return {
+        ...generation,
+        truncatedDate: moment(generation.date).startOf('isoWeek').toISOString(),
+      };
+    });
+
+    let expectedEnergy = adjustedGenerationData
       .filter(
         (generation) =>
           generation.date > START_DATE && generation.date <= END_DATE
@@ -1138,32 +1768,39 @@ describe('GET /retailer/generator', () => {
           };
         }
 
-        const truncatedDate = moment(generation.date)
-          .startOf('isoWeek')
-          .toISOString();
         // Set initial value to 0 if it doesn't exist yet
-        if (!acc[generation.energy_generator_id].energy[truncatedDate]) {
-          acc[generation.energy_generator_id].energy[truncatedDate] = 0;
+        if (
+          !acc[generation.energy_generator_id].energy[generation.truncatedDate]
+        ) {
+          acc[generation.energy_generator_id].energy[generation.truncatedDate] =
+            {
+              amount: 0,
+              count: 0,
+            };
         }
 
         // Add the amount to the existing value
-        acc[generation.energy_generator_id].energy[truncatedDate] +=
-          generation.amount;
+        acc[generation.energy_generator_id].energy[
+          generation.truncatedDate
+        ].amount += generation.amount;
+        acc[generation.energy_generator_id].energy[generation.truncatedDate]
+          .count++;
 
         return acc;
       }, {});
 
-    expectedResponse = Object.keys(expectedResponse).map((generatorId) => {
+    expectedEnergy = Object.keys(expectedEnergy).map((generatorId) => {
       return {
         energy_generator_id: parseInt(generatorId),
-        energy: Object.entries(expectedResponse[generatorId].energy).map(
-          ([date, amount]) => {
-            return {
-              date,
-              amount,
-            };
-          }
-        ),
+        energy: Object.keys(expectedEnergy[generatorId].energy).map((date) => {
+          return {
+            date,
+            amount:
+              (expectedEnergy[generatorId].energy[date].amount /
+                expectedEnergy[generatorId].energy[date].count) *
+              kWhConversionMultiplier('weekly'),
+          };
+        }),
       };
     });
 
@@ -1175,82 +1812,28 @@ describe('GET /retailer/generator', () => {
     expect(response.body).toEqual({
       start_date: START_DATE,
       end_date: END_DATE,
-      generators: expectedResponse,
+      generators: expectedEnergy,
     });
   });
 
-  it('should return total energy generation of each generator in suburb in daily time granularity', async () => {
+  it('should return average energy generation of each generator in suburb in daily time granularity', async () => {
     const SUBURB_ID = 1;
     const START_DATE = '2024-05-30T09:00:00Z';
     const END_DATE = '2024-06-07T09:00:00Z';
 
-    let expectedResponse = mockEnergyGenerations
-      .filter(
-        (generation) =>
-          generation.date > START_DATE && generation.energy_generator_id == 1
-      )
-      .reduce((acc: any, generation: any) => {
-        // Create a new generator if it doesn't exist
-        if (!acc[generation.energy_generator_id]) {
-          acc[generation.energy_generator_id] = {
-            energy_generator_id: generation.energy_generator_id,
-            energy: {},
-          };
-        }
-
-        const truncatedDate = moment(generation.date)
-          .startOf('day')
-          .toISOString();
-        // Set initial value to 0 if it doesn't exist yet
-        if (!acc[generation.energy_generator_id].energy[truncatedDate]) {
-          acc[generation.energy_generator_id].energy[truncatedDate] = 0;
-        }
-
-        // Add the amount to the existing value
-        acc[generation.energy_generator_id].energy[truncatedDate] +=
-          generation.amount;
-
-        return acc;
-      }, {});
-
-    expectedResponse = Object.keys(expectedResponse).map((generatorId) => {
+    const adjustedGenerationData = mockEnergyGenerations.map((generation) => {
       return {
-        energy_generator_id: parseInt(generatorId),
-        energy: Object.entries(expectedResponse[generatorId].energy).map(
-          ([date, amount]) => {
-            return {
-              date,
-              amount,
-            };
-          }
-        ),
+        ...generation,
+        truncatedDate: moment(generation.date).startOf('day').toISOString(),
       };
     });
 
-    const response = await request(appInstance).get(
-      `/retailer/generator?suburb_id=${SUBURB_ID}&start_date=${START_DATE}&end_date=${END_DATE}`
-    );
-
-    expect(response.status).toBe(200);
-    expect(response.body).toEqual({
-      suburb_id: SUBURB_ID,
-      start_date: START_DATE,
-      end_date: END_DATE,
-      generators: expectedResponse,
-    });
-  });
-
-  it('should return total energy generation of each generator in suburb in hourly time granularity', async () => {
-    const SUBURB_ID = 1;
-    const START_DATE = '2024-06-01T08:00:00Z';
-    const END_DATE = '2024-06-07T09:00:00Z';
-
-    let expectedResponse = mockEnergyGenerations
+    let expectedEnergy = adjustedGenerationData
       .filter(
         (generation) =>
           generation.date > START_DATE &&
           generation.date <= END_DATE &&
-          generation.energy_generator_id == 1
+          generation.energy_generator_id === SUBURB_ID
       )
       .reduce((acc: any, generation: any) => {
         // Create a new generator if it doesn't exist
@@ -1261,32 +1844,39 @@ describe('GET /retailer/generator', () => {
           };
         }
 
-        const truncatedDate = moment(generation.date)
-          .startOf('hour')
-          .toISOString();
         // Set initial value to 0 if it doesn't exist yet
-        if (!acc[generation.energy_generator_id].energy[truncatedDate]) {
-          acc[generation.energy_generator_id].energy[truncatedDate] = 0;
+        if (
+          !acc[generation.energy_generator_id].energy[generation.truncatedDate]
+        ) {
+          acc[generation.energy_generator_id].energy[generation.truncatedDate] =
+            {
+              amount: 0,
+              count: 0,
+            };
         }
 
         // Add the amount to the existing value
-        acc[generation.energy_generator_id].energy[truncatedDate] +=
-          generation.amount;
+        acc[generation.energy_generator_id].energy[
+          generation.truncatedDate
+        ].amount += generation.amount;
+        acc[generation.energy_generator_id].energy[generation.truncatedDate]
+          .count++;
 
         return acc;
       }, {});
 
-    expectedResponse = Object.keys(expectedResponse).map((generatorId) => {
+    expectedEnergy = Object.keys(expectedEnergy).map((generatorId) => {
       return {
         energy_generator_id: parseInt(generatorId),
-        energy: Object.entries(expectedResponse[generatorId].energy).map(
-          ([date, amount]) => {
-            return {
-              date,
-              amount,
-            };
-          }
-        ),
+        energy: Object.keys(expectedEnergy[generatorId].energy).map((date) => {
+          return {
+            date,
+            amount:
+              (expectedEnergy[generatorId].energy[date].amount /
+                expectedEnergy[generatorId].energy[date].count) *
+              kWhConversionMultiplier('daily'),
+          };
+        }),
       };
     });
 
@@ -1299,7 +1889,84 @@ describe('GET /retailer/generator', () => {
       suburb_id: SUBURB_ID,
       start_date: START_DATE,
       end_date: END_DATE,
-      generators: expectedResponse,
+      generators: expectedEnergy,
+    });
+  });
+
+  it('should return average energy generation of each generator in suburb in hourly time granularity', async () => {
+    const SUBURB_ID = 2;
+    const START_DATE = '2024-06-01T08:00:00Z';
+    const END_DATE = '2024-06-07T10:00:00Z';
+
+    const adjustedGenerationData = mockEnergyGenerations.map((generation) => {
+      return {
+        ...generation,
+        truncatedDate: moment(generation.date).startOf('hour').toISOString(),
+      };
+    });
+
+    let expectedEnergy = adjustedGenerationData
+      .filter(
+        (generation) =>
+          generation.date > START_DATE &&
+          generation.date <= END_DATE &&
+          generation.energy_generator_id === SUBURB_ID
+      )
+      .reduce((acc: any, generation: any) => {
+        // Create a new generator if it doesn't exist
+        if (!acc[generation.energy_generator_id]) {
+          acc[generation.energy_generator_id] = {
+            energy_generator_id: generation.energy_generator_id,
+            energy: {},
+          };
+        }
+
+        // Set initial value to 0 if it doesn't exist yet
+        if (
+          !acc[generation.energy_generator_id].energy[generation.truncatedDate]
+        ) {
+          acc[generation.energy_generator_id].energy[generation.truncatedDate] =
+            {
+              amount: 0,
+              count: 0,
+            };
+        }
+
+        // Add the amount to the existing value
+        acc[generation.energy_generator_id].energy[
+          generation.truncatedDate
+        ].amount += generation.amount;
+        acc[generation.energy_generator_id].energy[generation.truncatedDate]
+          .count++;
+
+        return acc;
+      }, {});
+
+    expectedEnergy = Object.keys(expectedEnergy).map((generatorId) => {
+      return {
+        energy_generator_id: parseInt(generatorId),
+        energy: Object.keys(expectedEnergy[generatorId].energy).map((date) => {
+          return {
+            date,
+            amount:
+              (expectedEnergy[generatorId].energy[date].amount /
+                expectedEnergy[generatorId].energy[date].count) *
+              kWhConversionMultiplier('hourly'),
+          };
+        }),
+      };
+    });
+
+    const response = await request(appInstance).get(
+      `/retailer/generator?suburb_id=${SUBURB_ID}&start_date=${START_DATE}&end_date=${END_DATE}`
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      suburb_id: SUBURB_ID,
+      start_date: START_DATE,
+      end_date: END_DATE,
+      generators: expectedEnergy,
     });
   });
 });

@@ -33,7 +33,7 @@ export default function MainDashboard() {
 
         {/* Right column of page */}
         <div className="flex flex-col gap-3 flex-1">
-          <EnergyChart className="h-[300px]" />
+          {/* <EnergyChart className="h-[300px]" /> */}
           <ProfitChart className="h-[300px]" />
           <ReportFormButton id={''} type={''} />
         </div>
