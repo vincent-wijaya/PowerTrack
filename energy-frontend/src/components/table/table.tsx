@@ -77,7 +77,7 @@ export default function Table({
 
   return (
     <>
-      <table className="flex flex-col flex-start flex-shrink-0 border-stroke border-2 rounded-sm">
+      <table className=" border-stroke border-2 rounded-sm">
         <thead className="items-start flex-shrink-0 self-stretch">
           <tr className="flex items-start flex-shrink-0 self-stretch">
             {updatedColumns.map((column, columnIndex) => (
@@ -94,7 +94,7 @@ export default function Table({
         </thead>
         <tbody className="items-start flex-shrink-0 self-stretch bg-itembg">
           {pageItems.length === 0 ? (
-            <tr className="flex items-start flex-shrink-0 self-stretch">
+            <tr className="">
               <td
                 className="px-3 py-8 items-center text-center flex-1 self-stretch border-stroke border-r-2 border-b-2"
                 colSpan={updatedColumns.length}
@@ -106,7 +106,7 @@ export default function Table({
             pageItems.map((row, rowIndex) => (
               <tr
                 key={rowIndex}
-                className="flex items-start flex-shrink-0 self-stretch"
+                className=""
               >
                 {columns.map((column, columnIndex) => (
                   <td
