@@ -823,7 +823,7 @@ router.get('/consumers', async (req, res) => {
     });
   } else if (consumer_id) {
     // Return specific consumer
-    consumers = await Consumer.findOne({
+    consumers = await Consumer.findAll({
       where: {
         id: consumer_id,
       },
@@ -835,6 +835,7 @@ router.get('/consumers', async (req, res) => {
       ],
     });
   } else {
+
     // Return all consumers
     consumers = await Consumer.findAll({
       include: [
@@ -845,8 +846,9 @@ router.get('/consumers', async (req, res) => {
       ],
     });
   }
-
+  
   // Transform response to the desired format
+  
   const formattedConsumers = consumers.map((consumer: any) => {
     return {
       id: consumer.id,
