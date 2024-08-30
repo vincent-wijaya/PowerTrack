@@ -1,28 +1,33 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import Table from './table';
-import fetchConsumers from '@/api/getConsumers';
+import axios from 'axios';
 
 type DataItem = {
   consumer_id: number;
   suburb_name: string;
   address: string;
-  high_priority: boolean;
+  high_priority: string;
 };
 
 // function to fetch headers and data
 async function fetchHeadersAndData(): Promise<{
-  headers: string[];
+  headers: { name: string; title: string }[];
   data: DataItem[];
 }> {
   const dataItems: DataItem[] = [];
-  const data = await fetchConsumers();
+  const response = await axios.get(
+    `${process.env.NEXT_PUBLIC_API_URL}/retailer/consumers`
+  );
+
+  const consumers = response.data.consumers;
+
   // Map the warnings into DataItem format
-  const mappedDataItems: DataItem[] = data.consumer.map((consume) => ({
-    consumer_id: consume.consumer_id,
-    suburb_name: consume.suburb_name,
-    address: consume.address,
-    high_priority: consume.high_priority,
+  const mappedDataItems: DataItem[] = consumers.map((consumer: any) => ({
+    consumer_id: consumer.id,
+    suburb_name: consumer.suburb_name,
+    address: consumer.address,
+    high_priority: consumer.high_priority ? 'Yes' : 'No',
   }));
 
   // Add the mapped DataItem objects to dataItems array
@@ -30,7 +35,24 @@ async function fetchHeadersAndData(): Promise<{
   return new Promise((resolve) => {
     setTimeout(() => {
       resolve({
-        headers: ['consumer_id', 'suburb_name', 'address', 'high_priority'], //TODO change suburb and sal the other way
+        headers: [
+          {
+            name: 'consumer_id',
+            title: 'Consumer ID',
+          },
+          {
+            name: 'suburb_name',
+            title: 'Suburb Name',
+          },
+          {
+            name: 'address',
+            title: 'Address',
+          },
+          {
+            name: 'high_priority',
+            title: 'High Priority',
+          },
+        ], //TODO change suburb and sal the other way
         data: dataItems,
       });
     }, 1000); // Simulating network delay
@@ -38,7 +60,7 @@ async function fetchHeadersAndData(): Promise<{
 }
 
 export default function UserTable() {
-  const [headers, setHeaders] = useState<string[]>([]);
+  const [headers, setHeaders] = useState<{ name: string; title: string }[]>([]);
   const [data, setData] = useState<DataItem[]>([]);
   const [filteredData, setFilteredData] = useState<DataItem[]>([]);
   const [search, setSearch] = useState<string>('');
@@ -71,9 +93,9 @@ export default function UserTable() {
     // Filter data based on search input
     const lowercasedSearch = search.toLowerCase().trim();
     const filtered = data.filter(
-      (item) =>
-        item.consumer_id.toString().toLowerCase().includes(lowercasedSearch) ||
-        item.address.toString().toLowerCase().includes(lowercasedSearch)
+      (item: DataItem) =>
+        item.consumer_id.toString().trim().toLowerCase().includes(lowercasedSearch) ||
+        item.address.toString().trim().toLowerCase().includes(lowercasedSearch)
     );
     setFilteredData(filtered);
   }, [search, data]);
@@ -84,7 +106,7 @@ export default function UserTable() {
         <input
           type="text"
           className="flex w-full p-2 bg-itembg border border-chartBorder text-white"
-          placeholder="Search by consumer id or address..."
+          placeholder="Search by consumer ID or address..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -93,6 +115,7 @@ export default function UserTable() {
         columns={headers}
         data={filteredData}
         link={'userDashboard'}
+        showPageControls={true}
       />
     </div>
   );

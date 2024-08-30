@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import Table from './table';
 import fetchSuburbs from '@/api/getSuburbs';
+import axios from 'axios';
 
 type DataItem = {
   sal: number;
@@ -11,14 +12,17 @@ type DataItem = {
 
 // Mock function to fetch headers and data
 async function fetchHeadersAndData(): Promise<{
-  headers: string[];
+  headers: { name: string; title: string }[];
   data: DataItem[];
 }> {
   const dataItems: DataItem[] = [];
-  const data = await fetchSuburbs();
+  const response = await axios.get(
+    `${process.env.NEXT_PUBLIC_API_URL}/retailer/suburbs`
+  );
+  const suburbs = response.data.suburbs;
 
   // Map the warnings into DataItem format
-  const mappedDataItems: DataItem[] = data.suburbs.map((suburb) => ({
+  const mappedDataItems: DataItem[] = suburbs.map((suburb: any) => ({
     sal: suburb.id,
     name: suburb.name,
     postcode: suburb.postcode,
@@ -29,7 +33,20 @@ async function fetchHeadersAndData(): Promise<{
   return new Promise((resolve) => {
     setTimeout(() => {
       resolve({
-        headers: ['sal', 'name', 'postcode'], //TODO change suburb and sal the other way
+        headers: [
+          {
+            name: 'sal',
+            title: 'sal',
+          },
+          {
+            name: 'name',
+            title: 'Name',
+          },
+          {
+            name: 'postcode',
+            title: 'Postcode',
+          },
+        ], //TODO change suburb and sal the other way
         data: dataItems,
       });
     }, 1000); // Simulating network delay
@@ -37,7 +54,7 @@ async function fetchHeadersAndData(): Promise<{
 }
 
 export default function RegionalTable() {
-  const [headers, setHeaders] = useState<string[]>([]);
+  const [headers, setHeaders] = useState<{ name: string; title: string }[]>([]);
   const [data, setData] = useState<DataItem[]>([]);
   const [filteredData, setFilteredData] = useState<DataItem[]>([]);
   const [search, setSearch] = useState<string>('');
@@ -69,7 +86,8 @@ export default function RegionalTable() {
     // Filter data based on search input
     const lowercasedSearch = search.toLowerCase().trim();
     const filtered = data.filter((item) =>
-      item.name.toString().toLowerCase().includes(lowercasedSearch)
+      item.name.toString().trim().toLowerCase().includes(lowercasedSearch) || 
+      item.postcode.toString().trim().includes(lowercasedSearch)
     );
     setFilteredData(filtered);
     console.log('Filtered:', filtered);
@@ -81,7 +99,7 @@ export default function RegionalTable() {
         <input
           type="text"
           className="flex w-full p-2 bg-itembg border border-chartBorder text-white"
-          placeholder="Search by suburb name or address..."
+          placeholder="Search by suburb name or postcode..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -90,6 +108,7 @@ export default function RegionalTable() {
         columns={headers}
         data={filteredData}
         link={'regionalDashboard'}
+        showPageControls={true}
       />
     </div>
   );

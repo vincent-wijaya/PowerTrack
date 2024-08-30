@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import Table from './table';
 import fetchWarnings from '@/api/getWarnings';
+import axios from 'axios';
 
 type DataItem = {
   suburb_id: number;
@@ -23,36 +24,51 @@ interface WarningTableProps {
 async function fetchHeadersAndData(
   suburb_id?: number,
   consumer_id?: number
-): Promise<{ headers: string[]; data: DataItem[] }> {
+): Promise<{ headers: { name: string; title: string }[]; data: DataItem[] }> {
   // Initialize an array to store DataItem objects
   const dataItems: DataItem[] = [];
 
   try {
-    const warningsResult = await fetchWarnings(suburb_id, consumer_id);
+    const warningsResult = await axios.get(
+      `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings`
+    );
+    console.log('warningsResult:', warningsResult);
 
-    // Check if warningsResult is an object with 'warnings' property or directly an array
-    const warnings = Array.isArray(warningsResult)
-      ? warningsResult
-      : warningsResult.warnings;
+    // Access the warnings array directly
+    const warnings = warningsResult.data.warnings;
 
-    // Map the warnings into DataItem format
-    const mappedDataItems: DataItem[] = warnings.map((warning) => ({
-      suburb_id: suburb_id ?? 0, // Assuming 0 if suburb_id is not provided
-      consumer_id: warning.data.consumer_id,
-      goal: 'Goal Placeholder', // Replace with actual goal if available
-      category: warning.category,
-      description: warning.description,
-      suggestion: warning.suggestion,
-      data: warning.data,
-    }));
+    // Ensure warnings is an array before mapping
+    const mappedDataItems: DataItem[] = Array.isArray(warnings)
+      ? warnings.map((warning: any) => ({
+          suburb_id: suburb_id ?? 0, // Assuming 0 if suburb_id is not provided
+          consumer_id: warning.data.consumer_id,
+          goal: 'Goal Placeholder', // Replace with actual goal if available
+          category: warning.category,
+          description: warning.description,
+          suggestion: warning.suggestion,
+          data: warning.data,
+        }))
+      : [];
 
-    // Add the mapped DataItem objects to dataItems array
     dataItems.push(...mappedDataItems);
 
     return new Promise((resolve) => {
       setTimeout(() => {
         resolve({
-          headers: ['Description', 'Goal', 'Suggestion'],
+          headers: [
+            {
+              name: 'description',
+              title: 'Description',
+            },
+            {
+              name: 'goal',
+              title: 'Goal',
+            },
+            {
+              name: 'suggestion',
+              title: 'Suggestion',
+            },
+          ],
           data: dataItems,
         });
       }, 1000); // Simulating network delay
@@ -67,7 +83,7 @@ export default function WarningTable({
   suburb_id,
   consumer_id,
 }: WarningTableProps) {
-  const [headers, setHeaders] = useState<string[]>([]);
+  const [headers, setHeaders] = useState<{ name: string; title: string }[]>([]);
   const [data, setData] = useState<DataItem[]>([]);
 
   useEffect(() => {
@@ -101,6 +117,7 @@ export default function WarningTable({
       columns={headers}
       data={data}
       link={null}
+      showPageControls={false}
     />
   );
 }

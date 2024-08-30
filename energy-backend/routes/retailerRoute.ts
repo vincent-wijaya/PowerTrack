@@ -2,7 +2,10 @@ import express from 'express';
 import moment, { Moment } from 'moment';
 import { Op } from 'sequelize';
 import { defineModels } from '../databaseModels';
-import { kWhConversionMultiplier, getTemporalGranularity } from '../utils/utils';
+import {
+  kWhConversionMultiplier,
+  getTemporalGranularity,
+} from '../utils/utils';
 
 const router = express.Router();
 
@@ -206,7 +209,7 @@ router.get('/consumption', async (req, res) => {
       date,
       amount:
         Number(consumption.dataValues.amount) *
-        kWhConversionMultiplier(dateGranularity.name),  // Converts the energy consumed into kWh based on the temporal granularity
+        kWhConversionMultiplier(dateGranularity.name), // Converts the energy consumed into kWh based on the temporal granularity
     });
   });
 
@@ -229,9 +232,9 @@ router.get('/consumption', async (req, res) => {
  *   suburb_id: number, // The ID of the suburb (if provided)
  *   start_date: string, // The start date input
  *   end_date: string, // The end date input (now if not provided)
- *   energy: [ 
+ *   energy: [
  *     { date: string, amount: number }, // An array of { date: string, amount: number } objects of the date converted based on granularity and the amount of energy generated.
- *   ] 
+ *   ]
  * }
  *
  * Example response:
@@ -354,7 +357,7 @@ router.get('/generation', async (req, res) => {
         date,
         amount:
           Number(generation.dataValues.amount) *
-          kWhConversionMultiplier(dateGranularity.name),  // Converts energy generation from kW to kWh based on temporal granularity
+          kWhConversionMultiplier(dateGranularity.name), // Converts energy generation from kW to kWh based on temporal granularity
       });
     });
 
@@ -389,9 +392,9 @@ router.get('/generation', async (req, res) => {
  *    generators: [
  *      {
  *        energy_generator_id: number, // The ID of the energy generator
- *        energy: [ 
+ *        energy: [
  *          { date: string, amount: number },  // An array of { date: string, amount: number } objects of the date converted based on granularity and the amount of energy generated.
- *        ] 
+ *        ]
  *      },
  *      ...
  *    ]
