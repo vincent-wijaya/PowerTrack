@@ -19,6 +19,7 @@ module.exports = {
         lightgray: '#EFEFEF',
         gray: '#C0BFBD',
         chartBorder: '#36434E',
+        red: 'E53E3E',
       },
       fontFamily: {
         sans: ['Arial', 'Helvetica', 'sans-serif'],

@@ -104,59 +104,47 @@ const ReportForm = (props: { id: string; type: string }) => {
   };
 
   return (
-    <div className="flex justify-center items-center h-screen bg-gray-100">
-      <div className="w-full max-w-3xl bg-calendarbg p-6 border border-gray-300 rounded shadow-md">
-        <div className="grid grid-cols-4 gap-4">
-          {/* Search Column */}
-          <div className="flex flex-col justify-between bg-itembg p-4 rounded">
-            <h2 className="text-white bg-mainbg text-lg mb-2">Specified For</h2>
-            {/* <div className="w-full text-white border-gray-300 rounded-md shadow-sm px-2 py-1">
-              {props.id}
-            </div> */}
-            <div className="w-full text-white border-gray-300 rounded-md shadow-sm px-2 py-1">
+        <div>
+          {/* Time Period and Calendar Section */}
+          <div className="col-span-3 flex flex-col border border-r-2 border-bg-stroke rounded-lg shadow-md">
+            <div className='bg-black text-left'>
+              <h2 className="text-white text-center text-lg p-4">
               {props.type === 'consumer'
-                ? `${consumerData.address} ${consumerData.suburb_post_code} ${consumerData.suburb_name}`
-                : `${suburbData.name} ${suburbData.postcode} ${suburbData.state}`}
-            </div>
-            <div></div>
-          </div>
-
-          {/* Calendar Column */}
-          <div className="col-span-3 flex flex-col">
-            <div className="bg-itembg p-4 rounded">
-              <h2 className="text-white text-lg mb-2 bg-mainbg ">
-                Time Period
+                  ? `${consumerData.address} ${consumerData.suburb_post_code} ${consumerData.suburb_name}`
+                  : `${suburbData.name} ${suburbData.postcode} ${suburbData.state}`}
               </h2>
+            </div>
+            <div className="p-4 bg-itembg">
               <Calendar
                 selectRange
                 value={dateRange}
                 onChange={handleDateChange}
-                className="mb-4"
+                className="mb-6"
               />
+              <div className="text-white font-italic">
+                {formatDateRange()}
+              </div>
             </div>
-            <div className="flex justify-between mb-4 mt-4">
-              <button
-                type="button"
-                onClick={handleSubmit}
-                className="px-4 py-2 bg-green-500 text-white rounded"
-              >
-                Submit
-              </button>
-              <Link href={'/main/mainDashboard'}>
+            <div className="flex p-4 bg-itembg items-center justify-around">
                 <button
                   type="button"
-                  onClick={handleCancel}
-                  className="px-4 py-2 bg-purple text-white rounded"
+                  onClick={handleSubmit}
+                  className="px-6 py-2 bg-green-600 text-white rounded-lg shadow-md hover:bg-green-700"
                 >
-                  Cancel
+                  Submit
                 </button>
-              </Link>
-            </div>
-            <div className="text-white mt-4">{formatDateRange()}</div>
+                <Link href="/main/mainDashboard">
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    className="px-6 py-2 bg-red-600 text-white rounded-lg shadow-md"
+                  >
+                    Cancel
+                  </button>
+                </Link>
+              </div>
           </div>
         </div>
-      </div>
-    </div>
   );
 };
 

@@ -8,7 +8,6 @@
 
 /* Style for each day tile */
 .react-calendar__tile {
-  background: #001d31; /* Grey background for each day */
   color: #fff; /* White text for each day */
   padding: 6px;
   padding-block: 8px;
@@ -66,17 +65,21 @@
 
 /* Style for the weekday labels (Mon, Tue, etc.) */
 .react-calendar__month-view__weekdays {
-  color: #d3d3d3; /* Light grey text for weekday labels */
+  color: #fff; /* Light grey text for weekday labels */
+  text-align: center;
 }
 
 /* Style for the month and year labels */
 .react-calendar__navigation {
-  color: #d3d3d3; /* Light grey text for month/year labels */
+  color: #fff; /* Light grey text for month/year labels */
+  text-align: center;
+  padding: 6px;
 }
 
 /* Style for the month/year navigation buttons */
 .react-calendar__navigation button {
-  color: #d3d3d3; /* Light grey text for navigation buttons */
+  color: #fff; /* Light grey text for navigation buttons */
+  text-align: center
 }
 
 /* Style for the month/year navigation button when hovered */
