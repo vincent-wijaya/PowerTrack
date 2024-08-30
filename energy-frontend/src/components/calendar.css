@@ -53,12 +53,13 @@
   border-bottom-left-radius: 8px;
   border-top-right-radius: 0px;
   border-bottom-right-radius: 0px;
-
 }
 
 /* Style for the end day tile on hover range */
 .react-calendar__tile--hoverEnd {
   background: #434343;
+  border-top-left-radius: 0px;
+  border-bottom-left-radius: 0px;
   border-top-right-radius: 8px;
   border-bottom-right-radius: 8px;
 }
