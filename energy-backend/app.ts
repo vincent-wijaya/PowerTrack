@@ -20,7 +20,6 @@ const app = (sequelize: Sequelize) => {
 
   app.set('models', models);
 
-  app.use(cors());
   // Add routes here
   app.use('/', exampleRoute);
   app.use('/retailer', retailerRoute);
