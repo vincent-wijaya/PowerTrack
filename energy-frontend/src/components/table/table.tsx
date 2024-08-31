@@ -78,7 +78,7 @@ export default function Table({
   return (
     <>
     <div>
-      <table className="flex flex-col flex-start border-stroke border-2 rounded-sm">
+      <table className="w-full border-stroke border-2 rounded-sm">
         <thead className="items-start flex-shrink-0 self-stretch">
           <tr className="flex items-start flex-shrink-0 self-stretch">
             {updatedColumns.map((column, columnIndex) => (
@@ -123,16 +123,16 @@ export default function Table({
                 ))}
                 {link && (
                   <td
-                    className="px-3 py-8 items-start gap-8 flex-1 self-stretch border-stroke border-r-2 border-b-2"
+                    className="px-3 py-8 items-start gap-8 flex-1 self-stretch border-stroke border-r-2 border-b-2 bg-purple"
                     key={`action-${rowIndex}`}
                   >
+                    <div className="font-inter text-white">
                       <Link
                         href={`${link}/${row[columns[0].name.toLowerCase()]}`}
                       >
-                        <div className="font-inter text-center text-white bg-purple p-2 rounded-lg">
-                          View
-                        </div>
+                        View
                       </Link>
+                    </div>
                   </td>
                 )}
               </tr>
