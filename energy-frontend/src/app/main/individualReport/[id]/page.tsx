@@ -130,12 +130,11 @@ export default function IndividualReport({
 
 
   // Set the data to display for consumer case here
-  console.log("consumer data: ", consumerData)
   useEffect(() => {
     // Handle the suburb cases here:
     if (data?.for.consumer_id && consumerData) {
       const consumer = consumerData.consumers[0]
-      setTitle(`${consumer.address}, ${consumer.suburb_name}, ${consumer.suburb_post_code}`);
+      setTitle(`${consumer.address}, ${consumer.suburb_post_code}`);
     }
 
   }, [data, consumerData]);
@@ -152,9 +151,10 @@ export default function IndividualReport({
       <PageHeading title='REPORT' />
       
       <div className="text-white py-2">
-        {title}
         {DateTime.fromISO(data.start_date).toFormat('D')} -{' '}
         {DateTime.fromISO(data.end_date).toFormat('D')}
+        <br></br>
+        {title}
       </div>
       <div className="grid grid-flow-col grid-cols-2 gap-3">
         <div className="flex flex-col gap-3">

@@ -32,7 +32,6 @@ async function fetchHeadersAndData(
     const warningsResult = await axios.get(
       `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings`
     );
-    console.log('warningsResult:', warningsResult);
 
     // Access the warnings array directly
     const warnings = warningsResult.data.warnings;
