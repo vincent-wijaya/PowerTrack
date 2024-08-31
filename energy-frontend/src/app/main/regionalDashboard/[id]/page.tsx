@@ -55,20 +55,16 @@ export default function RegionalDashboard({
 
   return (
     <>
-      <div className="grid grid-cols-2 grid-rows-[min-content_1fr_1fr_min-content] gap-3 grid-flow-col">
-        <div>
-          <div className="flex justify-between items-center mb-3">
-            <PageHeading title={`Region - ${decodeURI(params.id)}`} />
-            <div className="text-red-600 font-semibold text-xl">
-              Power Outage
-            </div>
-          </div>
-          <div className="flex justify-between gap-3">
-            <InfoBox
+      <PageHeading title={`User ID: ${params.id}`} />
+
+      <div className="flex gap-6"> {/* Flex container for left and right columns */}
+        {/* Left column of page */}
+        <div className="flex flex-col gap-3 flex-1">
+          <div className="flex justify-between gap-3 h-[128px]">
+          <InfoBox
               title={currentSpotPrice}
               description="Price of electricity per kW/h"
             />
-            <ProfitMargin />
             <InfoBox
               title="20%"
               description="Of green energy goal met"
@@ -78,14 +74,19 @@ export default function RegionalDashboard({
               description="Warnings"
             />
           </div>
+          <WarningTable suburb_id={Number(params.id)} />
+          <EnergySourceBreakdown energySources={energySourceBreakdownMockData} />
         </div>
 
-        <ProfitChart />
-        <WarningTable suburb_id={Number(params.id)}/> {/*add sububr id to table here*/}
-        <EnergySourceBreakdown energySources={energySourceBreakdownMockData} />
+        {/* Right column of page */}
+        <div className="flex flex-col gap-3 flex-1">
+          <ProfitChart />
+          <ProfitChart />
+        </div>
       </div>
+
       <ReportFormButton
-        id={params.id.toString()}
+        id={params.id}
         type="suburb"
       />
     </>
