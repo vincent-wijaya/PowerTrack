@@ -28,9 +28,17 @@ async function fetchHeadersAndData(
   // Initialize an array to store DataItem objects
   const dataItems: DataItem[] = [];
 
+  let link = `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings`
+
+  if (suburb_id) {
+    link = `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings?suburb_id=${suburb_id}`
+  } else if(consumer_id) {
+    link  = `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings?consumer_id=${consumer_id}`
+  }
+
   try {
     const warningsResult = await axios.get(
-      `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings`
+      link
     );
 
     // Access the warnings array directly

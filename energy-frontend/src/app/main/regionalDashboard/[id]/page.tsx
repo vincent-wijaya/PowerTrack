@@ -81,7 +81,7 @@ export default function RegionalDashboard({
         </div>
 
         <ProfitChart />
-        <WarningTable/> {/*add sububr id to table here*/}
+        <WarningTable suburb_id={Number(params.id)}/> {/*add sububr id to table here*/}
         <EnergySourceBreakdown energySources={energySourceBreakdownMockData} />
       </div>
       <ReportFormButton
