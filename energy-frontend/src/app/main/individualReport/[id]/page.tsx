@@ -16,6 +16,47 @@ import { useState, useEffect, useMemo } from 'react';
 import { exportToPDF } from '@/utils'; // Import the utility function
 import useSWR from 'swr';
 
+
+interface Report {
+  id: number;
+  start_date: string; // ISO date string
+  end_date: string; // ISO date string
+  for: {
+    suburb_id: number;
+    consumer_id: number | null;
+  };
+  energy: Array<{
+    start_date: string; // ISO date string
+    end_date: string; // ISO date string
+    consumption: number;
+    generation: number;
+  }>;
+  selling_price: Array<{
+    date: string; // ISO date string
+    amount: number;
+  }>;
+  spot_price: Array<{
+    date: string; // ISO date string
+    amount: number;
+  }>;
+  sources: Array<{
+    category: string;
+    renewable: boolean;
+    percentage: number;
+    total: number;
+    count: number;
+  }>;
+}
+
+interface SuburbData {
+  id: string;
+  latitude: string;
+  longitude: string;
+  name: string;
+  postcode: number;
+  state: string;
+}
+
 export default function IndividualReport({
   params,
 }: {
@@ -31,29 +72,31 @@ export default function IndividualReport({
   const revenue = '$10,000';
   const spendage = '$9000';
 
-  //test api code delete later
-  const { data, error } = useSWR(`report-${reportId}`, () =>
-    fetchReport(reportId)
+
+  // Fetch the report here
+  const { data, error } = useSWR<Report>(
+    `${mainurl}/retailer/reports/${reportId}`,
+    fetcher,
+    {
+      refreshInterval: POLLING_RATE,
+    }
   );
 
-  //Actual implementation for api
+  console.log("report data:", data);
 
-  // const { data, error } = useSWR(
-  //   `${mainurl}/retailer/reports/${reportId}`,
-  //   fetcher,
-  //   {
-  //     refreshInterval: POLLING_RATE,
-  //   }
-  // );
+  // Conditionally fetch the suburb data only when the report data is available
+  const suburbId = data?.for.suburb_id;
 
-  const [suburbName, setSuburbName] = useState('');
-  useEffect(() => {
-    if (!data) return;
-    fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/retailer/suburbs/${data.id}`
-    ).then((suburbData) => console.log(suburbData));
-  }, [data]);
-  console.log('data', data);
+  const { data: suburbData, error: suburbError } = useSWR<SuburbData>(
+    suburbId ? `${mainurl}/retailer/suburbs/${suburbId}` : null,
+    fetcher,
+    {
+      refreshInterval: POLLING_RATE,
+    }
+  );
+
+  console.log("suburb data:", suburbData);
+
 
   if (error) return <div>Error loading report.</div>;
   if (!data) return <div className="text-white">Loading...</div>;
@@ -64,7 +107,7 @@ export default function IndividualReport({
       className="bg-bgmain"
       id="contentToExport"
     >
-      <PageHeading title={`Report ${data.id}`} />
+      <PageHeading title={`Report: ${suburbData?.name}, ${suburbData?.postcode}, ${suburbData?.state} `} />
       <div className="text-white py-2">
         {DateTime.fromISO(data.start_date).toFormat('D')} -{' '}
         {DateTime.fromISO(data.end_date).toFormat('D')}
