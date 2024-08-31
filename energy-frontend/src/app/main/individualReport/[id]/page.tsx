@@ -57,6 +57,19 @@ interface SuburbData {
   state: string;
 }
 
+interface Consumer {
+  suburb_id: number;
+  suburb_name: string;
+  suburb_post_code: string;
+  id: number;
+  address: string;
+  high_priority: boolean;
+}
+
+interface ConsumerResponse {
+  consumers: Consumer[];
+}
+
 export default function IndividualReport({
   params,
 }: {
@@ -73,6 +86,8 @@ export default function IndividualReport({
   const spendage = '$9000';
 
 
+  const [title, setTitle] = useState('')
+
   // Fetch the report here
   const { data, error } = useSWR<Report>(
     `${mainurl}/retailer/reports/${reportId}`,
@@ -82,21 +97,48 @@ export default function IndividualReport({
     }
   );
 
-  console.log("report data:", data);
-
-  // Conditionally fetch the suburb data only when the report data is available
   const suburbId = data?.for.suburb_id;
+  const consumerId = data?.for.consumer_id;
 
   const { data: suburbData, error: suburbError } = useSWR<SuburbData>(
     suburbId ? `${mainurl}/retailer/suburbs/${suburbId}` : null,
     fetcher,
     {
-      refreshInterval: POLLING_RATE,
+      refreshInterval: 0,
     }
   );
 
-  console.log("suburb data:", suburbData);
+  const consumerID = data?.for.consumer_id;
+  const { data: consumerData, error: consumerError } = useSWR<ConsumerResponse>(
+    consumerId ? `${mainurl}/retailer/consumers?consumer_id=${consumerID}` : null,
+    fetcher,
+    {
+      refreshInterval: 0,
+    }
+  );
 
+
+  // Set the data to display for suburb case here
+  useEffect(() => {
+    // Handle the suburb cases here:
+    if (data?.for.consumer_id === null && suburbData) {
+      setTitle(`${suburbData.name}, ${suburbData.postcode}, ${suburbData.state}`);
+    }
+
+  }, [data, suburbData]);
+  
+
+
+  // Set the data to display for consumer case here
+  console.log("consumer data: ", consumerData)
+  useEffect(() => {
+    // Handle the suburb cases here:
+    if (data?.for.consumer_id && consumerData) {
+      const consumer = consumerData.consumers[0]
+      setTitle(`${consumer.address}, ${consumer.suburb_name}, ${consumer.suburb_post_code}`);
+    }
+
+  }, [data, consumerData]);
 
   if (error) return <div>Error loading report.</div>;
   if (!data) return <div className="text-white">Loading...</div>;
@@ -107,8 +149,10 @@ export default function IndividualReport({
       className="bg-bgmain"
       id="contentToExport"
     >
-      <PageHeading title={`Report: ${suburbData?.name}, ${suburbData?.postcode}, ${suburbData?.state} `} />
+      <PageHeading title='REPORT' />
+      
       <div className="text-white py-2">
+        {title}
         {DateTime.fromISO(data.start_date).toFormat('D')} -{' '}
         {DateTime.fromISO(data.end_date).toFormat('D')}
       </div>
