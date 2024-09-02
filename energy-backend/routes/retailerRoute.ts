@@ -1112,25 +1112,12 @@ router.get('/reports/:id', async (req, res) => {
       amount: Number(price.amount),
     })
   );
-  let splitSellingPrice = splitEvents(
-    selling_price,
-    String(report.start_date),
-    String(report.end_date),
-    timeGranularity
-  ).sort(intervalSorter);
 
   let spot_price = await SpotPrice.findAll({ where: eventWhereClause });
   spot_price = spot_price.map((price: { date: string; amount: string }) => ({
     date: new Date(price.date).toISOString(),
     amount: Number(price.amount),
   }));
-
-  let splitSpotPrice = splitEvents(
-    spot_price,
-    String(report.start_date),
-    String(report.end_date),
-    timeGranularity
-  ).sort(intervalSorter);
 
   let energy_generators = await EnergyGenerator.findAll({
     where: {
@@ -1301,8 +1288,8 @@ router.get('/reports/:id', async (req, res) => {
       consumer_id: report.consumer_id,
     },
     energy: energy,
-    selling_price: splitSellingPrice,
-    spot_price: splitSpotPrice,
+    selling_price: selling_price,
+    spot_price: spot_price,
     sources: generator_types,
   };
 
@@ -1316,6 +1303,7 @@ function eventSorter(a: any, b: any) {
 }
 
 /**
+ * Converts an energy event in kW into kWh
  * Amount is given in Kw
  * Result should be given in kwh
  * @param events
@@ -1340,7 +1328,7 @@ function rollupEvents(events: [{ date: Moment; amount: number }]) {
   );
 }
 /**
- *
+ * Takes in events with a date and an amount, and splits the events into intervals (from event to event)
  * @param events Expects to be sorted from oldest to newest
  * @param startDate the first date of the range
  * @param endDate the last date of the range
