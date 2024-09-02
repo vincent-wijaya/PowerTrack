@@ -23,7 +23,6 @@ export default function MainDashboard() {
     }
 
   ); 
-  console.log(warningData)
 
   return (
     <>

@@ -20,11 +20,30 @@ type ProfitMarginFetchType = {
   selling_prices: { date: string; amount: number }[];
 };
 
+interface SuburbData {
+  id: string;
+  latitude: string;
+  longitude: string;
+  name: string;
+  postcode: number;
+  state: string;
+}
+
 export default function RegionalDashboard({
   params,
 }: {
   params: { id: string };
 }) {
+  
+  const { data: suburbData, error: suburbError } = useSWR<SuburbData>(
+    `${process.env.NEXT_PUBLIC_API_URL}/retailer/suburbs/${params.id}`,
+    fetcher,
+    {
+      refreshInterval: 0,
+    }
+  );
+
+
   const { data: profitMarginFetch }: { data: ProfitMarginFetchType } = useSWR(
     `${process.env.NEXT_PUBLIC_API_URL}/retailer/profitMargin`,
     fetcher,
@@ -53,9 +72,19 @@ export default function RegionalDashboard({
       currency: 'AUD',
     }) || '$0.00';
 
+
+    const { data: warningData, error: warningError } = useSWR(
+      `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings?suburb_id=${params.id}`,
+       fetcher,
+       {
+         refreshInterval: 0,
+       }
+   
+     );
+
   return (
     <>
-      <PageHeading title={`User ID: ${params.id}`} />
+      <PageHeading title={`${suburbData?.name}, ${suburbData?.postcode}, ${suburbData?.state}`} />
 
       <div className="flex gap-6"> {/* Flex container for left and right columns */}
         {/* Left column of page */}
@@ -70,9 +99,9 @@ export default function RegionalDashboard({
               description="Of green energy goal met"
             />
             <InfoBox
-              title="1"
-              description="Warnings"
-            />
+              title={`${warningData?.warnings?.length || 0} Warnings`}
+              description=""
+              />
           </div>
           <WarningTable suburb_id={Number(params.id)} />
           <EnergySourceBreakdown energySources={energySourceBreakdownMockData} />
