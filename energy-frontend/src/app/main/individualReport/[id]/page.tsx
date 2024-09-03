@@ -77,12 +77,11 @@ export default function IndividualReport({
 }) {
   const mainurl = process.env.NEXT_PUBLIC_API_URL;
   const reportId = parseInt(params.id, 10);
-  const averageProfitkwh = '$0.40';
-  const averagePM = '10%';
-  const greenEnergyGoal = '20%';
-  const greenEnergyUsage = '76%';
-  const profitted = '$1000';
-  const revenue = '$10,000';
+  const [averageProfitkwh, setAverageProfitkwh] = useState(0);
+  const [averageProfitMargin, setAverageProfitMargin] = useState(0);
+  const [greenEnergyUsage, setgreenEnergyUsage] = useState(0);
+  const [totalProfit, setTotalProfit] = useState(0);
+  const [totalRevenue, setTotalRevenue] = useState(0);
   const spendage = '$9000';
 
 
@@ -96,6 +95,9 @@ export default function IndividualReport({
       refreshInterval: POLLING_RATE,
     }
   );
+
+
+  console.log("reports data: ", data)
 
   const suburbId = data?.for.suburb_id;
   const consumerId = data?.for.consumer_id;
@@ -120,10 +122,58 @@ export default function IndividualReport({
 
   // Set the data to display for suburb case here
   useEffect(() => {
-    // Handle the suburb cases here:
     if (data?.for.consumer_id === null && suburbData) {
+      // Title
       setTitle(`${suburbData.name}, ${suburbData.postcode}, ${suburbData.state}`);
+
+      // Average Profit Kwh
+      const totalProfitPerKwh = data.selling_price.reduce((acc, item, index) => {
+        const spotPrice = data.spot_price[index]?.amount || 0;
+        return acc + (item.amount - spotPrice);
+      }, 0);
+
+      setAverageProfitkwh(totalProfitPerKwh / data.selling_price.length);
+
+      // Average Profit Margin
+      const totalProfitMargin = data.selling_price.reduce((acc, item, index) => {
+        const spotPrice = data.spot_price[index]?.amount || 0;
+        const profitMargin = ((item.amount - spotPrice) / spotPrice) * 100;
+        return acc + profitMargin;
+      }, 0);
+      
+      setAverageProfitMargin(totalProfitMargin / data.selling_price.length);
+
+      // Green energy usage
+      const totalGreenEnergy = data.sources.reduce((acc, source) => {
+        return source.renewable ? acc + source.total : acc;
+      }, 0);
+      
+      const totalEnergy = data.sources.reduce((acc, source) => acc + source.total, 0);
+      
+      setgreenEnergyUsage((totalGreenEnergy / totalEnergy) * 100);
+
+      // Total Profit
+      const totalProfit = data.energy.reduce((acc, item, index) => {
+        const sellingPrice = data.selling_price[index]?.amount || 0;
+        const spotPrice = data.spot_price[index]?.amount || 0;
+        const profitPerKwh = sellingPrice - spotPrice;
+        return acc + (profitPerKwh * item.generation);
+      }, 0);
+      
+      setTotalProfit(totalProfit)
+
+      // Total Revenue
+      const totalRevenue = data.energy.reduce((acc, item, index) => {
+        const sellingPrice = data.selling_price[index]?.amount || 0;
+        return acc + (sellingPrice * item.generation);
+      }, 0);
+
+      setTotalRevenue(totalRevenue)
+
     }
+
+    // Total Profit
+    
 
   }, [data, suburbData]);
   
@@ -131,7 +181,6 @@ export default function IndividualReport({
 
   // Set the data to display for consumer case here
   useEffect(() => {
-    // Handle the suburb cases here:
     if (data?.for.consumer_id && consumerData) {
       const consumer = consumerData.consumers[0]
       setTitle(`${consumer.address}, ${consumer.suburb_post_code}`);
@@ -160,27 +209,23 @@ export default function IndividualReport({
         <div className="flex flex-col gap-3">
           <div className="flex justify-between gap-3 h-[128px]">
             <InfoBox
-              title={averageProfitkwh}
+              title={averageProfitkwh.toString()}
               description="Average Profit per kwh sold when bought"
             />
             <InfoBox
-              title={averagePM}
+              title={averageProfitMargin.toString()}
               description="Average Profit Margin"
             />
             <InfoBox
-              title={greenEnergyGoal}
-              description="Of green energy goal met"
-            />
-            <InfoBox
-              title={greenEnergyUsage}
+              title={greenEnergyUsage.toString()}
               description="Green Energy Usage"
             />
             <InfoBox
-              title={profitted}
+              title={totalProfit.toString()}
               description="Profitted"
             />
             <InfoBox
-              title={revenue}
+              title={totalRevenue.toString()}
               description="Revenue made"
             />
             <InfoBox
