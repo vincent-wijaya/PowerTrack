@@ -1,6 +1,3 @@
-import Navbar from '@/components/navbar';
-import InfoBox from '@/components/infoBox';
-import Template from '@/app/main/template';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 
@@ -16,7 +13,5 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return (
-    <div className="flex-grow">{children}</div>
-  );
+  return <div className="flex-grow">{children}</div>;
 }

@@ -1,10 +1,14 @@
+'use client';
+
 import PageHeading from '@/components/pageHeading';
-import InfoBox from '@/components/infoBox';
+import InfoBox from '@/components/infoBoxes/infoBox';
 import Map from '@/components/map';
 import WarningTable from '@/components/table/warningTable';
 import EnergyChart from '@/components/energyChart';
 import ProfitChart from '@/components/profitChart';
-import BuyPrice from '@/components/buyPrice';
+import BuyPrice from '@/components/infoBoxes/buyPrice';
+import GreenGoal from '@/components/infoBoxes/greenGoal';
+import GreenUsage from '@/components/infoBoxes/greenUsage';
 
 export default function MainDashboard({ params }: { params: { id: string } }) {
   const numId = parseInt(params.id);
@@ -13,20 +17,18 @@ export default function MainDashboard({ params }: { params: { id: string } }) {
       <PageHeading title="Home" />
 
       <div className="grid grid-flow-col grid-cols-2 gap-3">
-        <div className="flex flex-col gap-3">
-          <div className="flex justify-between gap-3 h-[128px]">
+          <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-[repeat(5,minmax(0,1fr))] justify-between gap-3 h-[128px]">
             <BuyPrice />
+            <GreenGoal />
+            <GreenUsage />
             <InfoBox
-              title="48%"
-              description="of green energy goal met"
+              title="1"
+              description="Warnings"
             />
             <InfoBox
-              title="1 Warnings"
-              description=""
-            />
-            <InfoBox
-              title="1 Suggestions"
-              description=""
+              title="1"
+              description="Suggestions"
             />
           </div>
           <WarningTable consumer_id={numId} />
