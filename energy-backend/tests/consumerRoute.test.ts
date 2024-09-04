@@ -30,10 +30,6 @@ describe('GET /consumer/buyingPrice', () => {
     // Set up and connect to test database
     sequelize = await connectToTestDb();
     appInstance = app(sequelize);
-
-    const { SellingPrice } = await appInstance.get('models');
-    // Insert prerequesite data for tests
-    await SellingPrice.bulkCreate(sellingPriceTestData);
   });
 
   afterAll(async () => {
@@ -42,7 +38,28 @@ describe('GET /consumer/buyingPrice', () => {
     await dropTestDb(sequelize);
   });
 
+  afterEach(async () => {
+    // Clear the SellingPrice table
+    await appInstance.get('models').SellingPrice.destroy({
+      where: {},
+      truncate: true,
+    });
+  });
+
+  it('should return error 404 for no buying price', async () => {
+    const response = await request(appInstance).get('/consumer/buyingPrice');
+
+    expect(response.status).toBe(404);
+    expect(response.body).toEqual({
+      error: 'No buying price found',
+    });
+  });
+
   it('should return the latest retailer selling price', async () => {
+    const { SellingPrice } = await appInstance.get('models');
+    // Insert prerequesite data for tests
+    await SellingPrice.bulkCreate(sellingPriceTestData);
+
     const response = await request(appInstance).get('/consumer/buyingPrice');
 
     // Get the latest selling price from the test data

@@ -6,7 +6,7 @@ import moment from 'moment';
  * - weekly: greater than or equal to 1 month
  * - daily: between 1 week and 1 month
  * - hourly: less than 1 week
- * 
+ *
  * @param startDate start date of period
  * @param endDate end date of period
  * @returns the name of the temporal granularity as in the API specification document, and the adverb
@@ -37,15 +37,15 @@ export function getTemporalGranularity(
 
 /**
  * Provides the multiplier to convert the energy amount from kW to kWh.
- * 
+ *
  * Multiplies the energy amount (kW) with the number of hours in the period based on the temporal granularity (h)
  * to obtain the amount in kWh.
- * 
+ *
  * Multipliers:
  * - weekly: 7 * 24 = 168 hours
  * - daily: 24 hours
  * - hourly: 1 hour
- * 
+ *
  * @param granularity the temporal granularity of the period
  * @returns a multiplier of the number of hours in the period
  */
