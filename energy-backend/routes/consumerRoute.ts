@@ -17,7 +17,9 @@ router.get('/buyingPrice', async (req, res) => {
 
     // If no selling price is found, return 404
     if (!result) {
-      return res.status(404).send('No buying price found');
+      return res.status(404).send({
+        error: 'No buying price found',
+      });
     }
 
     // Return the latest retailer selling price along with the date

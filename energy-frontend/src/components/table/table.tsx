@@ -77,7 +77,7 @@ export default function Table({
 
   return (
     <>
-      <table className="flex flex-col flex-start flex-shrink-0 border-stroke border-2 rounded-sm">
+      <table className="w-full border-stroke border-2 rounded-sm">
         <thead className="items-start flex-shrink-0 self-stretch">
           <tr className="flex items-start flex-shrink-0 self-stretch">
             {updatedColumns.map((column, columnIndex) => (

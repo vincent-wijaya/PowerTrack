@@ -131,6 +131,8 @@ export const defineModels = (sequelize: Sequelize) => {
     id: number;
     street_address: string;
     high_priority: boolean;
+    latitude: string; // Sequelize returns DataTypes.DECIMALs as strings. Bug: https://github.com/sequelize/sequelize/issues/8019
+    longitude: string; // Sequelize returns DataTypes.DECIMALs as strings. Bug: https://github.com/sequelize/sequelize/issues/8019
   }
   const Consumer = sequelize.define<IConsumerModel>(
     'consumer',
@@ -146,6 +148,14 @@ export const defineModels = (sequelize: Sequelize) => {
       },
       high_priority: {
         type: DataTypes.BOOLEAN,
+        allowNull: false,
+      },
+      latitude: {
+        type: DataTypes.DECIMAL,
+        allowNull: false,
+      },
+      longitude: {
+        type: DataTypes.DECIMAL,
         allowNull: false,
       },
     },

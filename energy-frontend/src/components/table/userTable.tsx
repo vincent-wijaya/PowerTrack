@@ -94,7 +94,11 @@ export default function UserTable() {
     const lowercasedSearch = search.toLowerCase().trim();
     const filtered = data.filter(
       (item: DataItem) =>
-        item.consumer_id.toString().trim().toLowerCase().includes(lowercasedSearch) ||
+        item.consumer_id
+          .toString()
+          .trim()
+          .toLowerCase()
+          .includes(lowercasedSearch) ||
         item.address.toString().trim().toLowerCase().includes(lowercasedSearch)
     );
     setFilteredData(filtered);

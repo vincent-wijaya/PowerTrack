@@ -1,8 +1,11 @@
-import Navbar from '@/components/navbar';
-import Image from 'next/image';
+'use client';
+// src/app/page.tsx
+
+import { redirect } from 'next/navigation';
 
 export default function Home() {
-  return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24"></main>
-  );
+  // Redirect to MainDashboard directly
+  redirect('/main/mainDashboard');
+
+  return null; // You can return a loading indicator here if needed
 }

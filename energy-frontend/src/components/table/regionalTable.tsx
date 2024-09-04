@@ -36,7 +36,7 @@ async function fetchHeadersAndData(): Promise<{
         headers: [
           {
             name: 'sal',
-            title: 'sal',
+            title: 'SAL Code',
           },
           {
             name: 'name',
@@ -85,9 +85,10 @@ export default function RegionalTable() {
   useEffect(() => {
     // Filter data based on search input
     const lowercasedSearch = search.toLowerCase().trim();
-    const filtered = data.filter((item) =>
-      item.name.toString().trim().toLowerCase().includes(lowercasedSearch) || 
-      item.postcode.toString().trim().includes(lowercasedSearch)
+    const filtered = data.filter(
+      (item) =>
+        item.name.toString().trim().toLowerCase().includes(lowercasedSearch) ||
+        item.postcode.toString().trim().includes(lowercasedSearch)
     );
     setFilteredData(filtered);
     console.log('Filtered:', filtered);

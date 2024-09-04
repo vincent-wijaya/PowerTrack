@@ -29,11 +29,11 @@ export default function UserDashboard({ params }: { params: { id: number } }) {
           <WarningTable consumer_id={params.id} />
         </div>
         <div className="flex flex-col gap-3">
-          <ConsumerEnergyChart
+          {/*<ConsumerEnergyChart
             chartName="Energy Consumption"
             context_id=""
           />
-          <ProfitChart />
+          <ProfitChart />*/}
         </div>
         {/* <div className="p-4 bg-itembg border border-stroke rounded-lg">
           <EnergyChart />
