@@ -2,19 +2,15 @@
 import React, { useEffect, useState } from 'react';
 import Dropdown from './dropDownFilter'; // Adjust the path based on your folder structure
 import LineChart from './lineChart';
-import axios from 'axios';
+import { fetcher } from '@/utils';
+import useSWR from 'swr';
 
-function EnergyChart(props: {
-  className: string;
-  isSuburb?: boolean;
-  isConsumer?: boolean;
-  context_id: string;
-}) {
+function EnergyChart(props: { chartTitle: string; context_id: string }) {
   const [consumptionData, setConsumptionData] = useState<number[]>([]);
   const [generationData, setGenerationData] = useState<number[]>([]);
-  const [additionalData, setAdditionalData] = useState<number[]>([]);
   const [selectedTimeRange, setSelectedTimeRange] =
     useState<string>('last_year');
+  const [dateArray, setDateArray] = useState<Date[]>([]);
 
   const generateData = () => {
     const newData = Math.floor(Math.random() * (200 - 50 + 1)) + 50;
@@ -73,89 +69,96 @@ function EnergyChart(props: {
     };
   };
 
-  const fetchData = async () => {
+  const getDataUrl = (endpoint: string) => {
     const dateRange = generateDateRange(selectedTimeRange);
-    let start_date = dateRange.start;
-    let end_date = dateRange.end;
-    let params;
+    const { start, end } = dateRange;
+    const params = new URLSearchParams({
+      start_date: start,
+      ...(props.context_id !== 'Nation' && { suburb_id: props.context_id }),
+    });
 
-    if (props.isConsumer) {
-      params = {
-        consumer_id: props.context_id,
-        start_date: start_date,
-        end_date: end_date,
-      };
-    } else if (props.isSuburb) {
-      params = {
-        suburb_id: props.context_id,
-        start_date: start_date,
-        end_date: end_date,
-      };
-    } else {
-      params = {
-        start_date: start_date,
-        end_date: end_date,
-      };
-    }
-
-    try {
-      const response = await axios.get(
-        'http://localhost:3000/retailer/consumption',
-        { params }
-      );
-      const consumption = response.data.energy.map((item: any) => item.amount);
-      setConsumptionData(consumption);
-    } catch (error) {
-      console.error('Error fetching data:', error);
-    }
+    return `${process.env.NEXT_PUBLIC_API_URL}/retailer/${endpoint}?${params.toString()}`;
   };
 
+  // Fetching consumption data
+  const { data: apiConsumptionData, error: consumptionError } = useSWR(
+    getDataUrl('consumption'),
+    fetcher,
+    {
+      refreshInterval: 600000, // Refresh data every minute
+    }
+  );
+
+  // Fetching generation data
+  const { data: apiGenerationData, error: generationError } = useSWR(
+    getDataUrl('generation'),
+    fetcher,
+    {
+      refreshInterval: 600000, // Refresh data every minute
+    }
+  );
+
   useEffect(() => {
-    const interval2 = setInterval(() => {
+    // Set up the interval for generating generation data
+    const generationInterval = setInterval(() => {
       setGenerationData((prevData) => [...prevData, generateData()]);
     }, 50000);
-    return () => clearInterval(interval2);
-  }, []);
 
-  useEffect(() => {
-    const interval3 = setInterval(() => {
-      setAdditionalData((prevData) => [...prevData, generateData()]);
+    // Set up the interval for generating consumption data
+    const consumptionInterval = setInterval(() => {
+      setConsumptionData((prevData) => [...prevData, generateData()]);
     }, 50000);
-    return () => clearInterval(interval3);
+
+    // Clean up the intervals on component unmount
+    return () => {
+      clearInterval(generationInterval);
+      clearInterval(consumptionInterval);
+    };
   }, []);
 
+  //uncomment for actual data
+
+  /* useEffect(() => {
+    if (apiConsumptionData) {
+      const consumptionVal = apiConsumptionData.energy.map(
+        (item: any) => item.amount
+      );
+      const tempDateArray = apiConsumptionData.energy.map(
+        (item: any) => item.date
+      );
+
+      setConsumptionData(consumptionVal);
+      setDateArray(tempDateArray);
+    }
+  }, [apiConsumptionData]);
+
   useEffect(() => {
-    // Fetch data when selectedTimeRange changes
-    fetchData();
-  }, [selectedTimeRange]);
+    if (apiGenerationData) {
+      const generationVal = apiGenerationData.generation.map(
+        (item: any) => item.amount
+      );
+      setGenerationData(generationVal);
+    }
+  }, [apiGenerationData]);*/
 
   const handleTimeRangeChange = (value: string) => {
     setSelectedTimeRange(value);
   };
 
-  const datasets = props.isConsumer
-    ? [
-        {
-          label: 'Energy Consumption',
-          data: consumptionData,
-          borderColor: 'red',
-          backgroundColor: 'white',
-        },
-      ]
-    : [
-        {
-          label: 'Energy Consumption',
-          data: consumptionData,
-          borderColor: 'red',
-          backgroundColor: 'white',
-        },
-        {
-          label: 'Energy Generation',
-          data: generationData,
-          borderColor: 'blue',
-          backgroundColor: 'white',
-        },
-      ];
+  const datasets = [
+    {
+      label: 'Energy Consumption',
+      data: consumptionData,
+      borderColor: 'red',
+      backgroundColor: 'white',
+    },
+    {
+      label: 'Energy Generation',
+      data: generationData,
+      borderColor: 'blue',
+      backgroundColor: 'white',
+    },
+  ];
 
   return (
     <div>
@@ -163,14 +166,14 @@ function EnergyChart(props: {
         <div className="w-full bg-itembg border border-stroke rounded-lg p-4">
           <Dropdown
             onChange={handleTimeRangeChange}
-            chartTitle={props.className}
+            chartTitle={props.chartTitle}
           />
           <LineChart
             chartTitle=""
             xAxisLabels={consumptionData.map((_, index) => `Day ${index + 1}`)}
             datasets={datasets}
             xAxisTitle="Day"
-            yAxisTitle="Amount"
+            yAxisTitle="Amount (KWH)"
           />
         </div>
       </div>

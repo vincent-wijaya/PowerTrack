@@ -11,6 +11,7 @@ function ConsumerEnergyChart(props: { chartName: string; context_id: string }) {
   const [additionalData, setAdditionalData] = useState<number[]>([]);
   const [selectedTimeRange, setSelectedTimeRange] =
     useState<string>('last_year');
+  const [dateArray, setDateArray] = useState<Date[]>([]);
   let startDate;
 
   const generateData = () => {
@@ -85,14 +86,23 @@ function ConsumerEnergyChart(props: { chartName: string; context_id: string }) {
 
   useEffect(() => {
     if (data) {
-      setConsumptionData(data);
+      const consumptionVal = data.energy.map((energy: any) => {
+        return energy.amount;
+      });
+
+      const tempDateArray = data.energy.map((energy: any) => {
+        return energy.date;
+      });
+
+      setConsumptionData(consumptionVal);
+      setDateArray(tempDateArray);
     }
   }, [data]);
 
   useEffect(() => {
     const interval3 = setInterval(() => {
       setAdditionalData((prevData) => [...prevData, generateData()]);
-    }, 50000);
+    }, 5000);
     return () => clearInterval(interval3);
   }, []);
 
@@ -110,17 +120,17 @@ function ConsumerEnergyChart(props: { chartName: string; context_id: string }) {
           />
           <LineChart
             chartTitle=""
-            xAxisLabels={consumptionData.map((_, index) => `Day ${index + 1}`)}
+            xAxisLabels={additionalData.map((_, index) => `Day ${index + 1}`)}
             datasets={[
               {
                 label: 'Consumtion',
-                data: consumptionData,
+                data: additionalData,
                 borderColor: 'purple',
                 backgroundColor: 'white',
               },
             ]}
             xAxisTitle="Day"
-            yAxisTitle="Amount"
+            yAxisTitle="Amount (KWH)"
           />
         </div>
       </div>

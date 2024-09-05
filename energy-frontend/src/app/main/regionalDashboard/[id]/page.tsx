@@ -2,11 +2,11 @@
 'use client';
 
 import Headings from '@/app/main/template';
-import EnergyChart from '@/components/energyChart';
+import EnergyChart from '@/components/charts/energyChart';
 import EnergySourceBreakdown from '@/components/energySourceBreakdown';
 import InfoBox from '@/components/infoBox';
 import PageHeading from '@/components/pageHeading';
-import ProfitChart from '@/components/profitChart';
+import ProfitChart from '@/components/charts/profitChart';
 import ProfitMargin from '@/components/profitMargin';
 import WarningTable from '@/components/table/warningTable';
 import { POLLING_RATE } from '@/config';
@@ -34,7 +34,6 @@ export default function RegionalDashboard({
 }: {
   params: { id: string };
 }) {
-  
   const { data: suburbData, error: suburbError } = useSWR<SuburbData>(
     `${process.env.NEXT_PUBLIC_API_URL}/retailer/suburbs/${params.id}`,
     fetcher,
@@ -42,7 +41,6 @@ export default function RegionalDashboard({
       refreshInterval: 0,
     }
   );
-
 
   const { data: profitMarginFetch }: { data: ProfitMarginFetchType } = useSWR(
     `${process.env.NEXT_PUBLIC_API_URL}/retailer/profitMargin`,
@@ -72,25 +70,27 @@ export default function RegionalDashboard({
       currency: 'AUD',
     }) || '$0.00';
 
-
-    const { data: warningData, error: warningError } = useSWR(
-      `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings?suburb_id=${params.id}`,
-       fetcher,
-       {
-         refreshInterval: 0,
-       }
-   
-     );
+  const { data: warningData, error: warningError } = useSWR(
+    `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings?suburb_id=${params.id}`,
+    fetcher,
+    {
+      refreshInterval: 0,
+    }
+  );
 
   return (
     <>
-      <PageHeading title={`${suburbData?.name}, ${suburbData?.postcode}, ${suburbData?.state}`} />
+      <PageHeading
+        title={`${suburbData?.name}, ${suburbData?.postcode}, ${suburbData?.state}`}
+      />
 
-      <div className="flex gap-6"> {/* Flex container for left and right columns */}
+      <div className="flex gap-6">
+        {' '}
+        {/* Flex container for left and right columns */}
         {/* Left column of page */}
         <div className="flex flex-col gap-3 flex-1">
           <div className="flex justify-between gap-3 h-[128px]">
-          <InfoBox
+            <InfoBox
               title={currentSpotPrice}
               description="Price of electricity per kW/h"
             />
@@ -101,16 +101,20 @@ export default function RegionalDashboard({
             <InfoBox
               title={`${warningData?.warnings?.length || 0} Warnings`}
               description=""
-              />
+            />
           </div>
           <WarningTable suburb_id={Number(params.id)} />
-          <EnergySourceBreakdown energySources={energySourceBreakdownMockData} />
+          <EnergySourceBreakdown
+            energySources={energySourceBreakdownMockData}
+          />
         </div>
-
         {/* Right column of page */}
         <div className="flex flex-col gap-3 flex-1">
           <ProfitChart />
-          <ProfitChart />
+          <EnergyChart
+            chartTitle="Energy Consumption/Generation"
+            context_id={params.id}
+          />
         </div>
       </div>
 

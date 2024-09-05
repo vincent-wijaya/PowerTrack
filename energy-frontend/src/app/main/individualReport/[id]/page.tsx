@@ -2,11 +2,11 @@
 import fetchEnergyConsumption from '@/api/energyConsumption';
 import fetchReport from '@/api/getReport';
 import Headings from '@/app/main/template';
-import EnergyChart from '@/components/energyChart';
+import EnergyChart from '@/components/charts/energyChart';
 import EnergySourceBreakdown from '@/components/energySourceBreakdown';
 import InfoBox from '@/components/infoBox';
 import PageHeading from '@/components/pageHeading';
-import ProfitChart from '@/components/profitChart';
+import ProfitChart from '@/components/charts/profitChart';
 import ProfitMargin from '@/components/profitMargin';
 import WarningTable from '@/components/table/warningTable';
 import { POLLING_RATE } from '@/config';
@@ -15,7 +15,6 @@ import { DateTime } from 'luxon';
 import { useState, useEffect, useMemo } from 'react';
 import { exportToPDF } from '@/utils'; // Import the utility function
 import useSWR from 'swr';
-
 
 interface Report {
   id: number;
@@ -84,8 +83,7 @@ export default function IndividualReport({
   const [totalRevenue, setTotalRevenue] = useState(0);
   const spendage = '$9000';
 
-
-  const [title, setTitle] = useState('')
+  const [title, setTitle] = useState('');
 
   // Fetch the report here
   const { data, error } = useSWR<Report>(
@@ -96,8 +94,7 @@ export default function IndividualReport({
     }
   );
 
-
-  console.log("reports data: ", data)
+  console.log('reports data: ', data);
 
   const suburbId = data?.for.suburb_id;
   const consumerId = data?.for.consumer_id;
@@ -112,44 +109,56 @@ export default function IndividualReport({
 
   const consumerID = data?.for.consumer_id;
   const { data: consumerData, error: consumerError } = useSWR<ConsumerResponse>(
-    consumerId ? `${mainurl}/retailer/consumers?consumer_id=${consumerID}` : null,
+    consumerId
+      ? `${mainurl}/retailer/consumers?consumer_id=${consumerID}`
+      : null,
     fetcher,
     {
       refreshInterval: 0,
     }
   );
 
-
   // Set the data to display for suburb case here
   useEffect(() => {
     if (data?.for.consumer_id === null && suburbData) {
       // Title
-      setTitle(`${suburbData.name}, ${suburbData.postcode}, ${suburbData.state}`);
+      setTitle(
+        `${suburbData.name}, ${suburbData.postcode}, ${suburbData.state}`
+      );
 
       // Average Profit Kwh
-      const totalProfitPerKwh = data.selling_price.reduce((acc, item, index) => {
-        const spotPrice = data.spot_price[index]?.amount || 0;
-        return acc + (item.amount - spotPrice);
-      }, 0);
+      const totalProfitPerKwh = data.selling_price.reduce(
+        (acc, item, index) => {
+          const spotPrice = data.spot_price[index]?.amount || 0;
+          return acc + (item.amount - spotPrice);
+        },
+        0
+      );
 
       setAverageProfitkwh(totalProfitPerKwh / data.selling_price.length);
 
       // Average Profit Margin
-      const totalProfitMargin = data.selling_price.reduce((acc, item, index) => {
-        const spotPrice = data.spot_price[index]?.amount || 0;
-        const profitMargin = ((item.amount - spotPrice) / spotPrice) * 100;
-        return acc + profitMargin;
-      }, 0);
-      
+      const totalProfitMargin = data.selling_price.reduce(
+        (acc, item, index) => {
+          const spotPrice = data.spot_price[index]?.amount || 0;
+          const profitMargin = ((item.amount - spotPrice) / spotPrice) * 100;
+          return acc + profitMargin;
+        },
+        0
+      );
+
       setAverageProfitMargin(totalProfitMargin / data.selling_price.length);
 
       // Green energy usage
       const totalGreenEnergy = data.sources.reduce((acc, source) => {
         return source.renewable ? acc + source.total : acc;
       }, 0);
-      
-      const totalEnergy = data.sources.reduce((acc, source) => acc + source.total, 0);
-      
+
+      const totalEnergy = data.sources.reduce(
+        (acc, source) => acc + source.total,
+        0
+      );
+
       setgreenEnergyUsage((totalGreenEnergy / totalEnergy) * 100);
 
       // Total Profit
@@ -157,35 +166,29 @@ export default function IndividualReport({
         const sellingPrice = data.selling_price[index]?.amount || 0;
         const spotPrice = data.spot_price[index]?.amount || 0;
         const profitPerKwh = sellingPrice - spotPrice;
-        return acc + (profitPerKwh * item.generation);
+        return acc + profitPerKwh * item.generation;
       }, 0);
-      
-      setTotalProfit(totalProfit)
+
+      setTotalProfit(totalProfit);
 
       // Total Revenue
       const totalRevenue = data.energy.reduce((acc, item, index) => {
         const sellingPrice = data.selling_price[index]?.amount || 0;
-        return acc + (sellingPrice * item.generation);
+        return acc + sellingPrice * item.generation;
       }, 0);
 
-      setTotalRevenue(totalRevenue)
-
+      setTotalRevenue(totalRevenue);
     }
 
     // Total Profit
-    
-
   }, [data, suburbData]);
-  
-
 
   // Set the data to display for consumer case here
   useEffect(() => {
     if (data?.for.consumer_id && consumerData) {
-      const consumer = consumerData.consumers[0]
+      const consumer = consumerData.consumers[0];
       setTitle(`${consumer.address}, ${consumer.suburb_post_code}`);
     }
-
   }, [data, consumerData]);
 
   if (error) return <div>Error loading report.</div>;
@@ -197,8 +200,8 @@ export default function IndividualReport({
       className="bg-bgmain"
       id="contentToExport"
     >
-      <PageHeading title='REPORT' />
-      
+      <PageHeading title="REPORT" />
+
       <div className="text-white py-2">
         {DateTime.fromISO(data.start_date).toFormat('D')} -{' '}
         {DateTime.fromISO(data.end_date).toFormat('D')}

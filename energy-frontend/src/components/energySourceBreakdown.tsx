@@ -4,7 +4,7 @@ import ChartDataLabels from 'chartjs-plugin-datalabels';
 import { useState } from 'react';
 import { Doughnut } from 'react-chartjs-2';
 import useSWR from 'swr';
-import Dropdown, { DropdownOption } from './dropDownFilter';
+import Dropdown, { DropdownOption } from './charts/dropDownFilter';
 
 import {
   ArcElement,

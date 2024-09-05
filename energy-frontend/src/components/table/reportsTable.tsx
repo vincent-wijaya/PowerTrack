@@ -90,7 +90,11 @@ export default function ReportsTable() {
     const filtered = data.filter(
       (item: ReportItem) =>
         item.id.toString().trim().toLowerCase().includes(lowercasedSearch) ||
-        item.suburb_id.toString().trim().toLowerCase().includes(lowercasedSearch)
+        item.suburb_id
+          .toString()
+          .trim()
+          .toLowerCase()
+          .includes(lowercasedSearch)
     );
     setFilteredData(filtered);
   }, [search, data]);
