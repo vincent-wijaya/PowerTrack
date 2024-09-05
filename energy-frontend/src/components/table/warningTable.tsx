@@ -1,5 +1,6 @@
 'use client';
 import React from 'react';
+import { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import Table from './table';
 import { fetcher } from '@/utils'; // Assuming this is where your fetcher is defined
@@ -27,18 +28,16 @@ async function fetchHeadersAndData(
   // Initialize an array to store DataItem objects
   const dataItems: DataItem[] = [];
 
-  let link = `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings`
+  let link = `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings`;
 
   if (suburb_id) {
-    link = `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings?suburb_id=${suburb_id}`
-  } else if(consumer_id) {
-    link  = `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings?consumer_id=${consumer_id}`
+    link = `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings?suburb_id=${suburb_id}`;
+  } else if (consumer_id) {
+    link = `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings?consumer_id=${consumer_id}`;
   }
 
   try {
-    const warningsResult = await axios.get(
-      link
-    );
+    const warningsResult = await axios.get(link);
 
     // Access the warnings array directly
     const warnings = warningsResult.data.warnings;
@@ -121,7 +120,7 @@ export default function WarningTable({
   return (
     <Table
       columns={headers}
-      data={warningsData}
+      data={data}
       link={null}
       showPageControls={false}
     />
