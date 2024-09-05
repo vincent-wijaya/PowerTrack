@@ -73,6 +73,8 @@ describe('GET /retailer/consumption', () => {
       {
         id: 1,
         street_address: '10 Test Street Melbourne Victoria 3000',
+        latitude: 0,
+        longitude: 0,
         high_priority: false,
         selling_price_id: 1,
         suburb_id: 1,
@@ -80,6 +82,8 @@ describe('GET /retailer/consumption', () => {
       {
         id: 2,
         street_address: '11 Test Street Melbourne Victoria 3000',
+        latitude: 0,
+        longitude: 0,
         high_priority: false,
         selling_price_id: 1,
         suburb_id: 1,
@@ -1035,12 +1039,16 @@ describe('GET /retailer/warnings - category outage_hp', () => {
       {
         id: 1,
         street_address: highPriorityConsumerAddress,
+        latitude: 100,
+        longitude: 100,
         high_priority: true,
         suburb_id: 1,
       },
       {
         id: 2,
         street_address: highPriorityConsumerAddress,
+        latitude: 100,
+        longitude: 100,
         high_priority: true,
         suburb_id: 2,
       },
@@ -1048,12 +1056,12 @@ describe('GET /retailer/warnings - category outage_hp', () => {
     await appInstance.get('models').ConsumerConsumption.bulkCreate([
       {
         consumer_id: 1,
-        date: '2024-04-17T09:00:00Z',
+        date: moment().subtract(3, 'minutes'), // < 5 minutes => no power outage
         amount: 10,
       },
       {
         consumer_id: 2,
-        date: '2024-04-17T09:00:00Z',
+        date: moment().subtract(6, 'minutes'), // > 5 minutes => power outage
         amount: 0,
       },
     ]);
@@ -1153,6 +1161,8 @@ describe('GET /retailer/warnings - category high_cost', () => {
     await appInstance.get('models').Consumer.create({
       id: 1,
       street_address: address1,
+      latitude: 100,
+      longitude: 100,
       high_priority: false,
       suburb_id: 1,
     });
@@ -1532,6 +1542,8 @@ describe('GET /retailer/consumers', () => {
       {
         id: 1,
         street_address: '10 Test Street Melbourne Victoria 3000',
+        latitude: 100,
+        longitude: 100,
         high_priority: false,
         selling_price_id: 1,
         suburb_id: 1,
@@ -1539,6 +1551,8 @@ describe('GET /retailer/consumers', () => {
       {
         id: 2,
         street_address: '20 Test Street Melbourne Victoria 3000',
+        latitude: 100,
+        longitude: 100,
         high_priority: true,
         selling_price_id: 1,
         suburb_id: 2,
@@ -2030,6 +2044,395 @@ describe('GET /retailer/suburbs', () => {
   });
 });
 
+describe('GET /retailer/powerOutages', () => {
+  let sequelize: Sequelize;
+  let appInstance: Application;
+
+  const mockConsumerData = [
+    {
+      id: 1,
+      street_address: '21 Irwin Street, Clayton, Victoria 3168',
+      latitude: '-37.91743928495542',
+      longitude: '145.13327012656347',
+      high_priority: false,
+      suburb_id: 1,
+    },
+    {
+      id: 2,
+      street_address: '2033 Dandenong Road, Clayton, Victoria 3168',
+      latitude: '-37.91810996899869',
+      longitude: '145.1340092264933',
+      high_priority: true,
+      suburb_id: 1,
+    },
+    {
+      id: 3,
+      street_address: '54 Hemmings Street, Dandenong, Victoria 3175',
+      latitude: '-37.98274741773752',
+      longitude: '145.20415884009546',
+      high_priority: false,
+      suburb_id: 2,
+    },
+    {
+      id: 4,
+      street_address: '2 Fifth Avenue, Dandenong, Victoria 3175',
+      latitude: '-37.98242712987717',
+      longitude: '145.2044102971904',
+      high_priority: true,
+      suburb_id: 2,
+    },
+    {
+      id: 5,
+      street_address: '16 Wilma Ave, Dandenong, Victoria 3175',
+      latitude: '-37.9821167497358',
+      longitude: '145.20261601981665',
+      high_priority: false,
+      suburb_id: 2,
+    },
+    {
+      id: 6,
+      street_address: 'Somewhere far',
+      latitude: '0', // outside of a cluster
+      longitude: '0',
+      high_priority: true, // high priority
+      suburb_id: 2,
+    },
+    {
+      id: 7,
+      street_address: 'Somewhere far other place',
+      latitude: '10', // outside of a cluster
+      longitude: '10',
+      high_priority: false, // high priority
+      suburb_id: 2,
+    },
+  ];
+
+  beforeAll(async () => {
+    // Set up and connect to test database
+    sequelize = await connectToTestDb();
+    appInstance = app(sequelize);
+
+    const { Suburb, Consumer } = appInstance.get('models');
+
+    // Insert prerequesite data for tests
+    await Suburb.bulkCreate([
+      {
+        id: 1,
+        name: 'Clayton',
+        postcode: 3168,
+        state: 'Victoria',
+        latitude: -37.915047,
+        longitude: 145.129272,
+      },
+      {
+        id: 2,
+        name: 'Dandenong',
+        postcode: 3175,
+        state: 'Victoria',
+        latitude: -37.8253,
+        longitude: 145.356,
+      },
+    ]);
+
+    await Consumer.bulkCreate(mockConsumerData);
+  });
+
+  afterEach(async () => {
+    // Clear the ConsumerConsumption table
+    await appInstance.get('models').ConsumerConsumption.destroy({
+      where: {},
+      truncate: true,
+    });
+  });
+
+  afterAll(async () => {
+    // Drop the test database
+    await sequelize.close();
+    await dropTestDb(sequelize);
+  });
+
+  it('should return empty data if no consumers have logged any data', async () => {
+    const response = await request(appInstance).get('/retailer/powerOutages');
+
+    const expectedResponse = {
+      power_outages: {
+        consumers: [],
+        clusters: [],
+      },
+    };
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual(expectedResponse);
+  });
+
+  it('should return non-empty data of the only houses that have logged data and are having power outage', async () => {
+    const { ConsumerConsumption } = appInstance.get('models');
+
+    // Insert prerequesite data for tests
+    const mockConsumptionData = [
+      {
+        consumer_id: 1,
+        date: moment().subtract(34, 'minutes').toISOString(), // last log was >30 minutes ago ==> power outage
+        amount: 10,
+      },
+      {
+        consumer_id: 2, // high priority
+        date: moment().subtract(34, 'minutes').toISOString(), // last log was >5 minutes ago ==> power outage
+        amount: 5,
+      },
+    ];
+
+    await ConsumerConsumption.bulkCreate(mockConsumptionData);
+
+    const response = await request(appInstance).get('/retailer/powerOutages');
+
+    const expectedResponse = {
+      power_outages: {
+        consumers: [
+          {
+            id: 1,
+            street_address: mockConsumerData[0].street_address,
+            latitude: mockConsumerData[0].latitude,
+            longitude: mockConsumerData[0].longitude,
+            high_priority: mockConsumerData[0].high_priority,
+          },
+          {
+            id: 2,
+            street_address: mockConsumerData[1].street_address,
+            latitude: mockConsumerData[1].latitude,
+            longitude: mockConsumerData[1].longitude,
+            high_priority: mockConsumerData[1].high_priority,
+          },
+        ],
+        clusters: [
+          {
+            consumers: [
+              {
+                id: 1,
+                street_address: mockConsumerData[0].street_address,
+                latitude: mockConsumerData[0].latitude,
+                longitude: mockConsumerData[0].longitude,
+                high_priority: mockConsumerData[0].high_priority,
+              },
+              {
+                id: 2,
+                street_address: mockConsumerData[1].street_address,
+                latitude: mockConsumerData[1].latitude,
+                longitude: mockConsumerData[1].longitude,
+                high_priority: mockConsumerData[1].high_priority,
+              },
+            ],
+          },
+        ],
+      },
+    };
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual(expectedResponse);
+  });
+
+  it('should return empty data if there are no power outages', async () => {
+    const { ConsumerConsumption } = appInstance.get('models');
+
+    // Insert prerequesite data for tests
+    const mockConsumptionData = [
+      {
+        consumer_id: 1,
+        date: moment().subtract(4, 'minutes').toISOString(), // last log was <30 minutes ago ==> no power outage
+        amount: 10,
+      },
+      {
+        consumer_id: 2, // high priority
+        date: moment().subtract(4, 'minutes').toISOString(), // last log was <5 minutes ago ==> no power outage
+        amount: 5,
+      },
+      {
+        consumer_id: 3,
+        date: moment().subtract(4, 'minutes').toISOString(), // last log was <30 minutes ago ==> no power outage
+        amount: 10,
+      },
+      {
+        consumer_id: 4, // high priority
+        date: moment().subtract(4, 'minutes').toISOString(), // last log was <5 minutes ago ==> no power outage
+        amount: 4,
+      },
+      {
+        consumer_id: 5,
+        date: moment().subtract(4, 'minutes').toISOString(), // last log was <30 minutes ago ==> no power outage
+        amount: 6,
+      },
+      {
+        consumer_id: 6,
+        date: moment().subtract(4, 'minutes').toISOString(), // last log was <30 minutes ago ==> no power outage
+        amount: 6,
+      },
+      {
+        consumer_id: 7,
+        date: moment().subtract(4, 'minutes').toISOString(), // last log was <30 minutes ago ==> no power outage
+        amount: 6,
+      },
+      {
+        consumer_id: 1,
+        date: moment().subtract(2, 'minutes').toISOString(),
+        amount: 0, // no energy consumed in last 30 minutes ==> power outage
+      },
+    ];
+
+    await ConsumerConsumption.bulkCreate(mockConsumptionData);
+
+    const response = await request(appInstance).get('/retailer/powerOutages');
+
+    const expectedResponse = {
+      power_outages: {
+        consumers: [],
+        clusters: [],
+      },
+    };
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual(expectedResponse);
+  });
+
+  it('should return non-empty data of all power outages', async () => {
+    const { ConsumerConsumption } = appInstance.get('models');
+
+    // Insert prerequesite data for tests
+    const mockConsumptionData = [
+      {
+        consumer_id: 1,
+        date: moment().subtract(36, 'minutes').toISOString(), // last log was >30 minutes ago ==> power outage
+        amount: 10,
+      },
+      {
+        consumer_id: 2, // high priority
+        date: moment().subtract(40, 'minutes').toISOString(), // last log was >5 minutes ago ==> power outage
+        amount: 5,
+      },
+      {
+        consumer_id: 3,
+        date: moment().subtract(48, 'minutes').toISOString(), // last log was >30 minutes ago ==> power outage
+        amount: 10,
+      },
+      {
+        consumer_id: 4, // high priority
+        date: moment().subtract(2, 'minutes').toISOString(), // last log was <5 minutes ago ==> no power outage
+        amount: 4,
+      },
+      {
+        consumer_id: 5,
+        date: moment().subtract(58, 'minutes').toISOString(), // last log was >30 minutes ago ==> power outage
+        amount: 6,
+      },
+      // No data for consumer_id = 6 and is high priority => power outage
+
+      {
+        consumer_id: 6,
+        date: moment().subtract(58, 'minutes').toISOString(), // last log was >30 minutes ago ==> power outage
+        amount: 6,
+      },
+      // No data for consumer_id = 7 but is not high priority and not in a cluster => no power outage
+    ];
+
+    await ConsumerConsumption.bulkCreate(mockConsumptionData);
+
+    const response = await request(appInstance).get('/retailer/powerOutages');
+
+    const expectedResponse = {
+      power_outages: {
+        consumers: [
+          {
+            id: 1,
+            street_address: mockConsumerData[0].street_address,
+            latitude: mockConsumerData[0].latitude,
+            longitude: mockConsumerData[0].longitude,
+            high_priority: mockConsumerData[0].high_priority,
+          },
+          {
+            id: 2,
+            street_address: mockConsumerData[1].street_address,
+            latitude: mockConsumerData[1].latitude,
+            longitude: mockConsumerData[1].longitude,
+            high_priority: mockConsumerData[1].high_priority,
+          },
+          {
+            id: 3,
+            street_address: mockConsumerData[2].street_address,
+            latitude: mockConsumerData[2].latitude,
+            longitude: mockConsumerData[2].longitude,
+            high_priority: mockConsumerData[2].high_priority,
+          },
+          {
+            id: 5,
+            street_address: mockConsumerData[4].street_address,
+            latitude: mockConsumerData[4].latitude,
+            longitude: mockConsumerData[4].longitude,
+            high_priority: mockConsumerData[4].high_priority,
+          },
+          {
+            id: 6,
+            street_address: mockConsumerData[5].street_address,
+            latitude: mockConsumerData[5].latitude,
+            longitude: mockConsumerData[5].longitude,
+            high_priority: mockConsumerData[5].high_priority,
+          },
+        ],
+        clusters: [
+          {
+            consumers: [
+              {
+                id: 1,
+                street_address: mockConsumerData[0].street_address,
+                latitude: mockConsumerData[0].latitude,
+                longitude: mockConsumerData[0].longitude,
+                high_priority: mockConsumerData[0].high_priority,
+              },
+              {
+                id: 2,
+                street_address: mockConsumerData[1].street_address,
+                latitude: mockConsumerData[1].latitude,
+                longitude: mockConsumerData[1].longitude,
+                high_priority: mockConsumerData[1].high_priority,
+              },
+            ],
+          },
+          {
+            consumers: [
+              {
+                id: 3,
+                street_address: mockConsumerData[2].street_address,
+                latitude: mockConsumerData[2].latitude,
+                longitude: mockConsumerData[2].longitude,
+                high_priority: mockConsumerData[2].high_priority,
+              },
+              {
+                id: 5,
+                street_address: mockConsumerData[4].street_address,
+                latitude: mockConsumerData[4].latitude,
+                longitude: mockConsumerData[4].longitude,
+                high_priority: mockConsumerData[4].high_priority,
+              },
+            ],
+          },
+          {
+            consumers: [
+              {
+                id: 6,
+                street_address: mockConsumerData[5].street_address,
+                latitude: mockConsumerData[5].latitude,
+                longitude: mockConsumerData[5].longitude,
+                high_priority: mockConsumerData[5].high_priority,
+              },
+            ],
+          },
+        ],
+      },
+    };
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual(expectedResponse);
+  });
+});
+
 describe('GET /retailer/reports', () => {
   let sequelize: Sequelize;
   let appInstance: Application;
@@ -2132,6 +2535,8 @@ describe('POST /retailer/reports', () => {
     await appInstance.get('models').Consumer.create({
       id: 1,
       street_address: '10 Test Street Melbourne Victoria 3000',
+      latitude: 100,
+      longitude: 100,
       high_priority: false,
       suburb_id: 1,
     });

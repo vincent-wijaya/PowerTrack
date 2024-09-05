@@ -1,7 +1,15 @@
 import express from 'express';
 import moment, { Moment } from 'moment';
-import { Op } from 'sequelize';
+import { col, fn, literal, Op, where } from 'sequelize';
+
+// Import the turf module for clustering
+import * as turf from '@turf/turf';
+import { Feature, FeatureCollection, Point, GeoJsonProperties } from 'geojson';
 import { defineModels } from '../databaseModels';
+import {
+  OUTAGE_DURATION_THRESHOLD,
+  OUTAGE_HP_DURATION_THRESHOLD,
+} from '../utils/constants';
 import {
   kWhConversionMultiplier,
   getTemporalGranularity,
@@ -619,6 +627,7 @@ router.get('/warnings', async (req, res) => {
   // Retrieve warnings for a suburb
   const { suburb_id, consumer_id } = req.query;
   const {
+    sequelize,
     Consumer,
     ConsumerConsumption,
     GoalType,
@@ -700,38 +709,62 @@ router.get('/warnings', async (req, res) => {
       // Check for each type of warning whether the warning should be triggered
       // If triggered, add the warning data to the warnings array
       case 'outage_hp':
-        // Get high priority consumers
         const whereClause: any = {
-          where: {
-            high_priority: true,
-          },
+          high_priority: true,
         };
-        if (suburb_id) {
-          whereClause.where.suburb_id = suburb_id;
-        }
-        const consumers = await Consumer.findAll(whereClause);
 
-        // Check if any of the high priority consumers have an outage
-        // Check if their last consumption data is 0
-        for (const consumer of consumers) {
-          const consumption = await ConsumerConsumption.findOne({
-            where: {
-              consumer_id: consumer.id,
-            },
-            order: [['date', 'DESC']],
-          });
-          if (consumption && Number(consumption.amount) === 0) {
-            warnings.push({
-              category: warningType.category,
-              description: warningType.description,
-              data: {
-                consumer_id: Number(consumer.id),
-                street_address: consumer.street_address,
-              },
-              suggestion: `Prioritise re-establishing energy for priority consumer at address ${consumer.street_address}.`,
-            });
-          }
+        if (suburb_id) {
+          whereClause.suburb_id = suburb_id;
         }
+
+        const consumers = await Consumer.findAll({
+          attributes: [
+            'id',
+            'street_address',
+            [
+              sequelize.fn(
+                'SUM',
+                sequelize.col('consumer_consumptions.amount')
+              ),
+              'total_amount',
+            ],
+          ],
+          where: {
+            ...whereClause,
+          },
+          include: [
+            {
+              model: ConsumerConsumption,
+              attributes: [], // We don't need to return details of ConsumerConsumption
+              where: {
+                date: {
+                  [Op.gt]: moment()
+                    .subtract(OUTAGE_HP_DURATION_THRESHOLD, 'minutes')
+                    .toISOString(),
+                },
+              },
+              required: false, // Perform a LEFT JOIN to include consumers even without ConsumerConsumption records
+            },
+          ],
+          group: ['consumer.id', 'consumer.street_address'],
+          having: sequelize.literal(
+            'SUM(consumer_consumptions.amount) IS NULL OR SUM(consumer_consumptions.amount) = 0'
+          ), // Filter out consumers with non-zero consumption
+          order: [['id', 'ASC']],
+        });
+
+        for (const consumer of consumers) {
+          warnings.push({
+            category: warningType.category,
+            description: warningType.description,
+            data: {
+              consumer_id: Number(consumer.id),
+              street_address: consumer.street_address,
+            },
+            suggestion: `Prioritise re-establishing energy for priority consumer at address ${consumer.street_address}.`,
+          });
+        }
+
         break;
       case 'high_cost':
         // Get the latest selling price
@@ -791,7 +824,7 @@ router.get('/warnings', async (req, res) => {
         }
         break;
       default:
-        console.log(`Unsupported warning category: ${warningType.category}`);
+        console.error(`Unsupported warning category: ${warningType.category}`);
     }
   }
 
@@ -1498,6 +1531,283 @@ function splitEvents(
   });
   return results;
 }
+/**
+ * GET /retailer/powerOutages
+ *
+ * Retrieve power outages data for consumers.
+ *
+ * A region is considered to have a power outage if multiple consumers (at least 2)
+ * within 1 km of one another have zero energy consumption for a 30-minute period.
+ *
+ * Returns a list of consumers with power outages and clusters of consumers with power outages
+ * within 1 km from one another.
+ *
+ * Response format:
+ * {
+ * power_outages: {
+ *   consumers: [
+ *      {
+ *          id: number, // The ID of the consumer
+ *          street_address: string, // The street address of the consumer
+ *          latitude: string, // The latitude of the consumer
+ *          longitude: string, // The longitude of the consumer
+ *          high_priority: boolean, // Whether the consumer is high priority
+ *      },
+ *      ...
+ *   ],
+ *   clusters: [
+ *      {
+ *          consumers: [
+ *             {
+ *                 id: number, // The ID of the consumer
+ *                 street_address: string, // The street address of the consumer
+ *                 latitude: string, // The latitude of the consumer
+ *                 longitude: string, // The longitude of the consumer
+ *                 high_priority: boolean, // Whether the consumer is high priority
+ *             },
+ *             ...
+ *          ],
+ *      },
+ *      ...
+ *    ],
+ * }
+ */
+router.get('/powerOutages', async (req, res) => {
+  const { Consumer, ConsumerConsumption } = req.app.get(
+    'models'
+  ) as DbModelType;
+
+  // Retrieve consumers with zero consumption for the past 30 minutes
+  try {
+    // Retrieve list of consumers that have logged data to filter out consumers that have not been connected to the power grid yet.
+    const consumersWithData = await Consumer.findAll({
+      attributes: ['id'],
+      include: [
+        {
+          model: ConsumerConsumption,
+          attributes: [],
+          required: true,
+        },
+      ],
+      group: ['consumer.id'],
+      order: [['id', 'ASC']],
+    });
+
+    const regularOutages = (await Consumer.findAll({
+      attributes: [
+        'id',
+        'street_address',
+        'longitude',
+        'latitude',
+        'high_priority',
+        [fn('SUM', col('consumer_consumptions.amount')), 'total_amount'],
+      ],
+      where: {
+        high_priority: false,
+        id: {
+          [Op.in]: consumersWithData.map((c: { id: number }) => {
+            return c.id;
+          }),
+        },
+      },
+      include: [
+        {
+          model: ConsumerConsumption,
+          attributes: [], // We don't need to return details of ConsumerConsumption
+          where: {
+            date: {
+              [Op.gt]: moment()
+                .subtract(OUTAGE_DURATION_THRESHOLD, 'minutes')
+                .toISOString(),
+            },
+          },
+          required: false, // Perform a LEFT JOIN to include consumers even without ConsumerConsumption records
+        },
+      ],
+      group: [
+        'consumer.id',
+        'consumer.street_address',
+        'consumer.longitude',
+        'consumer.latitude',
+      ],
+      having: literal(
+        'SUM(consumer_consumptions.amount) IS NULL OR SUM(consumer_consumptions.amount) = 0'
+      ), // Filter out consumers with non-zero consumption
+      order: [['id', 'ASC']],
+    })) as unknown as {
+      id: string;
+      street_address: string;
+      longitude: string;
+      latitude: string;
+      high_priority: boolean;
+      total_amount: number;
+    }[];
+
+    // Retrieve high priority consumers with zero consumption for the past 5 minutes
+    const highPriorityOutages = (await Consumer.findAll({
+      attributes: [
+        'id',
+        'street_address',
+        'longitude',
+        'latitude',
+        'high_priority',
+        [fn('SUM', col('consumer_consumptions.amount')), 'total_amount'],
+      ],
+      where: {
+        high_priority: true,
+        id: {
+          [Op.in]: consumersWithData.map((c: { id: any }) => {
+            return c.id;
+          }),
+        },
+      },
+      include: [
+        {
+          model: ConsumerConsumption,
+          attributes: [], // We don't need to return details of ConsumerConsumption
+          where: {
+            date: {
+              [Op.gt]: moment()
+                .subtract(OUTAGE_HP_DURATION_THRESHOLD, 'minutes')
+                .toISOString(),
+            },
+          },
+          required: false, // Perform a LEFT JOIN to include consumers even without ConsumerConsumption records
+        },
+      ],
+      group: [
+        'consumer.id',
+        'consumer.street_address',
+        'consumer.longitude',
+        'consumer.latitude',
+      ],
+      having: literal(
+        'SUM(consumer_consumptions.amount) IS NULL OR SUM(consumer_consumptions.amount) = 0'
+      ), // Filter out consumers with non-zero consumption
+      order: [['id', 'ASC']],
+    })) as unknown as {
+      id: string;
+      street_address: string;
+      longitude: string;
+      latitude: string;
+      high_priority: boolean;
+      total_amount: number;
+    }[];
+
+    // Combine regular and high priority outages
+    const allOutages = regularOutages.concat(highPriorityOutages);
+
+    // Create a FeatureCollection from the results to be used for clustering
+    const features: Feature<Point, GeoJsonProperties>[] = allOutages.map(
+      (consumer) => ({
+        type: 'Feature',
+        properties: {
+          consumer_id: consumer.id,
+          street_address: consumer.street_address,
+          high_priority: consumer.high_priority,
+        },
+        geometry: {
+          type: 'Point',
+          coordinates: [Number(consumer.longitude), Number(consumer.latitude)],
+        },
+      })
+    );
+
+    const pointCollection: FeatureCollection<Point, GeoJsonProperties> = {
+      type: 'FeatureCollection',
+      features: features,
+    };
+
+    // Perform clustering
+    const PROXIMITY = 1; // Maximum distance between points in a cluster
+    const MIN_POINTS = 2; // Minimum number of points to form a cluster
+    const clusterFeatures = turf.clustersDbscan(pointCollection, PROXIMITY, {
+      minPoints: MIN_POINTS,
+      units: 'kilometers',
+    });
+
+    type ConsumerInstance = InstanceType<typeof Consumer>;
+
+    // Define the data structure for the cluster data
+    const clusterMap = new Map<number, { consumers: ConsumerInstance[] }>(); // Map to store clusters of outages
+    const consumerOutages: ConsumerInstance[] = []; // Array to store all consumers in outage clusters
+
+    // Iterate through the clustered features and group consumers by cluster
+    (
+      clusterFeatures.features as Feature<
+        Point,
+        {
+          consumer_id: number;
+          street_address: string;
+          high_priority: boolean;
+          cluster?: number;
+        }
+      >[]
+    ).forEach((feature) => {
+      const clusterId = feature.properties.cluster;
+
+      // Extract consumer data from the feature properties
+      const consumerData: ConsumerInstance = Consumer.build({
+        id: Number(feature.properties.consumer_id),
+        street_address: feature.properties.street_address,
+        latitude: String(feature.geometry.coordinates[1]),
+        longitude: String(feature.geometry.coordinates[0]),
+        high_priority: Boolean(feature.properties.high_priority),
+      });
+
+      // Skip if feature is not part of a cluster
+      if (clusterId === undefined) {
+        return;
+      }
+
+      // Create a new cluster if it doesn't exist
+      if (!clusterMap.has(clusterId)) {
+        clusterMap.set(clusterId, {
+          consumers: [],
+        });
+      }
+
+      // Store the consumer data properties in the cluster and the consumerOutages array
+      consumerOutages.push(consumerData);
+      clusterMap.get(clusterId)?.consumers.push(consumerData);
+    });
+
+    // Convert clusterMap into an array
+    let clusters = Array.from(clusterMap.values());
+
+    // Add high priority outages that are not part of a cluster
+    highPriorityOutages.forEach((consumer) => {
+      if (
+        consumerOutages.find((c) => c.id === Number(consumer.id)) === undefined
+      ) {
+        const consumerData: ConsumerInstance = Consumer.build({
+          id: Number(consumer.id),
+          street_address: consumer.street_address,
+          latitude: consumer.latitude,
+          longitude: consumer.longitude,
+          high_priority: Boolean(consumer.high_priority),
+        });
+
+        consumerOutages.push(consumerData); // Add to list of consumers with outages
+        // Add high priority consumer to its own cluster
+        clusters.push({
+          consumers: [consumerData],
+        });
+      }
+    });
+
+    // Return the power outages data
+    return res.status(200).send({
+      power_outages: {
+        consumers: consumerOutages.sort((a, b) => a.id - b.id), // Sort consumers by ID
+        clusters,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).send('Internal server error');
+  }
+});
 
 export default router;
 

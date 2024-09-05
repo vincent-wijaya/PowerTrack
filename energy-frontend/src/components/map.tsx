@@ -1,40 +1,62 @@
 'use client';
-import React, { useState, useEffect, useRef, ElementRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, GeoJSON, Marker, Popup } from 'react-leaflet';
-import { useMapEvents } from 'react-leaflet/hooks';
-import { GreaterVictoria } from '@/data/greater-victoria';
-import fetchEnergyConsumption from '../api/energyConsumption';
-import 'leaflet/dist/leaflet.css';
-import 'leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css';
-import { LatLng, LatLngBounds } from 'leaflet';
+import { LatLng, LatLngBounds, Polygon } from 'leaflet';
 import { useRouter } from 'next/navigation';
 import { OutageIcon } from './icons/outageIcon';
-import { Feature, FeatureCollection, Geometry } from 'geojson';
+import useSWR from 'swr';
+import { POLLING_RATE } from '@/config';
+import { fetcher } from '@/utils';
+import 'leaflet/dist/leaflet.css';
+import 'leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility.css';
+import { Feature, FeatureCollection, MultiPoint, Position } from 'geojson'; // Ensure correct import for geojson types
 
-interface DataItem {
-  [suburb: string]: number;
-}
+type MapItem = {
+  suburb_id: number;
+  amount: number;
+  date: string;
+};
+
+type MapData = {
+  energy: MapItem[];
+};
+
+type Consumer = {
+  id: number;
+  street_address: string;
+  latitude: number;
+  longitude: number;
+  high_priority: boolean;
+};
+
+type Cluster = {
+  consumers: Consumer[];
+};
+
+type PowerOutages = {
+  clusters: Cluster[];
+  consumers: Consumer[];
+};
+
+type OutageData = {
+  power_outages: PowerOutages;
+};
 
 function getColorBasedOnConsumption(consumption: number | undefined): string {
   if (consumption == null) {
     return 'black';
   }
 
-  const minConsumption = 0; // Minimum possible consumption value
-  const maxConsumption = 1000; // Maximum possible consumption value
+  const minConsumption = 0;
+  const maxConsumption = 1000;
 
-  // Clamp consumption value between min and max
   const clampedConsumption = Math.max(
     minConsumption,
     Math.min(consumption, maxConsumption)
   );
-
-  // Calculate the interpolation factor (0 to 1)
   const factor =
     (clampedConsumption - minConsumption) / (maxConsumption - minConsumption);
 
-  // Interpolate between yellow (255, 255, 0) and deep purple (75, 0, 130)
-  // Interpolate between light green (144, 238, 144) and deep blue (0, 0, 139)
   const startColor = { r: 144, g: 238, b: 144 };
   const endColor = { r: 0, g: 0, b: 139 };
 
@@ -47,44 +69,55 @@ function getColorBasedOnConsumption(consumption: number | undefined): string {
 
 export default function Map(props: { className?: string }) {
   const router = useRouter();
-  const [powerOutageCoords, setPowerOutageCoords] = useState<LatLng[]>([]);
+  const [powerOutageData, setPowerOutageData] = useState<
+    { latLng: LatLng; id: number }[]
+  >([]);
   const [victorianSuburbs, setVictorianSuburbs] = useState<
-    FeatureCollection<any, any>
+    FeatureCollection<MultiPoint>
   >({
     type: 'FeatureCollection',
     features: [],
   });
-  const bounds = new LatLngBounds(
-    { lat: -37.5, lng: 140 }, // Southwest corner
-    { lat: -39, lng: 148 } // Northeast corner
-  );
-  const geoJsonRef = useRef<ElementRef<typeof GeoJSON>>(null);
 
-  function handleSuburbClick(suburbName: string) {
-    router.push(`/main/regionalDashboard/${suburbName}`);
-  }
+  const bounds = new LatLngBounds(
+    { lat: -37.5, lng: 140 },
+    { lat: -39, lng: 148 }
+  );
+
+  const { data: mapData }: { data: MapData } = useSWR(
+    `${process.env.NEXT_PUBLIC_API_URL}/retailer/map`,
+    fetcher,
+    {
+      refreshInterval: POLLING_RATE,
+    }
+  );
+
+  const { data: outageData }: { data: OutageData } = useSWR(
+    `${process.env.NEXT_PUBLIC_API_URL}/retailer/powerOutages`,
+    fetcher,
+    {
+      refreshInterval: POLLING_RATE,
+    }
+  );
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // here get the energy data
-        const result = await fetchEnergyConsumption();
+    async function fetchData() {
+      if (mapData && outageData) {
+        const consumptionResults = mapData;
+        const outageResults = outageData.power_outages;
 
-        // if there is energy consumption data present...
-        if (result) {
-          const body = result as DataItem;
-          // Fetch victorian suburbs JSON file
-          const response = await fetch('/data/combined.json');
-          if (!response.ok) {
-            throw new Error('Failed to fetch combined JSON data');
-          }
-          const suburbs: FeatureCollection = await response.json();
+        const response = await fetch('/data/combined.json');
+        if (!response.ok) {
+          throw new Error('Failed to fetch combined JSON data');
+        }
 
-          // Map over the energy consumption data to filter features from combined JSON
-          const geoJSONPromises = body.energy.map(async (item) => {
-            // Find the feature based on suburb_id
+        const suburbs: FeatureCollection<any, any> = await response.json();
+
+        // Process consumption data to turn into GeoJSON features for the map
+        const consumptionGeoJSONPromises = consumptionResults.energy.map(
+          async (item) => {
             const feature = suburbs.features.find(
-              (f) => f.properties.id === item.suburb_id.toString()
+              (f) => f.properties?.id === item.suburb_id.toString()
             );
             if (!feature) {
               throw new Error(
@@ -92,46 +125,112 @@ export default function Map(props: { className?: string }) {
               );
             }
             return { geoJSON: feature, amount: item.amount };
-          });
+          }
+        );
 
-          const geoJSONResults = await Promise.all(geoJSONPromises);
+        const consumptionGeoJSONResults = await Promise.all(
+          consumptionGeoJSONPromises
+        );
 
-          const features = geoJSONResults.map((result) => {
-            // Add the energy amount as a property to the feature
-            result.geoJSON.properties = {
-              ...result.geoJSON.properties,
-              amount: result.amount,
+        const consumptionFeatures = consumptionGeoJSONResults.map(
+          (consumptionResult) => {
+            consumptionResult.geoJSON.properties = {
+              ...consumptionResult.geoJSON.properties,
+              amount: consumptionResult.amount,
             };
-            return result.geoJSON;
-          });
+            return consumptionResult.geoJSON;
+          }
+        );
 
-          const featureCollection: FeatureCollection = {
-            type: 'FeatureCollection',
-            features: features,
+        // Process outage data to turn each consumer into a marker
+        const outageMarkers = outageResults.consumers.map((consumer) => {
+          if (!consumer.latitude || !consumer.longitude) {
+            throw new Error(
+              `Missing latitude or longitude for consumer with id: ${consumer.id}`
+            );
+          }
+          return {
+            latLng: new LatLng(consumer.latitude, consumer.longitude),
+            id: consumer.id,
           };
+        });
 
-          setVictorianSuburbs(featureCollection);
-          console.log(featureCollection, 'featurecollection');
-        } else {
-          console.error('Failed to fetch data:', result);
-        }
-      } catch (error) {
-        console.error('Error fetching data:', error);
+        // Process cluster data to turn clusters into GeoJSON features
+        const outageGeoJSONPromises = outageResults.clusters.map(
+          async (cluster) => {
+            // Map consumer data to coordinates and ensure they're typed as Position
+            const coordinates: Position[] = cluster.consumers.map(
+              (consumer) => {
+                if (!consumer.latitude || !consumer.longitude) {
+                  throw new Error(
+                    `Missing latitude or longitude for consumer with id: ${consumer.id}`
+                  );
+                }
+                return [consumer.longitude, consumer.latitude] as Position;
+              }
+            );
+
+            const geoJSONFeature: Feature = {
+              type: 'Feature',
+              geometry: {
+                type: 'Polygon',
+                coordinates: [coordinates],
+              },
+              properties: {
+                outage: true, // Mark the feature as an outage
+              },
+            };
+            return geoJSONFeature;
+          }
+        );
+
+        const outageFeatures = await Promise.all(outageGeoJSONPromises);
+
+        const allFeatures = [...outageFeatures, ...consumptionFeatures];
+
+        const featureCollection: FeatureCollection<any, any> = {
+          type: 'FeatureCollection',
+          features: allFeatures,
+        };
+
+        setVictorianSuburbs(featureCollection);
+        setPowerOutageData(outageMarkers); // Set all consumer coordinates as outage markers
       }
-    };
-    console.log(victorianSuburbs);
-    fetchData();
-
-    const intervalId = setInterval(fetchData, 5000); // Fetch data every 5 seconds
-    return () => clearInterval(intervalId);
-  }, []);
-
-  useEffect(() => {
-    if (geoJsonRef.current) {
-      geoJsonRef.current.clearLayers(); // remove old data
-      geoJsonRef.current.addData(victorianSuburbs); // might need to be geojson.features
     }
-  }, [geoJsonRef, victorianSuburbs]);
+
+    fetchData();
+  }, [mapData, outageData]);
+
+  function handleSuburbClick(suburb_id: string) {
+    router.push(`/main/regionalDashboard/${suburb_id}`);
+  }
+
+  const onEachFeature = (feature: Feature<any>, layer: any) => {
+    const isOutage = feature.properties['outage'];
+
+    if (isOutage) {
+      layer.setStyle({
+        fillColor: 'red',
+        weight: 1,
+        opacity: 1,
+        color: 'red',
+        fillOpacity: 0.7,
+      });
+      layer.bindPopup(`Power Outage!`);
+    } else {
+      const consumption = feature.properties['amount'];
+      console.log(feature.properties);
+      console.log('CONSUMPTION', consumption);
+      let colour = getColorBasedOnConsumption(consumption);
+      layer.setStyle({
+        fillColor: colour,
+        weight: 1,
+        opacity: 1,
+        color: 'black',
+        fillOpacity: 0.7,
+      });
+    }
+  };
 
   return (
     <MapContainer
@@ -145,70 +244,26 @@ export default function Map(props: { className?: string }) {
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      <GeoJSON
-        ref={geoJsonRef}
-        data={victorianSuburbs} // Conditionally set data based on zoom level
-        onEachFeature={(feature, layer: any) => {
-          const energyData = feature.properties['amount'];
-          const suburbName = feature.properties['name'];
-          const coordinates = layer.getBounds().getCenter(); // Get the center coordinates of the feature
-
-          if (energyData >= 0) {
-            const fillColor = getColorBasedOnConsumption(energyData);
-            layer.setStyle({
-              fillColor: fillColor,
-              weight: 1,
-              opacity: 1,
-              color: fillColor,
-              fillOpacity: 0.7,
-            });
-
-            // Add popup with amount value
-            if (energyData > 0) {
-              layer.bindPopup(
-                `<a href="regionalDashboard/${suburbName}">${suburbName}</a> <br>Energy: ${energyData}`
-              );
-            } else {
-              layer.bindPopup(
-                `<a href="regionalDashboard/${suburbName}">${suburbName}</a> <br>Power Outage!`
-              );
-              layer.setStyle({
-                fillColor: 'red',
-                weight: 1,
-                opacity: 1,
-                color: 'red',
-                fillOpacity: 0.7,
-              });
-              setPowerOutageCoords((prevCoords) => [
-                ...prevCoords,
-                coordinates,
-              ]);
-            }
-          } else {
-            layer.setStyle({
-              fillColor: 'black',
-              weight: 1,
-              opacity: 1,
-              color: 'black',
-              fillOpacity: 0.7,
-            });
-
-            // Add popup with default message
-            layer.bindPopup(`Area: ${suburbName} <br>No energy data available`);
-          }
-
-          layer.on({
-            click: () => handleSuburbClick(suburbName),
-          });
-        }}
-      />
-      {powerOutageCoords.map((coord, index) => (
+      {victorianSuburbs && (
+        <GeoJSON
+          data={victorianSuburbs}
+          onEachFeature={onEachFeature}
+        />
+      )}
+      {powerOutageData.map((coord, index) => (
         <Marker
           key={index}
-          position={coord}
+          position={coord.latLng}
           icon={OutageIcon}
         >
-          <Popup>Power Outage!</Popup>
+          <Popup>
+            <div>
+              <p>Power Outage!</p>
+              <a href={`/main/userDashboard/${coord.id}`}>
+                View Consumer Details
+              </a>
+            </div>
+          </Popup>
         </Marker>
       ))}
     </MapContainer>

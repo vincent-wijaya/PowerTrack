@@ -1,13 +1,12 @@
 'use client';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
+import useSWR from 'swr';
 import Table from './table';
-import fetchWarnings from '@/api/getWarnings';
+import { fetcher } from '@/utils'; // Assuming this is where your fetcher is defined
 import axios from 'axios';
 
 type DataItem = {
-  suburb_id: number;
-  consumer_id: number;
-  goal: string;
+  id: number;
   category: string;
   description: string;
   suggestion: string;
@@ -122,7 +121,7 @@ export default function WarningTable({
   return (
     <Table
       columns={headers}
-      data={data}
+      data={warningsData}
       link={null}
       showPageControls={false}
     />
