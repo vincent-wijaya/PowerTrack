@@ -13,8 +13,6 @@ services:
     depends_on:
       debug-db:
         condition: service_healthy
-      debug-server:
-        condition: service_healthy
 
   debug-server:
     build:
