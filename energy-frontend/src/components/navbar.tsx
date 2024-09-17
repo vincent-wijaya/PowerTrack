@@ -17,29 +17,21 @@ interface InfoBoxProps {
 export default function Navbar({ isOpen }: InfoBoxProps) {
   return (
     <>
-      {!isOpen && ( // Only render the Navbar if isHidden is false
-        <div className="flex  flex-col justify-between items-start border-navbarbg bg-navbarbg">
-          {/* start of top of search bar */}
-          <div className="flex flex-col items-start self-stretch">
-            {/* start of top of profile */}
+      {!isOpen && (
+        <div className="border-navbarbg bg-navbarbg h-screen flex flex-col justify-between">
+          {/* top section */}
+          <div>
             <div className="flex items-center p-4">
-              {/* start of avatar */}
-              {/* end of avatar */}
               <div className="flex flex-col justify-center items-start">
                 <div className="text-white text-base font-bold">Retailer</div>
                 <div className="text-gray">Retailer@Aus</div>
               </div>
             </div>
-            <div className="flex flex-col items-start">
+            <div className="flex flex-col">
               <ListMenu
                 icon={<HomeIcon />}
                 description="Home"
                 href="/main/mainDashboard"
-              />
-              <ListMenu
-                icon={<GoalsIcon />}
-                description="Goals"
-                href="/main/goals"
               />
               <ListMenu
                 icon={<WarningIcon />}
@@ -58,11 +50,12 @@ export default function Navbar({ isOpen }: InfoBoxProps) {
               />
             </div>
           </div>
-          <div className="flex flex-col items-start self-stretch">
+          {/* bottom section */}
+          <div className="flex flex-col">
             <ListMenu
               icon={<LogoutIcon />}
               description="Logout"
-              href="/logIn"
+              href="/login"
             />
           </div>
         </div>

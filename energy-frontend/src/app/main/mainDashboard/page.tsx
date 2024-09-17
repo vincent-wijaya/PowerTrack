@@ -1,35 +1,59 @@
+'use client';
+
 import PageHeading from '@/components/pageHeading';
-import InfoBox from '@/components/infoBox';
+import InfoBox from '@/components/infoBoxes/infoBox';
 import Map from '@/components/map';
-import WarningTable from '@/components/table/warningTable';
-import EnergyChart from '@/components/energyChart';
-import ProfitChart from '@/components/profitChart';
+import WarningTable from '@/components/tables/warningTable';
+import EnergyChart from '@/components/charts/energyChart';
+import ProfitChart from '@/components/charts/profitChart';
+import ReportFormButton from '@/components/reportFormButton';
+import axios from 'axios';
+import { fetcher } from '@/utils';
+import useSWR from 'swr';
+import GreenGoal from '@/components/infoBoxes/greenGoal';
+import GreenUsage from '@/components/infoBoxes/greenUsage';
+import BuyPrice from '@/components/infoBoxes/buyPrice';
 
 export default function MainDashboard() {
+  // Access the warnings array directly
+  const { data: warningData, error: warningError } = useSWR(
+    `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings`,
+    fetcher,
+    {
+      refreshInterval: 0,
+    }
+  );
+
   return (
     <>
       <PageHeading title="Home" />
-
-      <div className="grid grid-flow-col grid-cols-2 gap-3">
-        <div className="flex flex-col gap-3">
+      <div className="flex gap-6">
+        {' '}
+        {/* Container for left and right columns */}
+        {/* Left column of page */}
+        <div className="flex flex-col gap-3 flex-1">
           <div className="flex justify-between gap-3 h-[128px]">
+            <BuyPrice />
+            <GreenGoal />
+            <GreenUsage />
             <InfoBox
-              title="48%"
-              description="of green energy goal met"
-            />
-            <InfoBox
-              title="1 Warnings"
+              title={`${warningData?.warnings?.length || 0} Warnings`}
               description=""
             />
             <InfoBox
-              title="1 Suggestions"
+              title={`${warningData?.warnings?.length || 0} Suggestions`}
               description=""
             />
           </div>
           <Map className="h-[400px]" />
           <WarningTable />
         </div>
-        <div className="flex flex-col gap-3">
+        {/* Right column of page */}
+        <div className="flex flex-col gap-3 flex-1">
+          <EnergyChart
+            chartTitle="Nationwide Energy Consumption/Generation"
+            context_id="Nation"
+          />
           <ProfitChart />
         </div>
       </div>

@@ -1,7 +1,7 @@
 import Headings from '@/app/main/template';
 import PageHeading from '@/components/pageHeading';
-import RegionalTable from '@/components/table/regionalTable';
-import UserTable from '@/components/table/userTable';
+import RegionalTable from '@/components/tables/regionalTable';
+import UserTable from '@/components/tables/userTable';
 
 export default function LiveViewDashboard() {
   return (

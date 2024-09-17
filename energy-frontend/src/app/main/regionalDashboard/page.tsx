@@ -2,11 +2,11 @@
 
 import Headings from '@/app/main/template';
 import EnergyChart from '@/components/energyChart';
-import InfoBox from '@/components/infoBox';
+import InfoBox from '@/components/infoBoxes/infoBox';
 import PageHeading from '@/components/pageHeading';
 import ProfitChart from '@/components/profitChart';
-import ProfitMargin from '@/components/profitMargin';
-import WarningTable from '@/components/table/warningTable';
+import ProfitMargin from '@/components/infoBoxes/profitMargin';
+import WarningTable from '@/components/tables/warningTable';
 import { POLLING_RATE } from '@/config';
 import { fetcher } from '@/utils';
 import { useState, useEffect, useMemo } from 'react';
@@ -60,7 +60,7 @@ export default function RegionalDashboard({
         <div className="flex justify-between gap-3">
           <InfoBox
             title={currentSpotPrice}
-            description="Price of electricity per kW/h"
+            description="Price of electricity per kWh"
           />
           <ProfitMargin
             profitMargin={useMemo(

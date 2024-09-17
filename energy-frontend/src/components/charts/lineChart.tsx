@@ -115,13 +115,10 @@ const LineChart: React.FC<Props> = ({
   };
 
   return (
-    <div className="flex flex-grow">
-      <Line
-        options={options}
-        data={chartData}
-      />
-      ;
-    </div>
+    <Line
+      options={options}
+      data={chartData}
+    />
   );
 };
 

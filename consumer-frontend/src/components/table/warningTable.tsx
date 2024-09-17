@@ -39,7 +39,7 @@ async function fetchHeadersAndData(
     const mappedDataItems: DataItem[] = warnings.map((warning) => ({
       suburb_id: suburb_id ?? 0, // Assuming 0 if suburb_id is not provided
       consumer_id: warning.data.consumer_id,
-      goal: 'Goal Placeholder', // Replace with actual goal if available
+      goal: warning.goal, // Replace with actual goal if available
       category: warning.category,
       description: warning.description,
       suggestion: warning.suggestion,

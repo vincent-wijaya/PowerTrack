@@ -36,7 +36,6 @@
     "ts-jest": "^29.1.2",
     "typescript": "^5.4.5",
     "uuid": "^9.0.1"
-
   },
   "devDependencies": {
     "prettier": "3.3.2"

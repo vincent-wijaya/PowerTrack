@@ -23,7 +23,6 @@ export default function Template({ children }: TemplateProps) {
         {/* Adjust the margin-left according to the navbar width */}
         <div className="flex justify-between items-center py-6 px-10 bg-gray-800">
           <div className="text-xl text-white">POWER TRACK</div>
-          <Profile click={toggleNavbar} />
         </div>
         <div className="flex-1 overflow-y-auto px-10 py-4 bg-gray-100">
           {children}
