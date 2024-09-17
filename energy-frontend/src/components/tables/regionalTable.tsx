@@ -1,33 +1,31 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import Table from './table';
+import fetchSuburbs from '@/api/getSuburbs';
 import axios from 'axios';
 
 type DataItem = {
-  consumer_id: number;
-  suburb_name: string;
-  address: string;
-  high_priority: string;
+  sal: number;
+  name: string;
+  postcode: number;
 };
 
-// function to fetch headers and data
+// Mock function to fetch headers and data
 async function fetchHeadersAndData(): Promise<{
   headers: { name: string; title: string }[];
   data: DataItem[];
 }> {
   const dataItems: DataItem[] = [];
   const response = await axios.get(
-    `${process.env.NEXT_PUBLIC_API_URL}/retailer/consumers`
+    `${process.env.NEXT_PUBLIC_API_URL}/retailer/suburbs`
   );
-
-  const consumers = response.data.consumers;
+  const suburbs = response.data.suburbs;
 
   // Map the warnings into DataItem format
-  const mappedDataItems: DataItem[] = consumers.map((consumer: any) => ({
-    consumer_id: consumer.id,
-    suburb_name: consumer.suburb_name,
-    address: consumer.address,
-    high_priority: consumer.high_priority ? 'Yes' : 'No',
+  const mappedDataItems: DataItem[] = suburbs.map((suburb: any) => ({
+    sal: suburb.id,
+    name: suburb.name,
+    postcode: suburb.postcode,
   }));
 
   // Add the mapped DataItem objects to dataItems array
@@ -37,20 +35,16 @@ async function fetchHeadersAndData(): Promise<{
       resolve({
         headers: [
           {
-            name: 'consumer_id',
-            title: 'Consumer ID',
+            name: 'sal',
+            title: 'SAL Code',
           },
           {
-            name: 'suburb_name',
-            title: 'Suburb Name',
+            name: 'name',
+            title: 'Name',
           },
           {
-            name: 'address',
-            title: 'Address',
-          },
-          {
-            name: 'high_priority',
-            title: 'High Priority',
+            name: 'postcode',
+            title: 'Postcode',
           },
         ], //TODO change suburb and sal the other way
         data: dataItems,
@@ -59,7 +53,7 @@ async function fetchHeadersAndData(): Promise<{
   });
 }
 
-export default function UserTable() {
+export default function RegionalTable() {
   const [headers, setHeaders] = useState<{ name: string; title: string }[]>([]);
   const [data, setData] = useState<DataItem[]>([]);
   const [filteredData, setFilteredData] = useState<DataItem[]>([]);
@@ -71,7 +65,6 @@ export default function UserTable() {
         const { headers, data } = await fetchHeadersAndData();
         setHeaders(headers);
         setData(data);
-        setFilteredData(data);
       } catch (error) {
         console.error('Failed to fetch data', error);
       }
@@ -93,15 +86,12 @@ export default function UserTable() {
     // Filter data based on search input
     const lowercasedSearch = search.toLowerCase().trim();
     const filtered = data.filter(
-      (item: DataItem) =>
-        item.consumer_id
-          .toString()
-          .trim()
-          .toLowerCase()
-          .includes(lowercasedSearch) ||
-        item.address.toString().trim().toLowerCase().includes(lowercasedSearch)
+      (item) =>
+        item.name.toString().trim().toLowerCase().includes(lowercasedSearch) ||
+        item.postcode.toString().trim().includes(lowercasedSearch)
     );
     setFilteredData(filtered);
+    console.log('Filtered:', filtered);
   }, [search, data]);
 
   return (
@@ -110,7 +100,7 @@ export default function UserTable() {
         <input
           type="text"
           className="flex w-full p-2 bg-itembg border border-chartBorder text-white"
-          placeholder="Search by consumer ID or address..."
+          placeholder="Search by suburb name or postcode..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -118,7 +108,7 @@ export default function UserTable() {
       <Table
         columns={headers}
         data={filteredData}
-        link={'userDashboard'}
+        link={'regionalDashboard'}
         showPageControls={true}
       />
     </div>

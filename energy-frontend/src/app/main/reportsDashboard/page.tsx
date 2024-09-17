@@ -1,20 +1,15 @@
 import Headings from '@/app/main/template';
 import PageHeading from '@/components/pageHeading';
+import ReportsTable from '@/components/tables/reportsTable';
+import { POLLING_RATE } from '@/config';
+import { fetcher } from '@/utils';
+import useSWR from 'swr';
 
-export default function RegionalDashboard({
-  params,
-}: {
-  params: { id: number };
-}) {
+export default function ReportsDashboard() {
   return (
     <>
-      <div className="flex flex-col-2">
-        <PageHeading title={`Area - ${params.id}`} />
-
-        <div>
-          {/* <InfoBox title="X Urgent Warnings" description="of all warnings" />*/}
-        </div>
-      </div>
+      <PageHeading title="Reports" />
+      <ReportsTable />
     </>
   );
 }

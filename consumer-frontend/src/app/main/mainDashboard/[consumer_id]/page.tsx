@@ -11,7 +11,6 @@ import { useEffect, useState } from 'react';
 import GreenGoal from '@/components/infoBoxes/greenGoal';
 import GreenUsage from '@/components/infoBoxes/greenUsage';
 
-
 export default function MainDashboard({
   params,
 }: {

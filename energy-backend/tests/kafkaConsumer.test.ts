@@ -236,6 +236,8 @@ describe('consumerMessages', () => {
       id: 0,
       suburb_id: 0,
       street_address: '11',
+      latitude: -37.79313,
+      longitude: 144.975158,
       high_priority: true,
     });
   });

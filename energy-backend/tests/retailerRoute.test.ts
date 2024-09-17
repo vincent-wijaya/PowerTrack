@@ -1,9 +1,14 @@
+// Set node enviornment to Test
+process.env.NODE_ENV = 'test';
+
 import { Application } from 'express';
 import request from 'supertest';
 import { Sequelize } from 'sequelize';
 import app from '../app';
 import { connectToTestDb, dropTestDb } from './testDb';
 import moment from 'moment';
+import { exportsForTesting } from '../routes/retailerRoute';
+const { splitEvents } = exportsForTesting;
 import { kWhConversionMultiplier } from '../utils/utils';
 
 describe('GET /retailer/consumption', () => {
@@ -2425,5 +2430,814 @@ describe('GET /retailer/powerOutages', () => {
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual(expectedResponse);
+  });
+});
+
+describe('GET /retailer/reports', () => {
+  let sequelize: Sequelize;
+  let appInstance: Application;
+
+  beforeAll(async () => {
+    sequelize = await connectToTestDb();
+    appInstance = app(sequelize);
+
+    // Create mock suburbs
+    await appInstance.get('models').Suburb.bulkCreate([
+      {
+        id: 1,
+        name: 'Test Suburb 1',
+        postcode: 3000,
+        state: 'Victoria',
+        latitude: 100,
+        longitude: 100,
+      },
+      {
+        id: 2,
+        name: 'Test Suburb 2',
+        postcode: 3001,
+        state: 'Victoria',
+        latitude: 105,
+        longitude: 100,
+      },
+    ]);
+
+    // Create mock reports
+    await appInstance.get('models').Report.bulkCreate([
+      {
+        id: 1,
+        start_date: '2024-04-17T09:06:41Z',
+        end_date: '2024-04-17T09:06:41Z',
+        suburb_id: 2,
+        consumer_id: null,
+      },
+      {
+        id: 2,
+        start_date: '2024-04-18T09:06:41Z',
+        end_date: '2024-04-18T09:06:41Z',
+        suburb_id: 1,
+        consumer_id: null,
+      },
+    ]);
+  });
+
+  afterAll(async () => {
+    await sequelize.close();
+    await dropTestDb(sequelize);
+  });
+
+  it('should return a list of existing reports', async () => {
+    const response = await request(appInstance).get('/retailer/reports');
+
+    expect(response.status).toBe(200);
+    expect(response.body.reports.length).toBe(2);
+    expect(response.body.reports).toEqual([
+      expect.objectContaining({
+        id: 1,
+        start_date: '2024-04-17T09:06:41.000Z',
+        end_date: '2024-04-17T09:06:41.000Z',
+        for: {
+          suburb_id: 2,
+          consumer_id: null,
+        },
+      }),
+      expect.objectContaining({
+        id: 2,
+        start_date: '2024-04-18T09:06:41.000Z',
+        end_date: '2024-04-18T09:06:41.000Z',
+        for: {
+          suburb_id: 1,
+          consumer_id: null,
+        },
+      }),
+    ]);
+  });
+});
+
+describe('POST /retailer/reports', () => {
+  let sequelize: Sequelize;
+  let appInstance: Application;
+
+  beforeAll(async () => {
+    sequelize = await connectToTestDb();
+    appInstance = app(sequelize);
+
+    // Create mock suburb
+    await appInstance.get('models').Suburb.create({
+      id: 1,
+      name: 'Test Suburb 1',
+      postcode: 3000,
+      state: 'Victoria',
+      latitude: 100,
+      longitude: 100,
+    });
+
+    // Create mock consumer
+    await appInstance.get('models').Consumer.create({
+      id: 1,
+      street_address: '10 Test Street Melbourne Victoria 3000',
+      latitude: 100,
+      longitude: 100,
+      high_priority: false,
+      suburb_id: 1,
+    });
+  });
+
+  afterAll(async () => {
+    await sequelize.close();
+    await dropTestDb(sequelize);
+  });
+
+  it('should generate a new retailer report', async () => {
+    const START_DATE = '2024-04-01T09:00:00Z';
+    const END_DATE = '2024-04-30T09:00:00Z';
+    const SUBURB_ID = 1;
+
+    const response = await request(appInstance)
+      .post('/retailer/reports')
+      .send({
+        start_date: START_DATE,
+        end_date: END_DATE,
+        for: {
+          consumer_id: null,
+          suburb_id: SUBURB_ID,
+        },
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ id: expect.any(Number) });
+  });
+
+  it('should generate a new consumer report', async () => {
+    const START_DATE = '2024-04-01T09:00:00Z';
+    const END_DATE = '2024-04-30T09:00:00Z';
+    const CONSUMER_ID = 1;
+
+    const response = await request(appInstance)
+      .post('/retailer/reports')
+      .send({
+        start_date: START_DATE,
+        end_date: END_DATE,
+        for: {
+          consumer_id: CONSUMER_ID,
+          suburb_id: null,
+        },
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ id: expect.any(Number) });
+  });
+
+  it('should return error 400 if start date is missing', async () => {
+    const END_DATE = '2024-04-30T09:00:00Z';
+    const SUBURB_ID = 1;
+
+    const response = await request(appInstance)
+      .post('/retailer/reports')
+      .send({
+        end_date: END_DATE,
+        for: {
+          suburb_id: SUBURB_ID,
+          consumer_id: null,
+        },
+      });
+
+    expect(response.status).toBe(400);
+  });
+
+  it('should return error 400 if end date is missing', async () => {
+    const START_DATE = '2024-04-01T09:00:00Z';
+    const SUBURB_ID = 1;
+
+    const response = await request(appInstance)
+      .post('/retailer/reports')
+      .send({
+        start_date: START_DATE,
+        for: {
+          suburb_id: SUBURB_ID,
+          consumer_id: null,
+        },
+      });
+
+    expect(response.status).toBe(400);
+  });
+
+  it('should return error 400 if for object is missing', async () => {
+    const START_DATE = '2024-04-01T09:00:00Z';
+    const END_DATE = '2024-04-30T09:00:00Z';
+
+    const response = await request(appInstance).post('/retailer/reports').send({
+      start_date: START_DATE,
+      end_date: END_DATE,
+    });
+
+    expect(response.status).toBe(400);
+  });
+
+  it('should return error 400 if both suburb_id and consumer_id are provided', async () => {
+    const START_DATE = '2024-04-01T09:00:00Z';
+    const END_DATE = '2024-04-30T09:00:00Z';
+    const SUBURB_ID = 1;
+    const CONSUMER_ID = 1;
+
+    const response = await request(appInstance)
+      .post('/retailer/reports')
+      .send({
+        start_date: START_DATE,
+        end_date: END_DATE,
+        for: {
+          suburb_id: SUBURB_ID,
+          consumer_id: CONSUMER_ID,
+        },
+      });
+
+    expect(response.status).toBe(400);
+  });
+});
+
+describe('GET /retailer/reports/:id Suburb', () => {
+  let sequelize: Sequelize;
+  let appInstance: Application;
+  const testSuburbs = [
+    {
+      id: 0,
+      name: 'Test Suburb 1',
+      postcode: 3000,
+      state: 'Victoria',
+      latitude: 100,
+      longitude: 100,
+    },
+    {
+      id: 1,
+      name: 'Test Suburb 2',
+      postcode: 3001,
+      state: 'Victoria',
+      latitude: 105,
+      longitude: 100,
+    },
+    {
+      id: 2,
+      name: 'Test Suburb 3',
+      postcode: 3002,
+      state: 'Victoria',
+      latitude: 115,
+      longitude: 110,
+    },
+  ];
+  const testSuburbConsumptions = [
+    { date: '2024-02-02T00:00:00.000Z', amount: 1, suburb_id: 1 },
+    { date: '2024-02-03T00:00:00.000Z', amount: 1, suburb_id: 1 },
+    { date: '2024-02-04T00:00:00.000Z', amount: 1, suburb_id: 1 },
+    { date: '2024-02-05T00:00:00.000Z', amount: 1, suburb_id: 1 },
+    { date: '2024-02-06T00:00:00.000Z', amount: 1, suburb_id: 1 },
+    { date: '2024-02-07T00:00:00.000Z', amount: 1, suburb_id: 1 },
+  ];
+  const testSellingPrice = [
+    { date: '2024-02-02T00:00:00.000Z', amount: 1 },
+    { date: '2024-02-03T00:00:00.000Z', amount: 1 },
+    { date: '2024-02-04T00:00:00.000Z', amount: 1 },
+    { date: '2024-02-05T00:00:00.000Z', amount: 1 },
+    { date: '2024-02-06T00:00:00.000Z', amount: 1 },
+    { date: '2024-02-07T00:00:00.000Z', amount: 1 },
+  ];
+  const testSpotPrice = [
+    { date: '2024-02-02T00:00:00.000Z', amount: 1 },
+    { date: '2024-02-03T00:00:00.000Z', amount: 1 },
+    { date: '2024-02-04T00:00:00.000Z', amount: 1 },
+    { date: '2024-02-05T00:00:00.000Z', amount: 1 },
+    { date: '2024-02-06T00:00:00.000Z', amount: 1 },
+    { date: '2024-02-07T00:00:00.000Z', amount: 1 },
+  ];
+  const testGeneratorType = [
+    {
+      id: 0,
+      category: 'Brown Coal',
+      renewable: false,
+    },
+    {
+      id: 1,
+      category: 'Solar',
+      renewable: true,
+    },
+    {
+      id: 2,
+      category: 'Wind',
+      renewable: true,
+    },
+  ];
+  const testEnergyGenerator = [
+    {
+      id: 0,
+      name: 'Coal Generator',
+      suburb_id: 1,
+      generator_type_id: 0,
+    },
+    {
+      id: 1,
+      name: 'Solar Generator 1',
+      suburb_id: 1,
+      generator_type_id: 1,
+    },
+    {
+      id: 2,
+      name: 'Solar Generator 2',
+      suburb_id: 1,
+      generator_type_id: 1,
+    },
+    {
+      id: 3,
+      name: 'Wind Generator',
+      suburb_id: 1,
+      generator_type_id: 2,
+    },
+    // generator that shouldnt be included in any reports
+    {
+      id: 4,
+      name: 'Extra Wind Generator',
+      suburb_id: 2,
+      generator_type_id: 2,
+    },
+  ];
+  const testEnergyGeneration = [
+    //coal energy
+    { date: '2024-02-02T00:00:00.000Z', amount: 1, energy_generator_id: 0 },
+    { date: '2024-02-03T00:00:00.000Z', amount: 1, energy_generator_id: 0 },
+    { date: '2024-02-04T00:00:00.000Z', amount: 1, energy_generator_id: 0 },
+    { date: '2024-02-05T00:00:00.000Z', amount: 1, energy_generator_id: 0 },
+    { date: '2024-02-06T00:00:00.000Z', amount: 1, energy_generator_id: 0 },
+    { date: '2024-02-07T00:00:00.000Z', amount: 1, energy_generator_id: 0 },
+    //outside of range energy
+    { date: '2024-05-06T00:00:00.000Z', amount: 1, energy_generator_id: 0 },
+    { date: '2024-05-07T00:00:00.000Z', amount: 1, energy_generator_id: 0 },
+
+    //solar 1 energy
+    { date: '2024-02-02T00:00:00.000Z', amount: 1, energy_generator_id: 1 },
+    { date: '2024-02-03T00:00:00.000Z', amount: 1, energy_generator_id: 1 },
+    { date: '2024-02-04T00:00:00.000Z', amount: 1, energy_generator_id: 1 },
+    { date: '2024-02-05T00:00:00.000Z', amount: 1, energy_generator_id: 1 },
+    { date: '2024-02-06T00:00:00.000Z', amount: 1, energy_generator_id: 1 },
+    { date: '2024-02-07T00:00:00.000Z', amount: 1, energy_generator_id: 1 },
+    //outside of range energy
+    { date: '2024-05-06T00:00:00.000Z', amount: 1, energy_generator_id: 1 },
+    { date: '2024-05-07T00:00:00.000Z', amount: 1, energy_generator_id: 1 },
+
+    // solar 2 energy
+    { date: '2024-02-02T00:00:00.000Z', amount: 1, energy_generator_id: 2 },
+    { date: '2024-02-03T00:00:00.000Z', amount: 1, energy_generator_id: 2 },
+    { date: '2024-02-04T00:00:00.000Z', amount: 1, energy_generator_id: 2 },
+    { date: '2024-02-05T00:00:00.000Z', amount: 1, energy_generator_id: 2 },
+    { date: '2024-02-06T00:00:00.000Z', amount: 1, energy_generator_id: 2 },
+    { date: '2024-02-07T00:00:00.000Z', amount: 1, energy_generator_id: 2 },
+
+    // wind energy
+    { date: '2024-02-02T00:00:00.000Z', amount: 1, energy_generator_id: 3 },
+    { date: '2024-02-03T00:00:00.000Z', amount: 1, energy_generator_id: 3 },
+    { date: '2024-02-04T00:00:00.000Z', amount: 1, energy_generator_id: 3 },
+    { date: '2024-02-05T00:00:00.000Z', amount: 1, energy_generator_id: 3 },
+    { date: '2024-02-06T00:00:00.000Z', amount: 1, energy_generator_id: 3 },
+    { date: '2024-02-07T00:00:00.000Z', amount: 1, energy_generator_id: 3 },
+
+    // extra wind energy that shouldn't appear in any reports
+    { date: '2024-02-02T00:00:00.000Z', amount: 1, energy_generator_id: 4 },
+    { date: '2024-02-03T00:00:00.000Z', amount: 1, energy_generator_id: 4 },
+    { date: '2024-02-04T00:00:00.000Z', amount: 1, energy_generator_id: 4 },
+    { date: '2024-02-05T00:00:00.000Z', amount: 1, energy_generator_id: 4 },
+    { date: '2024-02-06T00:00:00.000Z', amount: 1, energy_generator_id: 4 },
+    { date: '2024-02-07T00:00:00.000Z', amount: 1, energy_generator_id: 4 },
+  ];
+
+  const testReports = [
+    // This report's suburb will have no energy but will have profit
+    {
+      id: '0',
+      start_date: '2024-02-01T00:00:00.000Z',
+      end_date: '2024-03-01T00:00:00.000Z',
+      suburb_id: '0',
+      consumer_id: null,
+    },
+    // This report's dates will have no data
+    {
+      id: '1',
+      start_date: '2024-01-01T00:00:00.000Z',
+      end_date: '2024-02-01T00:00:00.000Z',
+      suburb_id: '1',
+      consumer_id: null,
+    },
+    // This report will have data
+    {
+      id: '2',
+      start_date: '2024-02-01T00:00:00.000Z',
+      end_date: '2024-03-01T00:00:00.000Z',
+      suburb_id: '1',
+      consumer_id: null,
+    },
+  ];
+
+  beforeAll(async () => {
+    sequelize = await connectToTestDb();
+    appInstance = app(sequelize);
+    const models = appInstance.get('models');
+
+    // Create mock data
+    await models.Suburb.bulkCreate(testSuburbs);
+    await models.SuburbConsumption.bulkCreate(testSuburbConsumptions);
+
+    await models.SellingPrice.bulkCreate(testSellingPrice);
+    await models.SpotPrice.bulkCreate(testSpotPrice);
+
+    await models.GeneratorType.bulkCreate(testGeneratorType);
+    await models.EnergyGenerator.bulkCreate(testEnergyGenerator);
+    await models.EnergyGeneration.bulkCreate(testEnergyGeneration);
+
+    await models.Report.bulkCreate(testReports);
+  });
+
+  afterAll(async () => {
+    await sequelize.close();
+    await dropTestDb(sequelize);
+  });
+
+  it('Should return no report found', async () => {
+    const response = await request(appInstance).get('/retailer/reports/10');
+
+    expect(response.status).toBe(404);
+  });
+
+  it('Should return report with no energy', async () => {
+    const testReport = testReports[0];
+    const response = await request(appInstance).get(
+      `/retailer/reports/${testReport.id}`
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      id: testReport.id,
+      start_date: testReport.start_date,
+      end_date: testReport.end_date,
+      for: {
+        suburb_id: testReport.suburb_id,
+        consumer_id: testReport.consumer_id,
+      },
+      energy: [],
+      selling_price: testSellingPrice,
+      spot_price: testSpotPrice,
+      sources: [],
+    });
+  });
+
+  it('Should return a full report', async () => {
+    const testReport = testReports[2];
+    const response = await request(appInstance).get(
+      `/retailer/reports/${testReport.id}`
+    );
+
+    console.log(response.body);
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      id: testReport.id,
+      start_date: testReport.start_date,
+      end_date: testReport.end_date,
+      for: {
+        suburb_id: testReport.suburb_id,
+        consumer_id: testReport.consumer_id,
+      },
+      energy: [
+        {
+          start_date: '2024-02-01T00:00:00.000Z',
+          end_date: '2024-02-02T00:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-02T00:00:00.000Z',
+          end_date: '2024-02-03T00:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-03T00:00:00.000Z',
+          end_date: '2024-02-04T00:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-04T00:00:00.000Z',
+          end_date: '2024-02-05T00:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-05T00:00:00.000Z',
+          end_date: '2024-02-06T00:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-06T00:00:00.000Z',
+          end_date: '2024-02-07T00:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-07T00:00:00.000Z',
+          end_date: '2024-02-08T00:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-08T00:00:00.000Z',
+          end_date: '2024-02-09T00:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-09T00:00:00.000Z',
+          end_date: '2024-02-10T00:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-10T00:00:00.000Z',
+          end_date: '2024-02-11T00:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-11T00:00:00.000Z',
+          end_date: '2024-02-12T00:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-12T00:00:00.000Z',
+          end_date: '2024-02-13T00:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-13T00:00:00.000Z',
+          end_date: '2024-02-14T00:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-14T00:00:00.000Z',
+          end_date: '2024-02-15T00:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-15T00:00:00.000Z',
+          end_date: '2024-02-16T00:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-16T00:00:00.000Z',
+          end_date: '2024-02-17T00:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-17T00:00:00.000Z',
+          end_date: '2024-02-18T00:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-18T00:00:00.000Z',
+          end_date: '2024-02-19T00:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-19T00:00:00.000Z',
+          end_date: '2024-02-20T00:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-20T00:00:00.000Z',
+          end_date: '2024-02-21T00:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-21T00:00:00.000Z',
+          end_date: '2024-02-22T00:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-22T00:00:00.000Z',
+          end_date: '2024-02-23T00:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-23T00:00:00.000Z',
+          end_date: '2024-02-24T00:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-24T00:00:00.000Z',
+          end_date: '2024-02-25T00:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-25T00:00:00.000Z',
+          end_date: '2024-02-26T00:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-26T00:00:00.000Z',
+          end_date: '2024-02-27T00:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-27T00:00:00.000Z',
+          end_date: '2024-02-28T00:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+        {
+          start_date: '2024-02-28T00:00:00.000Z',
+          end_date: '2024-02-29T00:00:00.000Z',
+          generation: 24,
+          consumption: 24,
+        },
+      ],
+      selling_price: testSellingPrice,
+      spot_price: testSpotPrice,
+      sources: [
+        {
+          category: 'Brown Coal',
+          renewable: false,
+          percentage: 0.25,
+          total: 120,
+          count: 6,
+        },
+        {
+          category: 'Solar',
+          renewable: true,
+          percentage: 0.5,
+          total: 240,
+          count: 12,
+        },
+        {
+          category: 'Wind',
+          renewable: true,
+          percentage: 0.25,
+          total: 120,
+          count: 6,
+        },
+      ],
+    });
+  });
+
+  it('Should split the events correctly. event>interval', async () => {
+    const testEvents = [
+      { date: '2024-02-02T00:00:00.000Z', amount: 1 },
+      { date: '2024-02-03T00:00:00.000Z', amount: 1 },
+      { date: '2024-02-04T00:00:00.000Z', amount: 2 },
+      { date: '2024-02-05T00:00:00.000Z', amount: 2 },
+      { date: '2024-02-06T00:00:00.000Z', amount: 1 },
+      { date: '2024-02-07T00:00:00.000Z', amount: 1 },
+    ];
+
+    let results = splitEvents(
+      testEvents,
+      '2024-02-01T00:00:00.000Z',
+      '2024-02-08T00:00:00.000Z',
+      12
+    );
+    let expectedResults = [
+      {
+        start_date: '2024-02-01T00:00:00.000Z',
+        end_date: '2024-02-01T12:00:00.000Z',
+        total: 12,
+      },
+      {
+        start_date: '2024-02-01T12:00:00.000Z',
+        end_date: '2024-02-02T00:00:00.000Z',
+        total: 12,
+      },
+      {
+        start_date: '2024-02-02T00:00:00.000Z',
+        end_date: '2024-02-02T12:00:00.000Z',
+        total: 12,
+      },
+      {
+        start_date: '2024-02-02T12:00:00.000Z',
+        end_date: '2024-02-03T00:00:00.000Z',
+        total: 12,
+      },
+      {
+        start_date: '2024-02-03T00:00:00.000Z',
+        end_date: '2024-02-03T12:00:00.000Z',
+        total: 12,
+      },
+      {
+        start_date: '2024-02-03T12:00:00.000Z',
+        end_date: '2024-02-04T00:00:00.000Z',
+        total: 24,
+      },
+      {
+        start_date: '2024-02-04T00:00:00.000Z',
+        end_date: '2024-02-04T12:00:00.000Z',
+        total: 24,
+      },
+      {
+        start_date: '2024-02-04T12:00:00.000Z',
+        end_date: '2024-02-05T00:00:00.000Z',
+        total: 24,
+      },
+      {
+        start_date: '2024-02-05T00:00:00.000Z',
+        end_date: '2024-02-05T12:00:00.000Z',
+        total: 24,
+      },
+      {
+        start_date: '2024-02-05T12:00:00.000Z',
+        end_date: '2024-02-06T00:00:00.000Z',
+        total: 12,
+      },
+      {
+        start_date: '2024-02-06T00:00:00.000Z',
+        end_date: '2024-02-06T12:00:00.000Z',
+        total: 12,
+      },
+      {
+        start_date: '2024-02-06T12:00:00.000Z',
+        end_date: '2024-02-07T00:00:00.000Z',
+        total: 12,
+      },
+      {
+        start_date: '2024-02-07T00:00:00.000Z',
+        end_date: '2024-02-07T12:00:00.000Z',
+        total: 12,
+      },
+    ];
+    console.log(results);
+    expect(results).toEqual(expectedResults);
+  });
+  it('Should split the events correctly. event<interval', async () => {
+    const testEvents = [
+      { date: '2024-02-02T00:00:00.000Z', amount: 1 },
+      { date: '2024-02-03T00:00:00.000Z', amount: 1 },
+      { date: '2024-02-04T00:00:00.000Z', amount: 2 },
+      { date: '2024-02-05T00:00:00.000Z', amount: 2 },
+      { date: '2024-02-06T00:00:00.000Z', amount: 1 },
+      { date: '2024-02-07T00:00:00.000Z', amount: 1 },
+    ];
+
+    let results = splitEvents(
+      testEvents,
+      '2024-02-01T00:00:00.000Z',
+      '2024-02-07T00:00:00.000Z',
+      48
+    );
+    let expectedResults = [
+      {
+        start_date: '2024-02-01T00:00:00.000Z',
+        end_date: '2024-02-03T00:00:00.000Z',
+        total: 48,
+      },
+      {
+        start_date: '2024-02-03T00:00:00.000Z',
+        end_date: '2024-02-05T00:00:00.000Z',
+        total: 84,
+      },
+      {
+        start_date: '2024-02-05T00:00:00.000Z',
+        end_date: '2024-02-07T00:00:00.000Z',
+        total: 60,
+      },
+    ];
+    expect(results).toEqual(expectedResults);
+  });
+
+  it('Should return empty report', async () => {
+    const testReport = testReports[1];
+    const response = await request(appInstance).get(
+      `/retailer/reports/${testReport.id}`
+    );
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      id: testReport.id,
+      start_date: testReport.start_date,
+      end_date: testReport.end_date,
+      for: {
+        suburb_id: testReport.suburb_id,
+        consumer_id: testReport.consumer_id,
+      },
+      energy: [],
+      selling_price: [],
+      spot_price: [],
+      sources: [],
+    });
   });
 });

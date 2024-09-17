@@ -1,5 +1,5 @@
 import express from 'express';
-import moment from 'moment';
+import moment, { Moment } from 'moment';
 import { col, fn, literal, Op, where } from 'sequelize';
 
 // Import the turf module for clustering
@@ -176,7 +176,6 @@ router.get('/consumption', async (req, res) => {
     // Return nation-wide totals
     consumptions = await SuburbConsumption.findAll({
       attributes: [
-        'suburb_id',
         [sequelize.fn('AVG', sequelize.col('amount')), 'amount'], // Averages the amount of energy consumed
         [
           sequelize.fn(
@@ -187,10 +186,11 @@ router.get('/consumption', async (req, res) => {
           'truncatedDate',
         ], // Truncate the date based on the date granularity
       ],
-      group: ['truncatedDate', 'suburb_id'],
+      group: ['truncatedDate'],
       where: {
         date: dateWhere,
       },
+      order: [['truncatedDate', 'ASC']],
     });
   }
 
@@ -448,11 +448,6 @@ router.get('/generator', async (req, res) => {
       };
     }
 
-    // Determine the date granularity based on the date range
-    let dateGranularity: { name: string; sequelize: string } =
-      getTemporalGranularity(String(start_date), String(end_date));
-    let dateWhere: any = {};
-
     // If start_date is not provided, return error 400
     if (!start_date) {
       return res.status(400).send('Start date must be provided.');
@@ -481,6 +476,11 @@ router.get('/generator', async (req, res) => {
     if (start_date > end_date) {
       return res.status(400).send('Invalid start date provided.');
     }
+
+    // Determine the date granularity based on the date range
+    let dateGranularity: { name: string; sequelize: string } =
+      getTemporalGranularity(String(start_date), String(end_date));
+    let dateWhere: any = {};
 
     // Set the date range to be between the two dates
     dateWhere.date = {
@@ -605,12 +605,8 @@ router.get('/profitMargin', async (req, res) => {
     },
   });
 
-  spotPrices.sort((a: any, b: any) => {
-    return new Date(a.date).valueOf() - new Date(b.date).valueOf();
-  });
-  sellingPrices.sort((a: any, b: any) => {
-    return new Date(a.date).valueOf() - new Date(b.date).valueOf();
-  });
+  spotPrices.sort(eventSorter);
+  sellingPrices.sort(eventSorter);
 
   spotPrices = spotPrices.map((spotPrice: any) => ({
     date: spotPrice.date.toISOString(),
@@ -781,6 +777,7 @@ router.get('/warnings', async (req, res) => {
         }
         if (sellingPrice.amount >= warningType.target) {
           warnings.push({
+            goal: warningType.goalType,
             category: warningType.category,
             description: warningType.description,
             data: {
@@ -887,6 +884,7 @@ router.get('/consumers', async (req, res) => {
   }
 
   // Transform response to the desired format
+
   const formattedConsumers = consumers.map((consumer: any) => {
     return {
       id: consumer.id,
@@ -918,6 +916,621 @@ router.get('/suburbs', async (req, res) => {
   }
 });
 
+router.get('/suburbs/:id', async (req, res) => {
+  const { sequelize, Suburb } = req.app.get('models') as DbModelType;
+  const id = req.params.id;
+  try {
+    const suburb = await Suburb.findOne({ where: { id: id } });
+    res.send(suburb);
+  } catch (error) {
+    res.status(500).send({
+      error: 'An error occurred while fetching suburbs',
+    });
+  }
+});
+
+/**
+ * GET /retailer/reports
+ *
+ * Get list of IDs of reports already generated
+ *
+ * Response format:
+ *  {
+ *   "reports": [
+ *       {
+ *           "id": 1,
+ *           "startDate": "2024-04-17T09:06:41Z",
+ *           "endDate": "2024-04-17T09:06:41Z",
+ *           "for": {
+ *               "suburb_id": 2,
+ *               "consumer_id": null,
+ *           }
+ *       }
+ *   ]
+ * }
+ */
+router.get('/reports', async (req, res) => {
+  const { sequelize, Report } = req.app.get('models');
+
+  // Get all rows in reports table
+  const reports = await Report.findAll();
+
+  const reportsFormatted = reports.map((report: any) => {
+    return {
+      id: Number(report.id),
+      start_date: report.start_date,
+      end_date: report.end_date,
+      for: {
+        suburb_id: Number(report.suburb_id),
+        consumer_id: report.consumer_id,
+      },
+    };
+  });
+
+  // Return the reports
+  return res.status(200).send({
+    reports: reportsFormatted,
+  });
+});
+
+/*
+ * POST /retailer/reports
+ * Generate a new report
+ *
+ * Body parameters:
+ * - start_date: The start date of the period to generate the report for, in ISO format
+ * - end_date: The end date of the period to generate the report for, in ISO format
+ * - for: object with the following keys (one of which must be a non-null value and the other of which should be null):
+ *   - suburb_id: The ID of the suburb to generate the report for
+ *   - consumer_id: The ID of the consumer to generate the report for
+ *
+ * Response format:
+ * {
+ *    "id": 2
+ * }
+ */
+router.post('/reports', async (req, res) => {
+  const { sequelize, Report } = req.app.get('models');
+  // Generate a new report
+  const { start_date, end_date, for: forObj } = req.body;
+
+  // Check if the for object is provided
+  if (!forObj) {
+    return res.status(400).send('for object must be provided');
+  }
+
+  // Check if either suburb_id or consumer_id is provided
+  if (!forObj.suburb_id && !forObj.consumer_id) {
+    return res
+      .status(400)
+      .send('Either suburb_id or consumer_id must be provided');
+  }
+
+  // Check if both suburb_id and consumer_id are provided
+  if (forObj.suburb_id && forObj.consumer_id) {
+    return res
+      .status(400)
+      .send('Cannot specify both suburb_id and consumer_id');
+  }
+
+  // Check if start_date and end_date are provided
+  if (!start_date || !end_date) {
+    return res.status(400).send('start_date and end_date must be provided');
+  }
+
+  // Check if start_date and end_date are valid dates
+  if (
+    isNaN(new Date(String(start_date)).getTime()) ||
+    isNaN(new Date(String(end_date)).getTime())
+  ) {
+    return res
+      .status(400)
+      .send('Invalid date format. Provide dates in ISO string format.');
+  }
+
+  // Check if a report already exists for the given parameters
+  const existingReport = await Report.findOne({
+    where: {
+      start_date: new Date(String(start_date)),
+      end_date: new Date(String(end_date)),
+      suburb_id: forObj.suburb_id || null,
+      consumer_id: forObj.consumer_id || null,
+    },
+  });
+  if (existingReport) {
+    return res
+      .status(400)
+      .send('Report already exists for the given parameters');
+  }
+
+  // Get the latest report ID
+  const latestReport = await Report.findOne({
+    order: [['id', 'DESC']],
+  });
+
+  // Now that inputs are validated, create a new row in the reports table
+  const newReport = await Report.create({
+    id: latestReport ? Number(latestReport.id) + 1 : 1,
+    start_date: new Date(String(start_date)),
+    end_date: new Date(String(end_date)),
+    suburb_id: forObj.suburb_id || null,
+    consumer_id: forObj.consumer_id || null,
+  });
+
+  return res.status(200).send({
+    id: Number(newReport.id),
+  });
+});
+
+/*
+ * GET /retailer/reports/[id]
+ * Get the data for a specific report, given the id
+ *
+ * Response format:
+ * {
+ *  "id": 1,
+ *  "start_date": "2024-03-17T09:06:41Z",
+ *  "end_date": "2024-04-17T09:06:41Z",
+ *  "for": {
+ *    "suburb_id": 1,
+ *    "consumer_id": null
+ *  },
+ *  "energy": [
+ *    {
+ *      "start_date": "2024-04-16T09:06:41Z",
+ *      "end_date": "2024-04-17T09:06:41Z",
+ *      "consumption": 123.45,
+ *      "generation": 150.12
+ *    }
+ *  ],
+ *  "profit": [
+ *    {
+ *      "date": "2024-04-16T09:06:41Z",
+ *      "spot_price": 10,
+ *      "selling_price": 10
+ *    }
+ *  ],
+ *  "sources": [
+ *    {
+ *      "category": "Fossil Fuels",
+ *      "renewable": false,
+ *      "percentage": 0.1033,
+ *      "count": 148
+ *    },
+ *    {
+ *      "category": "Renewable",
+ *      "renewable": true,
+ *      "percentage": 0.0419,
+ *      "count": 67
+ *    }
+ *  ]
+ * }
+ */
+router.get('/reports/:id', async (req, res) => {
+  const {
+    Report,
+    SellingPrice,
+    SpotPrice,
+    EnergyGenerator,
+    EnergyGeneration,
+    GeneratorType,
+    SuburbConsumption,
+  } = req.app.get('models');
+  const id = req.params.id;
+
+  // Get the relevant row from the reports table
+  const report = await Report.findByPk(id);
+  let timeGranularity = 24; //granularity of the events in hours
+
+  function intervalSorter(a: any, b: any) {
+    return new Date(a.start_date).valueOf() - new Date(b.start_date).valueOf();
+  }
+  if (!report) {
+    return res.status(404).send('Report not found');
+  }
+
+  let eventWhereClause = {
+    date: {
+      [Op.and]: {
+        [Op.gt]: new Date(String(report.start_date)),
+        [Op.lte]: new Date(String(report.end_date)),
+      },
+    },
+  };
+
+  let selling_price = await SellingPrice.findAll({ where: eventWhereClause });
+  selling_price = selling_price.map(
+    (price: { date: string; amount: string }) => ({
+      date: new Date(price.date).toISOString(),
+      amount: Number(price.amount),
+    })
+  );
+
+  let spot_price = await SpotPrice.findAll({ where: eventWhereClause });
+  spot_price = spot_price.map((price: { date: string; amount: string }) => ({
+    date: new Date(price.date).toISOString(),
+    amount: Number(price.amount),
+  }));
+
+  let energy_generators = await EnergyGenerator.findAll({
+    where: {
+      suburb_id: {
+        [Op.eq]: report.suburb_id,
+      },
+    },
+  });
+  const generator_ids = energy_generators.map(
+    (generator: { id: number }) => generator.id
+  );
+
+  let generator_types = await GeneratorType.findAll({
+    where: {
+      id: generator_ids,
+    },
+  });
+  //convert into a map and set fields
+  generator_types = Object.fromEntries(
+    generator_types.map(
+      (gen_type: { id: number; renewable: boolean; category: string }) => [
+        gen_type.id,
+        {
+          category: gen_type.category,
+          renewable: gen_type.renewable,
+          percentage: 0,
+          total: 0,
+          count: 0,
+        },
+      ]
+    )
+  );
+
+  //get all the energy generation events.
+  let energy_generations = await EnergyGeneration.findAll({
+    where: { ...eventWhereClause, energy_generator_id: generator_ids },
+  });
+
+  //convert types
+  energy_generations = energy_generations.map(
+    (event: { date: Date; amount: number; energy_generator_id: number }) => ({
+      date: moment.utc(event.date),
+      amount: Number(event.amount),
+      energy_generator_id: Number(event.energy_generator_id),
+    })
+  );
+
+  let energySplits = splitEvents(
+    energy_generations,
+    String(report.start_date),
+    String(report.end_date),
+    timeGranularity
+  ).sort(intervalSorter);
+
+  //get all the energy consumption events.
+  let suburb_consumptions = await SuburbConsumption.findAll({
+    where: { ...eventWhereClause, suburb_id: report.suburb_id },
+  });
+
+  //convert types
+  suburb_consumptions = suburb_consumptions
+    .map(
+      (event: { date: Date; amount: number; energy_generator_id: number }) => ({
+        date: moment.utc(event.date),
+        amount: Number(event.amount),
+      })
+    )
+    .sort(intervalSorter);
+
+  let consumptionSplits = splitEvents(
+    suburb_consumptions,
+    String(report.start_date),
+    String(report.end_date),
+    timeGranularity
+  );
+
+  let energy: {}[];
+  if (energySplits.length == 0 && consumptionSplits.length == 0) {
+    // We have no data so we will just return blank
+    energy = [];
+  } else if (energySplits.length == 0) {
+    // we only have consumption data
+    energy = consumptionSplits.map(({ start_date, end_date, total }) => ({
+      start_date,
+      end_date,
+      consumption: total,
+      generation: null,
+    }));
+  } else if (consumptionSplits.length == 0) {
+    // we only have generation data
+    energy = energySplits.map(({ start_date, end_date, total }) => ({
+      start_date,
+      end_date,
+      consumption: null,
+      generation: total,
+    }));
+  } else {
+    // we have both energy and consumption data.
+    energy = energySplits.map(({ start_date, end_date, total }, index) => ({
+      start_date,
+      end_date,
+      generation: total,
+      consumption: consumptionSplits[index].total,
+    }));
+  }
+
+  //if there are no energy events, just return a blank array
+  if (energy_generations.length === 0) {
+    generator_types = [];
+  } else {
+    //Otherwise, calculate the energy we need
+
+    // add the number of events and the total energy generated to each generator
+    energy_generators = energy_generators.map(
+      (generator: { id: number; generator_type_id: string }) => {
+        const genEvents = energy_generations.filter(
+          (energy_generation: { energy_generator_id: number }) =>
+            energy_generation.energy_generator_id === Number(generator.id)
+        );
+        return {
+          id: Number(generator.id),
+          generator_type_id: Number(generator.generator_type_id),
+          numEvents: genEvents.length,
+          total: rollupEvents(genEvents),
+        };
+      }
+    );
+
+    //collate the stats into the generator types
+    let totalEnergyGenerated = 0;
+    energy_generators.forEach(
+      (generator: {
+        generator_type_id: number;
+        total: number;
+        numEvents: number;
+      }) => {
+        generator_types[generator.generator_type_id].total += generator.total;
+        generator_types[generator.generator_type_id].count +=
+          generator.numEvents;
+        totalEnergyGenerated += generator.total;
+      }
+    );
+
+    // Convert to array
+    generator_types = Object.values(generator_types);
+    // Only calc percentage if we have a total
+    if (totalEnergyGenerated !== 0) {
+      generator_types.forEach(
+        (gen_type: { total: number; percentage: number }) => {
+          gen_type.percentage = gen_type.total / totalEnergyGenerated;
+        }
+      );
+    }
+
+    //Sort by category
+    generator_types = generator_types.sort(
+      (a: { category: string }, b: { category: string }) =>
+        a.category.localeCompare(b.category)
+    );
+  }
+
+  const finalReport = {
+    id,
+    start_date: report.start_date,
+    end_date: report.end_date,
+    for: {
+      suburb_id: report.suburb_id,
+      consumer_id: report.consumer_id,
+    },
+    energy: energy,
+    selling_price: selling_price,
+    spot_price: spot_price,
+    sources: generator_types,
+  };
+
+  console.log(finalReport);
+  // Return the data for the report
+  res.status(200).send(finalReport);
+});
+
+function eventSorter(a: any, b: any) {
+  return new Date(a.date).valueOf() - new Date(b.date).valueOf();
+}
+
+/**
+ * Converts an energy event in kW into kWh
+ * Amount is given in Kw
+ * Result should be given in kwh
+ * @param events
+ */
+function rollupEvents(events: [{ date: Moment; amount: number }]) {
+  events.sort(eventSorter);
+
+  let priorDate: Moment;
+  let durationEvents = events.map(
+    (event): { date: Moment; amount: number; kwh: number } => {
+      //Get the duration, or just use 0 if there isnt a prior date yet
+      let duration =
+        priorDate !== undefined ? event.date.diff(priorDate, 'hours', true) : 0;
+      priorDate = event.date;
+      return { ...event, kwh: event.amount * duration };
+    }
+  );
+
+  return durationEvents.reduce(
+    (acc: number, currVal: { kwh: number }) => acc + currVal.kwh,
+    0
+  );
+}
+/**
+ * Takes in events with a date and an amount, and splits the events into intervals (from event to event)
+ * @param events Expects to be sorted from oldest to newest
+ * @param startDate the first date of the range
+ * @param endDate the last date of the range
+ */
+function splitEvents(
+  eventsRaw: { amount: number; date: string }[],
+  startDateStr: string,
+  endDateStr: string,
+  interval: number
+) {
+  if (eventsRaw.length === 0) {
+    return [];
+  }
+  let results = [];
+
+  //convert to moments
+  let events: { amount: number; date: Moment }[] = Array(...eventsRaw).map(
+    ({ amount, date }) => ({
+      amount,
+      date: moment.utc(date),
+    })
+  );
+  let startDate = moment.utc(startDateStr);
+  let endDate = moment.utc(endDateStr);
+
+  events.reverse(); // flip so newest event first, and oldest event last. this means we can use it as a stack
+  //get current rate
+  let intervalStart = startDate.clone(); //the date we are starting at
+  let intervalEnd = startDate.clone().add(interval, 'hours');
+
+  let pastEvent = events.pop()!;
+
+  let nextEvent: { amount: number; date: Moment };
+  let changePoint: Moment;
+  if (events.length === 0) {
+    nextEvent = pastEvent;
+    changePoint = endDate.clone().add(1, 'd');
+  } else {
+    nextEvent = events.pop()!;
+
+    changePoint = pastEvent.date
+      .clone()
+      .add(nextEvent.date.diff(pastEvent.date, 'ms') / 2, 'ms');
+  }
+
+  //handle interval overlapping end date
+  while (intervalEnd <= endDate && events.length > 0) {
+    //while we still have events left and we have at least one interval left
+
+    if (changePoint > intervalEnd) {
+      //Change point is outside this interval so we can just finish
+      // The amount wont change so we can just generate a new entry
+      results.push({
+        start_date: intervalStart.toISOString(),
+        end_date: intervalEnd.toISOString(),
+        total: interval * pastEvent.amount,
+      });
+
+      // move to the next interval
+      intervalStart = intervalEnd;
+      intervalEnd = intervalStart.clone().add(interval, 'hours');
+      continue;
+    }
+
+    if (changePoint == intervalEnd) {
+      results.push({
+        start_date: intervalStart.toISOString(),
+        end_date: intervalEnd.toISOString(),
+        total: interval * pastEvent.amount,
+      });
+
+      // move to the next interval
+      intervalStart = intervalEnd;
+      intervalEnd = intervalStart.clone().add(interval, 'hours');
+
+      // set the next change point
+      if (events.length == 0) {
+        // if we have no more events, then we should finish this interval,
+        // then we update the event and make the next change point after the end date
+        pastEvent = nextEvent;
+        changePoint = endDate.clone().add(1, 'h');
+        break;
+      } else {
+        pastEvent = nextEvent;
+        nextEvent = events.pop()!;
+        changePoint = pastEvent.date
+          .clone()
+          .add(nextEvent.date.diff(pastEvent.date, 'ms') / 2, 'ms');
+        continue;
+      }
+    }
+
+    //change point is within this interval
+
+    let intervalTotal = 0;
+    let pointer: Moment = intervalStart;
+    while (changePoint <= intervalEnd) {
+      // go from pointer to change
+      intervalTotal +=
+        changePoint.diff(pointer, 'hours', true) * pastEvent.amount;
+      // update pointer to old change
+      pointer = changePoint;
+
+      // calc a new change
+      if (events.length == 0) {
+        // We have no more events, but we know we arent in the final interval
+        // so we just make the change point to be after the end date to simulate the rate not changing
+        pastEvent = nextEvent;
+        changePoint = endDate.clone().add(1, 'h');
+        break;
+      } else {
+        pastEvent = nextEvent;
+        nextEvent = events.pop()!;
+        changePoint = pastEvent.date
+          .clone()
+          .add(nextEvent.date.diff(pastEvent.date, 'ms') / 2, 'ms');
+      }
+    }
+
+    // now we just need to finish this interval
+    // go from pointer to interval end
+    intervalTotal +=
+      intervalEnd.diff(pointer, 'hours', true) * pastEvent.amount;
+
+    // and then we create the event
+    results.push({
+      start_date: intervalStart.toISOString(),
+      end_date: intervalEnd.toISOString(),
+      total: intervalTotal,
+    });
+
+    // move to the next interval
+    intervalStart = intervalEnd;
+    intervalEnd = intervalStart.clone().add(interval, 'hours');
+  }
+  //we have either run out of events, or the final interval has reached past the end date
+
+  //if we have no more events, just make intervals until we are on the last interval
+  if (events.length == 0) {
+    while (intervalEnd < endDate) {
+      // and then we create the event
+      results.push({
+        start_date: intervalStart.toISOString(),
+        end_date: intervalEnd.toISOString(),
+        total: interval * pastEvent.amount,
+      });
+
+      // move to the next interval
+      intervalStart = intervalEnd;
+      intervalEnd = intervalStart.clone().add(interval, 'hours');
+    }
+  }
+
+  //we have handled any remaining intervals
+
+  //if we have run out of intervals and it lined up right, we can just exit here
+  if (intervalEnd.isSameOrAfter(endDate)) {
+    //TODO better handling of equality
+    return results;
+  }
+
+  // we have a partial interval remaining so add it and return
+  results.push({
+    start_date: intervalStart.toISOString(),
+    end_date: intervalEnd.toISOString(),
+    total: endDate.diff(intervalStart, 'h', true) * pastEvent.amount,
+  });
+  return results;
+}
 /**
  * GET /retailer/powerOutages
  *
@@ -1197,3 +1810,16 @@ router.get('/powerOutages', async (req, res) => {
 });
 
 export default router;
+
+// Only export these functions if the node enviornment is set to testing
+export let exportsForTesting: {
+  splitEvents: (
+    events: { amount: number; date: string }[],
+    startDate: string,
+    endDate: string,
+    interval: number
+  ) => { start_date: string; end_date: string; total: number }[];
+};
+if (process.env.NODE_ENV === 'test') {
+  exportsForTesting = { splitEvents };
+}

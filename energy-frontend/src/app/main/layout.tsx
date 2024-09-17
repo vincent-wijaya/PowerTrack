@@ -1,5 +1,5 @@
 import Navbar from '@/components/navbar';
-import InfoBox from '@/components/infoBox';
+import InfoBox from '@/components/infoBoxes/infoBox';
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import '../globals.css';

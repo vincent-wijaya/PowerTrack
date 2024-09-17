@@ -11,6 +11,7 @@ function ConsumerEnergyChart(props: { chartName: string; context_id: string }) {
   const [additionalData, setAdditionalData] = useState<number[]>([]);
   const [selectedTimeRange, setSelectedTimeRange] =
     useState<string>('last_year');
+  const [dateArray, setDateArray] = useState<string[]>([]);
   let startDate;
 
   const generateData = () => {
@@ -67,7 +68,47 @@ function ConsumerEnergyChart(props: { chartName: string; context_id: string }) {
       start: startDate.toISOString(),
     };
   };
+  const formatDate = (isoString: string) => {
+    const date = new Date(isoString);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = date.getMonth();
+    const year = date.getFullYear();
 
+    // Array of month names
+    const monthNames = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+
+    if (selectedTimeRange === 'last_24_hours') {
+      const hours = date.getHours();
+      const minutes = date.getMinutes();
+      const ampm = hours >= 12 ? 'pm' : 'am';
+      const hour12 = hours % 12 || 12; // Convert to 12-hour format
+      const minuteStr = String(minutes).padStart(2, '0');
+      return `${day}/${month + 1} ${hour12}:${minuteStr} ${ampm}`;
+    } else if (
+      selectedTimeRange === 'last_year' ||
+      selectedTimeRange === 'last_six_months'
+    ) {
+      // Format date as "Mon Year" for last year and last six months
+      return `${monthNames[month]} ${year}`;
+    } else {
+      // Default format for other time ranges
+      const shortYear = String(year).slice(-2); // Get last two digits of the year
+      return `${day}/${month + 1}/${shortYear}`;
+    }
+  };
   const fetchData = () => {
     const dateRange = generateDateRange(selectedTimeRange);
     let start_date = dateRange.start;
@@ -80,21 +121,30 @@ function ConsumerEnergyChart(props: { chartName: string; context_id: string }) {
   };
 
   const { data, error } = useSWR(() => fetchData(), fetcher, {
-    refreshInterval: POLLING_RATE,
+    refreshInterval: 500000,
   });
 
   useEffect(() => {
     if (data) {
-      setConsumptionData(data);
+      const consumptionVal = data.energy.map((energy: any) => {
+        return energy.amount;
+      });
+
+      const tempDateArray = data.energy.map((energy: any) => {
+        return formatDate(energy.date);
+      });
+
+      setConsumptionData(consumptionVal);
+      setDateArray(tempDateArray);
     }
   }, [data]);
 
-  useEffect(() => {
-    const interval3 = setInterval(() => {
-      setAdditionalData((prevData) => [...prevData, generateData()]);
-    }, 50000);
-    return () => clearInterval(interval3);
-  }, []);
+  // useEffect(() => {
+  //   const interval3 = setInterval(() => {
+  //     setAdditionalData((prevData) => [...prevData, generateData()]);
+  //   }, 5000);
+  //   return () => clearInterval(interval3);
+  // }, []);
 
   const handleTimeRangeChange = (value: string) => {
     setSelectedTimeRange(value);
@@ -110,7 +160,7 @@ function ConsumerEnergyChart(props: { chartName: string; context_id: string }) {
           />
           <LineChart
             chartTitle=""
-            xAxisLabels={consumptionData.map((_, index) => `Day ${index + 1}`)}
+            xAxisLabels={dateArray}
             datasets={[
               {
                 label: 'Consumtion',
@@ -119,8 +169,8 @@ function ConsumerEnergyChart(props: { chartName: string; context_id: string }) {
                 backgroundColor: 'white',
               },
             ]}
-            xAxisTitle="Day"
-            yAxisTitle="Amount"
+            xAxisTitle="Date"
+            yAxisTitle="Amount (KWH)"
           />
         </div>
       </div>
