@@ -632,6 +632,7 @@ router.get('/warnings', async (req, res) => {
     ConsumerConsumption,
     GoalType,
     SellingPrice,
+    SpotPrice,
     WarningType,
     SuburbConsumption,
     EnergyGeneration,
@@ -820,6 +821,27 @@ router.get('/warnings', async (req, res) => {
               description: warningType.description,
               data: { energy_utilised_percentage: energyUtilisedRatio },
               suggestion: `${(energyUtilisedRatio * 100).toFixed(1)}% of the energy generated in the last 24 hours has been used. Advise AEMO to generate more energy.`,
+            });
+          }
+        }
+        break;
+      case 'high_spot_price':
+        {
+          // Suggestion for consumers to sell solar energy to grid
+          const spotPrice = await SpotPrice.findOne({
+            order: [['date', 'DESC']],
+          });
+
+          if (spotPrice === null) {
+            break;
+          }
+
+          if (spotPrice.amount >= warningType.target) {
+            warnings.push({
+              category: warningType.category,
+              description: warningType.description,
+              data: { spot_price: spotPrice.amount },
+              suggestion: `Energy spot price is at $${spotPrice.amount}/kWh, so sell excess solar energy to the grid to make money.`,
             });
           }
         }
