@@ -1511,6 +1511,103 @@ describe('GET /retailer/warnings - category low_usage', () => {
   });
 });
 
+describe('GET /retailer/warnings - category high_spot_price', () => {
+  let sequelize: Sequelize;
+  let appInstance: Application;
+
+  const address1 = '10 Test Street Melbourne Victoria 3000';
+
+  beforeAll(async () => {
+    // Set up and connect to test database
+    sequelize = await connectToTestDb();
+    appInstance = app(sequelize);
+
+    // Insert prerequesite data for tests
+    await appInstance.get('models').Suburb.create({
+      id: 1,
+      name: 'Test Suburb',
+      postcode: 3000,
+      state: 'Victoria',
+      latitude: 100,
+      longitude: 100,
+    });
+    await appInstance.get('models').Consumer.create({
+      id: 1,
+      street_address: address1,
+      high_priority: false,
+      suburb_id: 1,
+      latitude: 100,
+      longitude: 100,
+    });
+    await appInstance.get('models').GoalType.create({
+      id: 4,
+      category: 'green_energy',
+      description: 'I want the majority of my energy to come from environmentally-friendly sources.',
+      target_type: 'consumer',
+    });
+    await appInstance.get('models').WarningType.create({
+      id: 9,
+      goal_type_id: 4,
+      category: 'high_spot_price',
+      description: 'Return for selling energy is high right now.',
+      trigger_greater_than: true,
+      target: 0.8,
+    });
+  });
+
+  afterAll(async () => {
+    // Drop the test database
+    await sequelize.close();
+    await dropTestDb(sequelize);
+  });
+
+  it('should not return a high_spot_price warning and then later return a high_spot_price warning', async () => {
+    let response;
+    let relevantWarnings;
+
+    // Add a low cost selling price to not trigger the warning
+    await appInstance.get('models').SpotPrice.create({
+      date: '2024-04-17T09:00:00Z',
+      amount: 0.25,
+    });
+
+    response = await request(appInstance).get(
+      '/retailer/warnings?consumer_id=1'
+    );
+
+    console.log(`API response status: ${response.status}`);
+    expect(response.status).toBe(200);
+
+    console.log(`API response: ${JSON.stringify(response.body)}`);
+    relevantWarnings = response.body.warnings.filter(
+      (warning: any) => warning.category === 'high_spot_price'
+    );
+    expect(relevantWarnings).toEqual([]);
+
+    // Add a high cost selling price to trigger the warning
+    await appInstance.get('models').SpotPrice.create({
+      date: '2024-04-17T10:00:00Z',
+      amount: 0.8,
+    });
+
+    response = await request(appInstance).get(
+      '/retailer/warnings?consumer_id=1'
+    );
+
+    console.log(`API response status: ${response.status}`);
+    expect(response.status).toBe(200);
+
+    console.log(`API response: ${JSON.stringify(response.body)}`);
+    relevantWarnings = response.body.warnings.filter(
+      (warning: any) => warning.category === 'high_spot_price'
+    );
+    expect(relevantWarnings.length).toBe(1);
+    expect(relevantWarnings[0].data).toEqual({
+      spot_price: '0.8',
+    });
+  });
+});
+
 describe('GET /retailer/consumers', () => {
   let sequelize: Sequelize;
   let appInstance: Application;

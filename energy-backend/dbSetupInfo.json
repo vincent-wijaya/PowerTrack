@@ -74778,6 +74778,14 @@
         "description": "Consumer has been using a lot of energy recently.",
         "trigger_greater_than": true,
         "target": 0.5
+      },
+      {
+        "id": 9,
+        "category": "high_spot_price",
+        "goal_type_id": 4,
+        "description": "Return for selling energy is high right now.",
+        "trigger_greater_than": true,
+        "target": 0.8
       }
     ]
   },
