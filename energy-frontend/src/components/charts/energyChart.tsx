@@ -76,7 +76,6 @@ function EnergyChart(props: { chartTitle: string; context_id: string }) {
       start_date: start,
       ...(props.context_id !== 'Nation' && { suburb_id: props.context_id }),
     });
-    console.log(start);
 
     return `${process.env.NEXT_PUBLIC_API_URL}/retailer/${endpoint}?${params.toString()}`;
   };
@@ -120,13 +119,11 @@ function EnergyChart(props: { chartTitle: string; context_id: string }) {
 
   useEffect(() => {
     if (apiConsumptionData) {
-      console.log(apiConsumptionData);
       const consumptionVal = apiConsumptionData.energy.map(
         (item: any) => item.amount
       );
 
       setConsumptionData(consumptionVal);
-      console.log(dateArray);
     }
   }, [apiConsumptionData]);
 
@@ -181,7 +178,6 @@ function EnergyChart(props: { chartTitle: string; context_id: string }) {
         (item: any) => formatDate(item.date) // Convert date to dd/mm/yy format
       );
       setGenerationData(generationVal);
-      console.log(generationData);
       setDateArray(tempDateArray);
     }
   }, [apiGenerationData]);

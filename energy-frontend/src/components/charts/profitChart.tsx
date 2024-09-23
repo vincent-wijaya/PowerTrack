@@ -65,7 +65,7 @@ function ProfitChart(props: { className?: string }) {
       end: now.toISOString(),
     };
   };
-  const formatDate = (isoString) => {
+  const formatDate = (isoString: string | number | Date) => {
     const date = new Date(isoString);
     const day = String(date.getDate()).padStart(2, '0');
     const month = date.getMonth();
@@ -139,7 +139,7 @@ function ProfitChart(props: { className?: string }) {
       );
 
       // Calculate the profit data
-      const profitData = sellingPrices.map((sellingPrice, index) => {
+      const profitData = sellingPrices.map((sellingPrice: number, index: string | number) => {
         const spotPrice = spotPrices[index];
         return sellingPrice - (spotPrice || 0); // Subtract spot price if available, otherwise use 0
       });

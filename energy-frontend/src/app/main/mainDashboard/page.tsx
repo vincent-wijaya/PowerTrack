@@ -1,8 +1,10 @@
 'use client';
 
+import dynamic from 'next/dynamic';
+
 import PageHeading from '@/components/pageHeading';
 import InfoBox from '@/components/infoBoxes/infoBox';
-import Map from '@/components/map';
+// import Map from '@/components/map';
 import WarningTable from '@/components/tables/warningTable';
 import EnergyChart from '@/components/charts/energyChart';
 import ProfitChart from '@/components/charts/profitChart';
@@ -13,6 +15,12 @@ import useSWR from 'swr';
 import GreenGoal from '@/components/infoBoxes/greenGoal';
 import GreenUsage from '@/components/infoBoxes/greenUsage';
 import BuyPrice from '@/components/infoBoxes/buyPrice';
+
+// Dynamically import the Map component with SSR disabled
+const Map = dynamic(() => import('@/components/map'), { 
+  ssr: false,
+  loading: () => <p>Loading map...</p>
+});
 
 export default function MainDashboard() {
   // Access the warnings array directly

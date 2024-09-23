@@ -9,10 +9,13 @@ import InfoBox from '@/components/infoBoxes/infoBox';
 import PageHeading from '@/components/pageHeading';
 import ReportFormButton from '@/components/reportFormButton';
 import WarningTable from '@/components/tables/warningTable';
-import { fetcher } from '@/utils';
+import { fetcher, generateDateRange } from '@/utils';
 import ConsumerSpendChart from '@/components/charts/consumerSpendChart';
 import useSWR from 'swr';
 import EnergySourceBreakdown from '@/components/energySourceBreakdown';
+import { EnergySources, fetchSources } from '@/api/getSources';
+import { useState } from 'react';
+import { DropdownOption } from '@/components/charts/dropDownFilter';
 
 interface Consumer {
   suburb_id: number;
@@ -28,6 +31,8 @@ interface ConsumerResponse {
 }
 
 export default function UserDashboard({ params }: { params: { id: number } }) {
+  const [energySourcesDateRange, setEnergySourcesDateRange] = useState<{ start: string; end: string; }>(generateDateRange('last_year'));
+
   const stringID = params.id.toString();
 
   const { data: warningData, error: warningError } = useSWR(
@@ -45,6 +50,14 @@ export default function UserDashboard({ params }: { params: { id: number } }) {
       refreshInterval: 0,
     }
   );
+  
+  const energySources = fetchSources(params.id, 'consumer', energySourcesDateRange.start, energySourcesDateRange.end);
+  
+  const onEnergySourceTimeRangeChange = (value: DropdownOption) => {
+    const dateRange = generateDateRange(value);
+    
+    setEnergySourcesDateRange(dateRange);
+  };
 
   let title;
   if (consumerData) {
@@ -77,7 +90,9 @@ export default function UserDashboard({ params }: { params: { id: number } }) {
           </div>
           <WarningTable consumer_id={params.id} />
           <EnergySourceBreakdown
-            energySources={energySourceBreakdownMockData}
+            energySources={energySources?.sources}
+            onTimeRangeChange={onEnergySourceTimeRangeChange}
+            showTimeRangeDropdown={true}
           />
         </div>
         {/* Right column of page */}
@@ -105,42 +120,3 @@ export default function UserDashboard({ params }: { params: { id: number } }) {
     </>
   );
 }
-
-const energySourceBreakdownMockData = [
-  {
-    category: 'Fossil Fuels',
-    renewable: false,
-    percentage: 0.1033,
-    count: 148,
-  },
-  {
-    category: 'Renewable',
-    renewable: true,
-    percentage: 0.0419,
-    count: 67,
-  },
-  {
-    category: 'Renewable',
-    renewable: true,
-    percentage: 0.0419,
-    count: 67,
-  },
-  {
-    category: 'Renewable',
-    renewable: true,
-    percentage: 0.0419,
-    count: 67,
-  },
-  {
-    category: 'Renewable',
-    renewable: true,
-    percentage: 0.0419,
-    count: 67,
-  },
-  {
-    category: 'Renewable',
-    renewable: true,
-    percentage: 0.0419,
-    count: 67,
-  },
-];

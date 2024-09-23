@@ -1,42 +1,24 @@
-import { POLLING_RATE } from '@/config';
-import { fetcher } from '@/utils';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
-import { useState } from 'react';
 import { Doughnut } from 'react-chartjs-2';
-import useSWR from 'swr';
 import Dropdown, { DropdownOption } from './charts/dropDownFilter';
-
 import {
   ArcElement,
   Chart as ChartJS,
   DoughnutController,
   Legend,
 } from 'chart.js';
+import { EnergySource } from '@/api/getSources';
 
 ChartJS.register(DoughnutController, ArcElement, Legend);
 
-type EnergySources = {
-  category: string;
-  renewable: boolean;
-  percentage: number;
-  count: number;
-}[];
-
-export default function EnergySourceBreakdown(props: {
-  energySources: EnergySources;
+interface EnergySourceBreakdownProps {
+  energySources: EnergySource[];
   showTimeRangeDropdown?: boolean;
   onTimeRangeChange?: (value: DropdownOption) => void;
   className?: string;
-}) {
-  const url = process.env.NEXT_PUBLIC_API_URL;
-  // const { data: energySourceData } = useSWR(
-  //   `${url}/retailer/sources`,
-  //   fetcher,
-  //   {
-  //     refreshInterval: POLLING_RATE,
-  //   }
-  // );
+}
 
+export default function EnergySourceBreakdown(props: EnergySourceBreakdownProps) {
   const colours = [
     '#9747FF',
     '#FCA997',
@@ -46,6 +28,17 @@ export default function EnergySourceBreakdown(props: {
     '#F3A8E2',
     '#FFD7A3',
   ];
+
+  const emptyChartData = {
+    labels: ['No Data'],
+    datasets: [
+      {
+        data: [1],
+        backgroundColor: ['#4B5563'], // A gray color for the empty chart
+        borderWidth: 0,
+      },
+    ],
+  };
 
   return (
     <div
@@ -61,42 +54,79 @@ export default function EnergySourceBreakdown(props: {
           <p className=" text-white font-semibold">{'Energy Sources'}</p>
         </div>
       )}
+      {props.energySources?.length === 0 && (
+        <div className="flex items-center justify-center">
+          <span className="text-white font-inter font-semibold text-xl">
+            No data for this period
+          </span>
+        </div>
+      )}
       <div className="h-full">
         <Doughnut
           className="w-full"
-          data={{
-            labels: props.energySources.map((source) => source.category),
-            datasets: [
-              {
-                label: 'Percentage',
-                data: props.energySources.map(
-                  (source) => +(source.percentage * 100).toFixed(2)
-                ),
-                backgroundColor: colours,
-                borderWidth: 0,
-                hoverOffset: 4,
-              },
-            ],
-          }}
+          data={
+            props.energySources && props.energySources.length > 0
+              ? {
+                  labels: props.energySources?.map((source: EnergySource) => source.category),
+                  datasets: [
+                    {
+                      label: 'Percentage',
+                      data: props.energySources.map(
+                        (source: EnergySource) => +(source.percentage * 100).toFixed(2)
+                      ),
+                      backgroundColor: colours,
+                      borderWidth: 0,
+                      hoverOffset: 4,
+                    },
+                  ],
+                }
+              : emptyChartData
+          }
           options={{
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
               legend: {
+                display: props.energySources && props.energySources.length > 0,
                 position: 'right',
-                labels: { usePointStyle: true, pointStyle: 'circle' },
+                labels: {
+                  usePointStyle: true,
+                  pointStyle: 'circle',
+                  color: 'white',
+                },
               },
               datalabels: {
-                display: true,
+                display: props.energySources && props.energySources.length > 0,
                 color: 'white',
                 font: {
                   weight: 'bold',
                 },
                 formatter: (value, context) => {
-                  return `${props.energySources[context.dataIndex].count}\n(${value}%)`;
+                  if (props.energySources && props.energySources.length > 0) {
+                    const source = props.energySources[context.dataIndex];
+                    const percentage = (source.percentage * 100).toFixed(2);
+                    return `${percentage} kWh\n(${value}%)`;
+                  }
+                  return '';
+                },
+              },
+              tooltip: {
+                enabled: props.energySources && props.energySources.length > 0,
+                callbacks: {
+                  label: function (context: any) {
+                    const source = props.energySources[context.dataIndex];
+                    const percentage = (source.percentage * 100).toFixed(2);
+                    const amount = Math.round(source.amount);
+                    return [
+                      `Amount: ${amount.toLocaleString()} kWh`,
+                      `Percentage: ${percentage}%`,
+                      `Renewable: ${source.renewable ? 'Yes' : 'No'}`,
+                    ];
+                  },
                 },
               },
             },
+            cutout: '50%',
           }}
           plugins={[ChartDataLabels as any]}
         />

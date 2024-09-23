@@ -58,3 +58,55 @@ export const formatCurrency = (value: number): string => {
   // Add dollar sign for positive values
   return `$${formattedValue}`;
 };
+
+export const generateDateRange = (timeRange: string): { start: string; end: string } => {
+  const now = new Date();
+  let startDate;
+  switch (timeRange) {
+    case 'last_year':
+      startDate = new Date(
+        now.getFullYear() - 1,
+        now.getMonth(),
+        now.getDate()
+      );
+      break;
+    case 'last_six_months':
+      startDate = new Date(
+        now.getFullYear(),
+        now.getMonth() - 6,
+        now.getDate()
+      );
+      break;
+    case 'last_month':
+      startDate = new Date(
+        now.getFullYear(),
+        now.getMonth() - 1,
+        now.getDate()
+      );
+      break;
+    case 'last_week':
+      startDate = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() - 7
+      );
+      break;
+    case 'last_24_hours':
+      startDate = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() - 1
+      );
+      break;
+    default:
+      startDate = new Date(
+        now.getFullYear() - 1,
+        now.getMonth(),
+        now.getDate()
+      );
+  }
+  return {
+    start: startDate.toISOString(),
+    end: now.toISOString(),
+  };
+};

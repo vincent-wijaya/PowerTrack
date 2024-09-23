@@ -1,15 +1,15 @@
 'use client';
 
 import Headings from '@/app/main/template';
-import EnergyChart from '@/components/energyChart';
+import EnergyChart from '@/components/charts/energyChart';
 import InfoBox from '@/components/infoBoxes/infoBox';
 import PageHeading from '@/components/pageHeading';
-import ProfitChart from '@/components/profitChart';
+import ProfitChart from '@/components/charts/profitChart';
 import ProfitMargin from '@/components/infoBoxes/profitMargin';
 import WarningTable from '@/components/tables/warningTable';
 import { POLLING_RATE } from '@/config';
 import { fetcher } from '@/utils';
-import { useState, useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import useSWR from 'swr';
 
 type ProfitMarginFetchType = {
@@ -63,10 +63,10 @@ export default function RegionalDashboard({
             description="Price of electricity per kWh"
           />
           <ProfitMargin
-            profitMargin={useMemo(
-              () => calculateProfitMargin(profitMarginFetch),
-              [profitMarginFetch]
-            )}
+            // profitMargin={useMemo(
+            //   () => calculateProfitMargin(profitMarginFetch),
+            //   [profitMarginFetch]
+            // )}
           />
           <InfoBox
             title="20%"
@@ -79,7 +79,7 @@ export default function RegionalDashboard({
         </div>
       </div>
 
-      <EnergyChart />
+      {/* <EnergyChart /> */}
       <ProfitChart />
       <WarningTable />
     </div>

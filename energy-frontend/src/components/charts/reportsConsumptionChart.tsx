@@ -3,7 +3,7 @@ import LineChart from './lineChart';
 import React, { useEffect, useState } from 'react';
 
 function ReportsConsumptionChart(props: {
-  dataArray: [];
+  dataArray: any[];
   xAxisData: string[];
   chartTitle: string;
 }) {
@@ -16,7 +16,7 @@ function ReportsConsumptionChart(props: {
             xAxisLabels={props.xAxisData}
             datasets={props.dataArray}
             xAxisTitle="Date"
-            yAxisTitle="Amount (KWH)"
+          yAxisTitle="Amount (KWH)"
           />
         </div>
       </div>

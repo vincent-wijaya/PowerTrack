@@ -1,19 +1,19 @@
 'use client';
 'use client';
 
-import Headings from '@/app/main/template';
 import EnergyChart from '@/components/charts/energyChart';
 import EnergySourceBreakdown from '@/components/energySourceBreakdown';
 import InfoBox from '@/components/infoBoxes/infoBox';
 import PageHeading from '@/components/pageHeading';
-import ProfitMargin from '@/components/infoBoxes/profitMargin';
 import ProfitChart from '@/components/charts/profitChart';
 import WarningTable from '@/components/tables/warningTable';
 import { POLLING_RATE } from '@/config';
-import { fetcher } from '@/utils';
-import { useState, useEffect, useMemo } from 'react';
+import { fetcher, generateDateRange } from '@/utils';
 import useSWR from 'swr';
 import ReportFormButton from '@/components/reportFormButton';
+import { EnergySources, fetchSources } from '@/api/getSources';
+import { DropdownOption } from '@/components/charts/dropDownFilter';
+import { useEffect, useState } from 'react';
 
 type ProfitMarginFetchType = {
   spot_prices: { date: string; amount: number }[];
@@ -34,6 +34,8 @@ export default function RegionalDashboard({
 }: {
   params: { id: string };
 }) {
+  const [energySourcesDateRange, setEnergySourcesDateRange] = useState<{ start: string; end: string; }>(generateDateRange('last_year'));
+
   const { data: suburbData, error: suburbError } = useSWR<SuburbData>(
     `${process.env.NEXT_PUBLIC_API_URL}/retailer/suburbs/${params.id}`,
     fetcher,
@@ -41,6 +43,14 @@ export default function RegionalDashboard({
       refreshInterval: 0,
     }
   );
+  
+  const energySources = fetchSources(params.id, 'suburb', energySourcesDateRange.start, energySourcesDateRange.end);
+  
+  const onEnergySourceTimeRangeChange = (value: DropdownOption) => {
+    const dateRange = generateDateRange(value);
+    
+    setEnergySourcesDateRange(dateRange);
+  };
 
   const { data: profitMarginFetch }: { data: ProfitMarginFetchType } = useSWR(
     `${process.env.NEXT_PUBLIC_API_URL}/retailer/profitMargin`,
@@ -100,8 +110,11 @@ export default function RegionalDashboard({
             />
           </div>
           <WarningTable suburb_id={Number(params.id)} />
+
           <EnergySourceBreakdown
-            energySources={energySourceBreakdownMockData}
+            energySources={energySources?.sources}
+            onTimeRangeChange={onEnergySourceTimeRangeChange}
+            showTimeRangeDropdown={true}
           />
         </div>
         {/* Right column of page */}
@@ -121,41 +134,3 @@ export default function RegionalDashboard({
     </>
   );
 }
-const energySourceBreakdownMockData = [
-  {
-    category: 'Fossil Fuels',
-    renewable: false,
-    percentage: 0.1033,
-    count: 148,
-  },
-  {
-    category: 'Solar',
-    renewable: true,
-    percentage: 0.0419,
-    count: 67,
-  },
-  {
-    category: 'Landfill Gas',
-    renewable: false,
-    percentage: 0.0419,
-    count: 67,
-  },
-  {
-    category: 'Diesel',
-    renewable: false,
-    percentage: 0.0419,
-    count: 67,
-  },
-  {
-    category: 'Water',
-    renewable: true,
-    percentage: 0.0419,
-    count: 67,
-  },
-  {
-    category: 'Biogas',
-    renewable: false,
-    percentage: 0.0419,
-    count: 67,
-  },
-];
