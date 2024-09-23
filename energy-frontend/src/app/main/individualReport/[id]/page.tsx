@@ -18,6 +18,8 @@ import { exportToPDF } from '@/utils'; // Import the utility function
 import useSWR from 'swr';
 import GreenUsage from '@/components/infoBoxes/greenUsage';
 import { formatCurrency } from '@/utils';
+import { EnergySource } from '@/api/getSources';
+import { DropdownOption } from '@/components/charts/dropDownFilter';
 
 interface Report {
   id: number;
@@ -41,13 +43,7 @@ interface Report {
     date: string; // ISO date string
     amount: number;
   }>;
-  sources: Array<{
-    category: string;
-    renewable: boolean;
-    percentage: number;
-    total: number;
-    count: number;
-  }>;
+  sources: EnergySource[];
 }
 
 interface SuburbData {
@@ -99,6 +95,7 @@ export default function IndividualReport({
   const [profitChartData, setProfitChartData] = useState([{}]);
   const [profitChartTitle, setprofitChartTitle] = useState('');
   const [isExporting, setIsExporting] = useState(false); // New state for exporting
+  const [energySources, setEnergySources] = useState<EnergySource[]>([]);
 
   const [title, setTitle] = useState('');
 
@@ -167,17 +164,17 @@ export default function IndividualReport({
 
       setAverageProfitMargin(totalProfitMargin / data.selling_price.length);
 
-      // Green energy usage
-      const totalGreenEnergy = data.sources.reduce((acc, source) => {
-        return source.renewable ? acc + source.total : acc;
-      }, 0);
+      // // Green energy usage
+      // const totalGreenEnergy = data.sources.reduce((acc, source) => {
+      //   return source.renewable ? acc + source.amount : acc;
+      // }, 0);
 
-      const totalEnergy = data.sources.reduce(
-        (acc, source) => acc + source.total,
-        0
-      );
+      // const totalEnergy = data.sources.reduce(
+      //   (acc, source) => acc + source.amount,
+      //   0
+      // );
 
-      setgreenEnergyUsage((totalGreenEnergy / totalEnergy) * 100);
+      // setgreenEnergyUsage((totalGreenEnergy / totalEnergy) * 100);
 
       // Total Profit
       const totalProfit = data.energy.reduce((acc, item, index) => {
@@ -256,6 +253,7 @@ export default function IndividualReport({
       setEnergyChartData(tempChartData);
       setEnergyChartTitle('Energy Consumption/Generation');
       setprofitChartTitle('Profit Analysis');
+      setEnergySources(data.sources)
 
       // Total Revenue
       const totalRevenue = data.energy.reduce((acc, item, index) => {
@@ -315,6 +313,8 @@ export default function IndividualReport({
       setEnergyChartData(tempChartData);
 
       setEnergyChartTitle('Energy Consumption');
+
+      setEnergySources(data.sources);
     }
   }, [data, consumerData]);
 
@@ -367,7 +367,8 @@ export default function IndividualReport({
           </div>
           {/*<EnergySourceBreakdown energySources={data.sources} />*/}
           <EnergySourceBreakdown
-            energySources={energySourceBreakdownMockData}
+            energySources={energySources}
+            showTimeRangeDropdown={false}
           />
           <button
             onClick={handleExport}
@@ -429,42 +430,3 @@ export default function IndividualReport({
     </div>
   );
 }
-
-const energySourceBreakdownMockData = [
-  {
-    category: 'Fossil Fuels',
-    renewable: false,
-    percentage: 0.1033,
-    count: 148,
-  },
-  {
-    category: 'Renewable',
-    renewable: true,
-    percentage: 0.0419,
-    count: 67,
-  },
-  {
-    category: 'Renewable',
-    renewable: true,
-    percentage: 0.0419,
-    count: 67,
-  },
-  {
-    category: 'Renewable',
-    renewable: true,
-    percentage: 0.0419,
-    count: 67,
-  },
-  {
-    category: 'Renewable',
-    renewable: true,
-    percentage: 0.0419,
-    count: 67,
-  },
-  {
-    category: 'Renewable',
-    renewable: true,
-    percentage: 0.0419,
-    count: 67,
-  },
-];

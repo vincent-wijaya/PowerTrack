@@ -17,7 +17,7 @@ export default function MainDashboard({ params }: { params: { id: string } }) {
       <PageHeading title="Home" />
 
       <div className="grid grid-flow-col grid-cols-2 gap-3">
-          <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-3">
           <div className="grid grid-cols-[repeat(5,minmax(0,1fr))] justify-between gap-3 h-[128px]">
             <BuyPrice />
             <GreenGoal />

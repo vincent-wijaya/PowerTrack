@@ -9,11 +9,27 @@ import useSWR from 'swr';
 import { POLLING_RATE } from '@/config';
 import { useEffect } from 'react';
 
+type ValuePiece = Date | null;
+type Value = ValuePiece | [ValuePiece, ValuePiece];
+
+type ConsumerData = {
+  address: string,
+  suburb_post_code: number,
+  suburb_name: string
+}
+
+type SuburbData = {
+  name: string,
+  postcode: number,
+  state: string
+};
+
+
 const ReportForm = (props: { id: string; type: string }) => {
   const router = useRouter(); // Initialize useRouter
 
-  const [consumerData, setConsumerData] = useState({});
-  const [suburbData, setSuburbData] = useState({});
+  const [consumerData, setConsumerData] = useState<ConsumerData>();
+  const [suburbData, setSuburbData] = useState<SuburbData>();
   const [errorMessage, setErrorMessage] = useState(''); // State to track error message
 
   const mainurl = process.env.NEXT_PUBLIC_API_URL;
@@ -47,8 +63,8 @@ const ReportForm = (props: { id: string; type: string }) => {
   ]);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const handleDateChange = (dates: [Date, Date]) => {
-    setDateRange(dates);
+  const handleDateChange = (dates: Value) => {
+    setDateRange(dates as [Date, Date]);
     setErrorMessage(''); // Clear error message when date is selected
   };
 
@@ -118,8 +134,8 @@ const ReportForm = (props: { id: string; type: string }) => {
         <div className="bg-black text-left">
           <h2 className="text-white text-center text-lg p-4">
             {props.type === 'consumer'
-              ? `${consumerData.address} ${consumerData.suburb_post_code} ${consumerData.suburb_name}`
-              : `${suburbData.name} ${suburbData.postcode} ${suburbData.state}`}
+              ? `${consumerData?.address} ${consumerData?.suburb_post_code} ${consumerData?.suburb_name}`
+              : `${suburbData?.name} ${suburbData?.postcode} ${suburbData?.state}`}
           </h2>
         </div>
         <div className="p-4 bg-itembg">

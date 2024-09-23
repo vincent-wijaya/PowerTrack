@@ -1,6 +1,6 @@
 import express from 'express';
 import moment, { Moment } from 'moment';
-import { col, fn, literal, Op, where } from 'sequelize';
+import { col, fn, literal, Op } from 'sequelize';
 
 // Import the turf module for clustering
 import * as turf from '@turf/turf';
@@ -14,6 +14,14 @@ import {
   kWhConversionMultiplier,
   getTemporalGranularity,
 } from '../utils/utils';
+import {
+  differenceInHours,
+  formatISO,
+  isBefore,
+  isValid,
+  parse,
+} from 'date-fns';
+import { Consumer } from 'kafkajs';
 
 const router = express.Router();
 
@@ -75,6 +83,42 @@ router.get('/map', async (req, res) => {
   });
 });
 
+/**
+ * GET /retailer/consumption
+ *
+ * Retrieve average energy consumption data for a suburb/consumer/nationwide over a period of time in kWh.
+ * Based on the time period, the data is aggregated by hour, day, or week. 
+ *
+ * Query parameters:
+ * - suburb_id: The ID of the suburb to retrieve data for. (optional)
+ * - consumer_id: The ID of the consumer to retrieve data for. (optional)
+ * - start_date: The start date of the period to retrieve data for, in ISO format
+ * - end_date: The end date of the period to retrieve data for, in ISO format (optional)
+ *
+ * Response format:
+ * {
+ *   suburb_id: number, // The ID of the suburb (if provided)
+ *   start_date: string, // The start date input
+ *   end_date: string, // The end date input (now if not provided)
+ *   energy: [
+ *     { date: string, amount: number }, // An array of { date: string, amount: number } objects of the date converted based on granularity and the amount of energy generated.
+ *   ]
+ * }
+ *
+ * Example response:
+ * {
+ *   suburb_id: 1,
+ *   start_date: '2024-01-01T05:00:00Z',
+ *   end_date: '2024-01-01T10:00:00Z',
+ *   energy: [
+ *     {
+ *         date: '2024-01-01T08:00:00Z',
+ *         amount: 1000,
+ *     },
+ *     ...
+ *   ]
+ * }
+ */
 router.get('/consumption', async (req, res) => {
   // Retrieve energy consumption for a suburb or consumer over a period of time
   let { suburb_id, consumer_id, start_date, end_date } = req.query;
@@ -208,11 +252,11 @@ router.get('/consumption', async (req, res) => {
     returnData.consumer_id = Number(consumer_id);
   }
 
-  // Extract the total generation value from the result
+  // Extract the total consumption value from the result
   consumptions.forEach((consumption: any) => {
     const date = moment(consumption.dataValues.truncatedDate).toISOString();
 
-    // Add the date and amount of energy generated to the return data
+    // Add the date and amount of energy consumed to the return data
     returnData.energy.push({
       date,
       amount:
@@ -1151,6 +1195,14 @@ router.get('/reports/:id', async (req, res) => {
     return res.status(404).send('Report not found');
   }
 
+  let reportSuburbId: number = report.suburb_id;
+  if (!report.suburb_id) {
+    // Finds suburb_id of a consumer if not provided
+    const consumer = await getConsumer(req.app.get('models'), report.consumer_id);
+
+    reportSuburbId = Number(consumer?.dataValues.suburb_id);
+  }
+
   let eventWhereClause = {
     date: {
       [Op.and]: {
@@ -1183,27 +1235,6 @@ router.get('/reports/:id', async (req, res) => {
   });
   const generator_ids = energy_generators.map(
     (generator: { id: number }) => generator.id
-  );
-
-  let generator_types = await GeneratorType.findAll({
-    where: {
-      id: generator_ids,
-    },
-  });
-  //convert into a map and set fields
-  generator_types = Object.fromEntries(
-    generator_types.map(
-      (gen_type: { id: number; renewable: boolean; category: string }) => [
-        gen_type.id,
-        {
-          category: gen_type.category,
-          renewable: gen_type.renewable,
-          percentage: 0,
-          total: 0,
-          count: 0,
-        },
-      ]
-    )
   );
 
   //get all the energy generation events.
@@ -1279,60 +1310,7 @@ router.get('/reports/:id', async (req, res) => {
     }));
   }
 
-  //if there are no energy events, just return a blank array
-  if (energy_generations.length === 0) {
-    generator_types = [];
-  } else {
-    //Otherwise, calculate the energy we need
-
-    // add the number of events and the total energy generated to each generator
-    energy_generators = energy_generators.map(
-      (generator: { id: number; generator_type_id: string }) => {
-        const genEvents = energy_generations.filter(
-          (energy_generation: { energy_generator_id: number }) =>
-            energy_generation.energy_generator_id === Number(generator.id)
-        );
-        return {
-          id: Number(generator.id),
-          generator_type_id: Number(generator.generator_type_id),
-          numEvents: genEvents.length,
-          total: rollupEvents(genEvents),
-        };
-      }
-    );
-
-    //collate the stats into the generator types
-    let totalEnergyGenerated = 0;
-    energy_generators.forEach(
-      (generator: {
-        generator_type_id: number;
-        total: number;
-        numEvents: number;
-      }) => {
-        generator_types[generator.generator_type_id].total += generator.total;
-        generator_types[generator.generator_type_id].count +=
-          generator.numEvents;
-        totalEnergyGenerated += generator.total;
-      }
-    );
-
-    // Convert to array
-    generator_types = Object.values(generator_types);
-    // Only calc percentage if we have a total
-    if (totalEnergyGenerated !== 0) {
-      generator_types.forEach(
-        (gen_type: { total: number; percentage: number }) => {
-          gen_type.percentage = gen_type.total / totalEnergyGenerated;
-        }
-      );
-    }
-
-    //Sort by category
-    generator_types = generator_types.sort(
-      (a: { category: string }, b: { category: string }) =>
-        a.category.localeCompare(b.category)
-    );
-  }
+  const energySources = await getEnergySourceBreakdown(req.app.get('models'), report.start_date, report.end_date, reportSuburbId);
 
   const finalReport = {
     id,
@@ -1345,7 +1323,7 @@ router.get('/reports/:id', async (req, res) => {
     energy: energy,
     selling_price: selling_price,
     spot_price: spot_price,
-    sources: generator_types,
+    sources: energySources,
   };
 
   console.log(finalReport);
@@ -1830,6 +1808,268 @@ router.get('/powerOutages', async (req, res) => {
     res.status(500).send('Internal server error');
   }
 });
+
+
+/**
+ * GET /retailer/sources
+ *
+ * Retrieve a source breakdown of energy generation of a suburb/nationwide over a period of time.
+ * When a consumer_id is provided, energy source breakdown of the suburb where the consumer lives in is displayed instead.
+ *
+ * Query parameters:
+ * - suburb_id: The ID of the suburb to retrieve data for. (optional)
+ * - consumer_id: The ID of the consumer to retrieve data for. (optional)
+ * - start_date: The start date of the period to retrieve data for, in ISO format
+ * - end_date: The end date of the period to retrieve data for, in ISO format (optional)
+ *
+ * Response format:
+ * {
+ *   suburb_id: number, // The ID of the suburb (if provided)
+ *   start_date: string, // The start date input
+ *   end_date: string, // The end date input (now if not provided)
+ *   sources: [
+ *     { 
+ *        name: string,        // name of the energy source type
+ *        amount: number,      // amount of energy in kWh
+ *        percentage: number,  // percentage share of the source
+ *        renewable: boolean   // is it a renewable source of energy?
+ *     }, 
+ *   ]
+ * }
+ *
+ * Example response:
+ * {
+ *   suburb_id: 1,
+ *   start_date: '2024-01-01T05:00:00Z',
+ *   end_date: '2024-01-01T10:00:00Z',
+ *   sources: [
+ *     {
+ *         name: 'Natural Gas Pipeline',
+ *         amount: 300,
+ *         percentage: 0.5,
+ *         renewable: false
+ *     },
+ *     {
+ *         name: 'Solar',
+ *         amount: 300,
+ *         percentage: 0.5,
+ *         renewable: true
+ *     },
+ *   ]
+ * }
+ */
+router.get('/sources', async (req, res) => {
+  let { suburb_id, consumer_id, start_date, end_date } = req.query;
+
+  const db = req.app.get('models') as DbModelType;
+    
+  try {
+    // If no date range is provided, return error 400
+    if (!start_date) {
+      return res.status(400).send({
+        error: 'Start date must be provided.',
+      });
+    }
+
+    // Validate format of start_date
+    const parsedStartDate = parse(
+      String(start_date),
+      "yyyy-MM-dd'T'HH:mm:ss.SSSX",
+      new Date()
+    );
+    if (!isValid(parsedStartDate)) {
+      return res
+        .status(400)
+        .send({
+          error:
+            'Invalid start date format. Provide dates in ISO string format.',
+        });
+    }
+
+    let parsedEndDate;
+    if (end_date) {
+      // Validate format of end_date
+      parsedEndDate = parse(
+        String(end_date),
+        "yyyy-MM-dd'T'HH:mm:ss.SSSX",
+        new Date()
+      );
+
+      if (!isValid(parsedEndDate)) {
+        return res
+          .status(400)
+          .send({
+            error:
+              'Invalid end date format. Provide dates in ISO string format.',
+          });
+      }
+    } else {
+      // Set end_date to now if not provided
+      parsedEndDate = new Date();
+    }
+
+    // Validate that end_date is after start_date
+    if (isBefore(parsedEndDate, parsedStartDate)) {
+      return res
+        .status(400)
+        .send({ error: 'Start date must be before end date.' });
+    }
+
+    if (isBefore(new Date(), parsedEndDate)) {
+      return res
+        .status(400)
+        .send({ error: 'End date must not be in the future.' });
+    }
+
+    if (suburb_id && consumer_id) {
+      return res.status(400).send({
+        error: 'Cannot specify both suburb_id and consumer_id.',
+      });
+    }
+
+    // Retrieve suburb_id of consumer if only consumer_id is provided
+    if (!suburb_id && consumer_id) {
+      let consumer = await getConsumer(db, Number(consumer_id));
+
+      suburb_id = String(consumer?.suburb_id);
+    }
+
+    const energySources = await getEnergySourceBreakdown(db, parsedStartDate, parsedEndDate, Number(suburb_id));
+
+    // Prepare return object
+    let returnData: any = {
+      start_date: parsedStartDate.toISOString(),
+      end_date: parsedEndDate.toISOString(),
+      sources: energySources,
+    };
+
+    // Add consumer_id if provided
+    if (consumer_id) {
+      returnData.consumer_id = Number(consumer_id);
+    } else if (suburb_id) {
+      returnData.suburb_id = Number(suburb_id);
+    }
+
+    return res.status(200).send(returnData);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send('Internal server error');
+  }
+});
+
+/**
+ * Retrieves breakdown of energy generation by its generatory types.
+ * @param db sequelize models
+ * @param startDate start of date range
+ * @param endDate end of date range
+ * @param suburbId id of suburb
+ * @returns array of energy source types and its amount and share of total generation
+ */
+const getEnergySourceBreakdown = async (db: DbModelType, startDate: Date, endDate: Date, suburbId?: number | string) => {
+  const { EnergyGeneration, EnergyGenerator, GeneratorType } = db;
+
+  // Set up date range for query
+  const dateWhere = {
+    [Op.and]: {
+      [Op.gt]: startDate,
+      [Op.lte]: endDate,
+    },
+  };
+
+  // Define where clause for suburb (if provided)
+  let suburbWhere: any = {};
+  if (suburbId) {
+    suburbWhere.suburb_id = suburbId;
+  }
+
+  const result = (await EnergyGeneration.findAll({
+    attributes: [
+      [col('energy_generator.id'), 'generator_id'],
+      [col('energy_generator.generator_type.category'), 'category'],
+      [col('energy_generator.generator_type.renewable'), 'renewable'],
+      [fn('AVG', col('energy_generation.amount')), 'amount'],
+    ],
+    where: {
+      date: dateWhere,
+    },
+    include: [
+      {
+        model: EnergyGenerator,
+        attributes: [],
+        where: {
+          ...suburbWhere,
+        },
+        include: [
+          {
+            model: GeneratorType,
+            attributes: [],
+          },
+        ],
+      },
+    ],
+    group: [
+      'energy_generator.id',
+      'energy_generator.generator_type.category',
+      'energy_generator.generator_type.renewable',
+    ],
+    order: [['category', 'ASC']],
+    raw: true,
+    nest: true,
+  })) as unknown as {
+    generator_id: number;
+    category: string;
+    amount: number;
+    renewable: boolean;
+  }[];
+
+  // Aggregate all sources into their generatory types
+  const processedSourcesMap = result.reduce((sources: any, source) => {
+    if (!sources[source.category]) {
+      sources[source.category] = {
+        category: source.category,
+        renewable: source.renewable,
+        amount: 0,
+      }
+    }
+
+    sources[source.category].amount += Number(source.amount);
+
+    return sources;
+  }, {});
+
+  // Convert processedSources from a Map into an Array
+  const processedSources = Object.keys(processedSourcesMap).map((category) => {
+    return processedSourcesMap[category];
+  });
+
+  // Calculate total generation
+  const totalAmount = processedSources.reduce((total: number, source: { amount: number; }) => {
+    total += Number(source.amount);
+
+    return total;
+  }, 0);
+
+  // Get the number of hours in the period to convert kW to kWh
+  const hoursInPeriod = differenceInHours(endDate, startDate);
+  
+  return processedSources.map((source: { amount: number; }) => ({
+    ...source,
+    percentage: Number(source.amount) / totalAmount, // Get the percentage share of this source
+    amount: Number(source.amount) * hoursInPeriod, // Convert kW to kWh,
+  }));
+};
+
+/**
+ * Retrieves consumer data.
+ * @param db sequalize models
+ * @param id id of consumer
+ * @returns consumer data
+ */
+const getConsumer = async (db: DbModelType, id: number | string) => {
+  const { Consumer } = db;
+
+  return await Consumer.findByPk(id);
+}
 
 export default router;
 

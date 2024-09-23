@@ -133,6 +133,7 @@ export const defineModels = (sequelize: Sequelize) => {
     high_priority: boolean;
     latitude: string; // Sequelize returns DataTypes.DECIMALs as strings. Bug: https://github.com/sequelize/sequelize/issues/8019
     longitude: string; // Sequelize returns DataTypes.DECIMALs as strings. Bug: https://github.com/sequelize/sequelize/issues/8019
+    suburb_id?: string;
   }
   const Consumer = sequelize.define<IConsumerModel>(
     'consumer',
@@ -409,6 +410,8 @@ export const defineModels = (sequelize: Sequelize) => {
     id: number;
     start_date: string;
     end_date: string;
+    consumer_id?: string;
+    suburb_id?: string;
   }
   const Report = sequelize.define<IReportsModel>(
     'report',

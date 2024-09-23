@@ -10,6 +10,7 @@ import moment from 'moment';
 import { exportsForTesting } from '../routes/retailerRoute';
 const { splitEvents } = exportsForTesting;
 import { kWhConversionMultiplier } from '../utils/utils';
+import { addYears, differenceInHours } from 'date-fns';
 
 describe('GET /retailer/consumption', () => {
   let sequelize: Sequelize;
@@ -1511,6 +1512,324 @@ describe('GET /retailer/warnings - category low_usage', () => {
   });
 });
 
+describe('GET /retailer/sources', () => {
+  let sequelize: Sequelize;
+  let appInstance: Application;
+
+  const mockEnergyGenerationData = [
+    { energy_generator_id: 0, date: '2024-01-01T09:00:00Z', amount: 100 },
+    { energy_generator_id: 1, date: '2024-01-01T09:00:00Z', amount: 200 },
+    { energy_generator_id: 2, date: '2024-01-01T09:00:00Z', amount: 300 },
+    { energy_generator_id: 3, date: '2024-01-01T09:00:00Z', amount: 300 },
+  ];
+
+  beforeAll(async () => {
+    sequelize = await connectToTestDb();
+    appInstance = app(sequelize);
+
+    const {
+      Suburb,
+      Consumer,
+      GeneratorType,
+      EnergyGenerator,
+      EnergyGeneration,
+    } = appInstance.get('models');
+
+    await Suburb.bulkCreate([
+      {
+        id: 1,
+        name: 'Test Suburb 1',
+        postcode: 3000,
+        state: 'Victoria',
+        latitude: 100,
+        longitude: 100,
+      },
+      {
+        id: 2,
+        name: 'Test Suburb 2',
+        postcode: 3001,
+        state: 'Victoria',
+        latitude: 105,
+        longitude: 100,
+      },
+    ]);
+
+    await Consumer.bulkCreate([
+      {
+        id: 1,
+        street_address: '21 Irwin Street, Clayton, Victoria 3168',
+        latitude: -37.91743928495542,
+        longitude: 145.13327012656347,
+        high_priority: false,
+        suburb_id: 1,
+      },
+      {
+        id: 2,
+        street_address: '2033 Dandenong Road, Clayton, Victoria 3168',
+        latitude: -37.91810996899869,
+        longitude: 145.1340092264933,
+        high_priority: true,
+        suburb_id: 1,
+      },
+      {
+        id: 3,
+        street_address: '54 Hemmings Street, Dandenong, Victoria 3175',
+        latitude: -37.98274741773752,
+        longitude: 145.20415884009546,
+        high_priority: false,
+        suburb_id: 2,
+      },
+    ]);
+
+    await GeneratorType.bulkCreate([
+      {
+        id: 1,
+        category: 'Natural Gas Pipeline',
+        renewable: false,
+      },
+      {
+        id: 2,
+        category: 'Solar',
+        renewable: true,
+      },
+      {
+        id: 3,
+        category: 'Wind',
+        renewable: true,
+      },
+    ]);
+
+    await EnergyGenerator.bulkCreate([
+      {
+        id: 0,
+        name: '990 Latrobe St',
+        suburb_id: 1,
+        generator_type_id: 1,
+      },
+      {
+        id: 1,
+        name: 'Aeroten Leongatha Solar',
+        suburb_id: 1,
+        generator_type_id: 2,
+      },
+      {
+        id: 2,
+        name: 'Ararat Wind Farm',
+        suburb_id: 2,
+        generator_type_id: 3,
+      },
+      {
+        id: 3,
+        name: 'Ararat Wind Farm 2',
+        suburb_id: 2,
+        generator_type_id: 3,
+      },
+    ]);
+
+    await EnergyGeneration.bulkCreate(mockEnergyGenerationData);
+  });
+
+  afterAll(async () => {
+    await sequelize.close();
+    await dropTestDb(sequelize);
+  });
+
+  it('should return error 400 if start date is missing', async () => {
+    const response = await request(appInstance).get('/retailer/sources');
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({
+      error: 'Start date must be provided.',
+    });
+  });
+
+  it('should return error 400 if invalid start date format is provided', async () => {
+    const START_DATE = '01/01/2024'; // Invalid date format
+
+    const response = await request(appInstance).get(
+      `/retailer/sources?start_date=${START_DATE}`
+    );
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({
+      error: 'Invalid start date format. Provide dates in ISO string format.',
+    });
+  });
+
+  it('should return error 400 if invalid end date format is provided', async () => {
+    const START_DATE = '2024-01-01T09:00:00.000Z';
+    const END_DATE = '01/01/2024'; // Invalid date format
+
+    const response = await request(appInstance).get(
+      `/retailer/sources?start_date=${START_DATE}&end_date=${END_DATE}`
+    );
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({
+      error: 'Invalid end date format. Provide dates in ISO string format.',
+    });
+  });
+
+  it('should return error 400 if start_date provided is after end_date', async () => {
+    const START_DATE = '2024-06-10T09:00:00.000Z'; // Date is afte end_date
+    const END_DATE = '2022-06-10T09:00:00.000Z';
+
+    const response = await request(appInstance).get(
+      `/retailer/sources?start_date=${START_DATE}&end_date=${END_DATE}`
+    );
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({
+      error: 'Start date must be before end date.',
+    });
+  });
+
+  it('should return error 400 if end_date provided is in the future', async () => {
+    const START_DATE = new Date().toISOString();
+    const END_DATE = addYears(new Date(), 1).toISOString(); // end_date is in the future
+
+    const response = await request(appInstance).get(
+      `/retailer/sources?start_date=${START_DATE}&end_date=${END_DATE}`
+    );
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({
+      error: 'End date must not be in the future.',
+    });
+  });
+
+  it('should return error 400 if both consumer_id and suburb_id are provided', async () => {
+    const response = await request(appInstance).get(
+      '/retailer/sources?start_date=2024-01-01T08:00:00.000Z&consumer_id=1&suburb_id=1'
+    );
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({
+      error: 'Cannot specify both suburb_id and consumer_id.',
+    });
+  });
+
+  it('should return empty data of energy sources for empty suburb', async () => {
+    const START_DATE = '2024-01-01T08:00:00.000Z';
+
+    const response = await request(appInstance).get(
+      `/retailer/sources?start_date=${START_DATE}&suburb_id=999`
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body.sources).toEqual([]);
+  });
+
+  it("should return non-empty data of a consumer's suburb's energy sources", async () => {
+    const START_DATE = '2024-01-01T08:00:00.000Z';
+    const END_DATE = '2024-01-01T11:00:00.000Z';
+    const CONSUMER_ID = 3;
+
+    const response = await request(appInstance).get(
+      `/retailer/sources?start_date=${START_DATE}&end_date=${END_DATE}&consumer_id=${CONSUMER_ID}`
+    );
+
+    // Get the number of hours in the period to convert kW to kWh
+    const hoursInPeriod = differenceInHours(
+      new Date(END_DATE),
+      new Date(START_DATE)
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      start_date: START_DATE,
+      end_date: END_DATE,
+      consumer_id: CONSUMER_ID,
+      sources: [
+        {
+          category: 'Wind',
+          renewable: true,
+          percentage: 1,
+          amount: (mockEnergyGenerationData[2].amount + mockEnergyGenerationData[3].amount) * hoursInPeriod,
+        },
+      ],
+    });
+  });
+
+  it("should return non-empty data of a suburb's energy sources", async () => {
+    const START_DATE = '2024-01-01T08:00:00.000Z';
+    const END_DATE = '2024-01-01T11:00:00.000Z';
+    const SUBURB_ID = 2;
+
+    const response = await request(appInstance).get(
+      `/retailer/sources?start_date=${START_DATE}&end_date=${END_DATE}&suburb_id=${SUBURB_ID}`
+    );
+
+    // Get the number of hours in the period to convert kW to kWh
+    const hoursInPeriod = differenceInHours(
+      new Date(END_DATE),
+      new Date(START_DATE)
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      start_date: START_DATE,
+      end_date: END_DATE,
+      suburb_id: SUBURB_ID,
+      sources: [
+        {
+          category: 'Wind',
+          renewable: true,
+          percentage: 1,
+          amount: (mockEnergyGenerationData[2].amount + mockEnergyGenerationData[3].amount) * hoursInPeriod,
+        },
+      ],
+    });
+  });
+
+  it('should return non-empty data of nation-wide energy sources', async () => {
+    const START_DATE = '2024-01-01T08:00:00.000Z';
+    const END_DATE = '2024-01-01T11:00:00.000Z';
+
+    const totalGeneration = mockEnergyGenerationData.reduce((acc, source) => {
+      acc += source.amount;
+
+      return acc;
+    }, 0);
+
+    const response = await request(appInstance).get(
+      `/retailer/sources?start_date=${START_DATE}&end_date=${END_DATE}`
+    );
+
+    // Get the number of hours in the period to convert kW to kWh
+    const hoursInPeriod = differenceInHours(
+      new Date(END_DATE),
+      new Date(START_DATE)
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      start_date: START_DATE,
+      end_date: END_DATE,
+      sources: [
+        expect.objectContaining({
+          category: 'Natural Gas Pipeline',
+          renewable: false,
+          percentage: mockEnergyGenerationData[0].amount / totalGeneration,
+          amount: mockEnergyGenerationData[0].amount * hoursInPeriod,
+        }),
+        expect.objectContaining({
+          category: 'Solar',
+          renewable: true,
+          percentage: mockEnergyGenerationData[1].amount / totalGeneration,
+          amount: mockEnergyGenerationData[1].amount * hoursInPeriod,
+        }),
+        expect.objectContaining({
+          category: 'Wind',
+          renewable: true,
+          percentage: (mockEnergyGenerationData[2].amount + mockEnergyGenerationData[3].amount) / totalGeneration,
+          amount: (mockEnergyGenerationData[2].amount + mockEnergyGenerationData[3].amount) * hoursInPeriod,
+        }),
+      ],
+    });
+  });
+});
+
 describe('GET /retailer/warnings - category high_spot_price', () => {
   let sequelize: Sequelize;
   let appInstance: Application;
@@ -1542,7 +1861,8 @@ describe('GET /retailer/warnings - category high_spot_price', () => {
     await appInstance.get('models').GoalType.create({
       id: 4,
       category: 'green_energy',
-      description: 'I want the majority of my energy to come from environmentally-friendly sources.',
+      description:
+        'I want the majority of my energy to come from environmentally-friendly sources.',
       target_type: 'consumer',
     });
     await appInstance.get('models').WarningType.create({
@@ -2987,6 +3307,8 @@ describe('GET /retailer/reports/:id Suburb', () => {
       `/retailer/reports/${testReport.id}`
     );
 
+    const hourDifference = differenceInHours(testReport.end_date, testReport.start_date);
+
     console.log(response.body);
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
@@ -3174,22 +3496,19 @@ describe('GET /retailer/reports/:id Suburb', () => {
           category: 'Brown Coal',
           renewable: false,
           percentage: 0.25,
-          total: 120,
-          count: 6,
+          amount: 1 * hourDifference
         },
         {
           category: 'Solar',
           renewable: true,
           percentage: 0.5,
-          total: 240,
-          count: 12,
+          amount: 2 * hourDifference
         },
         {
           category: 'Wind',
           renewable: true,
           percentage: 0.25,
-          total: 120,
-          count: 6,
+          amount: 1 * hourDifference
         },
       ],
     });
