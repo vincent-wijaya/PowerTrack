@@ -134,6 +134,7 @@ export const defineModels = (sequelize: Sequelize) => {
     latitude: string; // Sequelize returns DataTypes.DECIMALs as strings. Bug: https://github.com/sequelize/sequelize/issues/8019
     longitude: string; // Sequelize returns DataTypes.DECIMALs as strings. Bug: https://github.com/sequelize/sequelize/issues/8019
     suburb_id?: string;
+    email_address?: string;
   }
   const Consumer = sequelize.define<IConsumerModel>(
     'consumer',
@@ -159,6 +160,10 @@ export const defineModels = (sequelize: Sequelize) => {
         type: DataTypes.DECIMAL,
         allowNull: false,
       },
+      email_address: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+      }
     },
     { freezeTableName: true }
   );
@@ -410,8 +415,8 @@ export const defineModels = (sequelize: Sequelize) => {
     id: number;
     start_date: string;
     end_date: string;
-    consumer_id?: string;
-    suburb_id?: string;
+    consumer_id?: number;
+    suburb_id?: number;
   }
   const Report = sequelize.define<IReportsModel>(
     'report',
