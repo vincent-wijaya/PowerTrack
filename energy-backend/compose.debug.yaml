@@ -23,6 +23,7 @@ services:
       TEST_DATABASE_CLUSTER: ${TEST_DATABASE_CLUSTER:-postgres://postgres:password@debug-db:5432/}
       DB_SETUP_FILE: ${DB_SETUP_FILE:-dbSetupInfo.json}
       SERVER_PORT: ${SERVER_PORT:-3001}
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY}
     ports:
       - 3001:3001
       - 9229:9229
