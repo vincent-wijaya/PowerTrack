@@ -14,11 +14,9 @@ import ReportFormButton from '@/components/reportFormButton';
 import { EnergySources, fetchSources } from '@/api/getSources';
 import { DropdownOption } from '@/components/charts/dropDownFilter';
 import { useEffect, useState } from 'react';
-
-type ProfitMarginFetchType = {
-  spot_prices: { date: string; amount: number }[];
-  selling_prices: { date: string; amount: number }[];
-};
+import { fetchProfitMargin } from '@/api/getProfitMargin';
+import { fetchEnergyConsumption } from '@/api/getEnergyConsumption';
+import { fetchEnergyGeneration } from '@/api/getEnergyGeneration';
 
 interface SuburbData {
   id: string;
@@ -34,7 +32,51 @@ export default function RegionalDashboard({
 }: {
   params: { id: string };
 }) {
-  const [energySourcesDateRange, setEnergySourcesDateRange] = useState<{ start: string; end: string; }>(generateDateRange('last_year'));
+  const [energySourcesDateRange, setEnergySourcesDateRange] = useState<{
+    start: string;
+    end: string;
+  }>(generateDateRange('last_year'));
+  const [energyChartDateRange, setEnergyChartDateRange] = useState<{
+    start: string;
+    end: string;
+    granularity: string;
+  }>(generateDateRange('last_year'));
+  const [profitChartDateRange, setProfitChartDateRange] = useState<{
+    start: string;
+    end: string;
+    granularity: string;
+  }>(generateDateRange('last_year'));
+  const [spotPrice, setSpotPrice] = useState('N/A');
+
+  const energyConsumptionData = fetchEnergyConsumption(
+    energyChartDateRange.start,
+    energyChartDateRange.end,
+    params.id,
+    'suburb'
+  );
+  const energyGenerationData = fetchEnergyGeneration(
+    energyChartDateRange.start,
+    energyChartDateRange.end,
+    params.id,
+    'suburb'
+  );
+
+  const onEnergyChartDateRangeChange = (value: DropdownOption) => {
+    const dateRange = generateDateRange(value);
+
+    setEnergyChartDateRange(dateRange);
+  };
+
+  const onProfitChartTimeRangeChange = (value: DropdownOption) => {
+    const dateRange = generateDateRange(value);
+
+    setProfitChartDateRange(dateRange);
+  };
+
+  const profitMarginData = fetchProfitMargin(
+    profitChartDateRange.start,
+    profitChartDateRange.end
+  );
 
   const { data: suburbData, error: suburbError } = useSWR<SuburbData>(
     `${process.env.NEXT_PUBLIC_API_URL}/retailer/suburbs/${params.id}`,
@@ -43,42 +85,33 @@ export default function RegionalDashboard({
       refreshInterval: 0,
     }
   );
-  
-  const energySources = fetchSources(params.id, 'suburb', energySourcesDateRange.start, energySourcesDateRange.end);
-  
+
+  const energySources = fetchSources(
+    energySourcesDateRange.start,
+    energySourcesDateRange.end,
+    params.id,
+    'suburb'
+  );
+
   const onEnergySourceTimeRangeChange = (value: DropdownOption) => {
     const dateRange = generateDateRange(value);
-    
+
     setEnergySourcesDateRange(dateRange);
   };
 
-  const { data: profitMarginFetch }: { data: ProfitMarginFetchType } = useSWR(
-    `${process.env.NEXT_PUBLIC_API_URL}/retailer/profitMargin`,
-    fetcher,
-    {
-      refreshInterval: POLLING_RATE,
-    }
-  );
+  useEffect(() => {
+    const currentSpotPrice =
+      profitMarginData?.values.spot_prices
+        ?.at(-1)
+        ?.amount?.toLocaleString('en-AU', {
+          style: 'currency',
+          currency: 'AUD',
+        }) || 'N/A';
 
-  function calculateProfitMargin(
-    profitMarginFetch: ProfitMarginFetchType
-  ): number {
-    if (!profitMarginFetch) return 0;
-    const lastSpotPrice = profitMarginFetch.spot_prices.at(-1)?.amount;
-    const lastSellingPrice = profitMarginFetch.selling_prices.at(-1)?.amount;
-    if (lastSpotPrice === undefined || lastSellingPrice === undefined) {
-      return 0;
-    } else {
-      return Math.round(
-        ((lastSellingPrice - lastSpotPrice) / lastSellingPrice) * 100
-      );
-    }
-  }
-  const currentSpotPrice =
-    profitMarginFetch?.spot_prices?.at(-1)?.amount?.toLocaleString('en-AU', {
-      style: 'currency',
-      currency: 'AUD',
-    }) || '$0.00';
+    console.log(currentSpotPrice);
+
+    setSpotPrice(currentSpotPrice);
+  }, [profitMarginData]);
 
   const { data: warningData, error: warningError } = useSWR(
     `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings?suburb_id=${params.id}`,
@@ -101,7 +134,7 @@ export default function RegionalDashboard({
         <div className="flex flex-col gap-3 flex-1">
           <div className="flex justify-between gap-3 h-[128px]">
             <InfoBox
-              title={currentSpotPrice}
+              title={spotPrice}
               description="Price of electricity per kWh"
             />
             <InfoBox
@@ -112,6 +145,7 @@ export default function RegionalDashboard({
           <WarningTable suburb_id={Number(params.id)} />
 
           <EnergySourceBreakdown
+            chartTitle={`${suburbData ? suburbData?.name + "'s " : ''}Energy Generation Source Breakdown`}
             energySources={energySources?.sources}
             onTimeRangeChange={onEnergySourceTimeRangeChange}
             showTimeRangeDropdown={true}
@@ -119,10 +153,20 @@ export default function RegionalDashboard({
         </div>
         {/* Right column of page */}
         <div className="flex flex-col gap-3 flex-1">
-          <ProfitChart />
           <EnergyChart
             chartTitle="Suburb Energy Consumption/Generation"
-            context_id={params.id}
+            energyConsumptionData={energyConsumptionData}
+            energyGenerationData={energyGenerationData}
+            onTimeRangeChange={onEnergyChartDateRangeChange}
+            showTimeRangeDropdown={true}
+            granularity={energyChartDateRange.granularity}
+          />
+          <ProfitChart
+            chartTitle="Suburb Profit Analysis"
+            profitMarginData={profitMarginData}
+            onTimeRangeChange={onProfitChartTimeRangeChange}
+            showTimeRangeDropdown={true}
+            granularity={profitChartDateRange.granularity}
           />
         </div>
       </div>

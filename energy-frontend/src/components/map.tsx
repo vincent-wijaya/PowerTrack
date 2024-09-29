@@ -125,7 +125,6 @@ export default function Map(props: { className?: string }) {
                 `Feature not found for suburb_id: ${item.suburb_id}`
               );
             }
-            console.log('item', item);
             return { geoJSON: feature, amount: item.consumption };
           }
         );

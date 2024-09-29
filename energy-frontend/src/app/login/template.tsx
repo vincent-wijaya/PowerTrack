@@ -1,8 +1,6 @@
 'use client';
 
 import React, { ReactNode, useState } from 'react';
-import Profile from '../../components/profile';
-import Navbar from '../../components/navbar';
 
 interface TemplateProps {
   children: ReactNode;

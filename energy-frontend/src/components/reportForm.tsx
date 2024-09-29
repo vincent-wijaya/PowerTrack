@@ -13,17 +13,16 @@ type ValuePiece = Date | null;
 type Value = ValuePiece | [ValuePiece, ValuePiece];
 
 type ConsumerData = {
-  address: string,
-  suburb_post_code: number,
-  suburb_name: string
-}
-
-type SuburbData = {
-  name: string,
-  postcode: number,
-  state: string
+  address: string;
+  suburb_post_code: number;
+  suburb_name: string;
 };
 
+type SuburbData = {
+  name: string;
+  postcode: number;
+  state: string;
+};
 
 const ReportForm = (props: { id: string; type: string }) => {
   const router = useRouter(); // Initialize useRouter

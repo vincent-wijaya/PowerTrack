@@ -3,6 +3,8 @@ export const fetcher = (url: string) => fetch(url).then((r) => r.json());
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
+import { differenceInMonths, differenceInWeeks } from 'date-fns';
+
 export const exportToPDF = async (elementId: string) => {
   const element = document.getElementById(elementId);
 
@@ -59,7 +61,9 @@ export const formatCurrency = (value: number): string => {
   return `$${formattedValue}`;
 };
 
-export const generateDateRange = (timeRange: string): { start: string; end: string } => {
+export const generateDateRange = (
+  timeRange: string
+): { start: string; end: string; granularity: string } => {
   const now = new Date();
   let startDate;
   switch (timeRange) {
@@ -108,5 +112,37 @@ export const generateDateRange = (timeRange: string): { start: string; end: stri
   return {
     start: startDate.toISOString(),
     end: now.toISOString(),
+    granularity: getTemporalGranularity(
+      startDate.toISOString(),
+      now.toISOString()
+    ),
   };
 };
+
+/**
+ * Determines the temporal granularity based on the period between start and end dates.
+ * As written on the API specification document:
+ * - weekly: greater than or equal to 1 month
+ * - daily: between 1 week and 1 month
+ * - hourly: less than 1 week
+ *
+ * @param startDate start date of period
+ * @param endDate end date of period
+ * @returns the name of the temporal granularity as in the API specification document, and the adverb
+ *  version of the word that is used for the sequelize date-truncating function 'date_trunc'.
+ */
+export function getTemporalGranularity(
+  startDate: string,
+  endDate: string
+): string {
+  const months = differenceInMonths(endDate, startDate);
+  const weeks = differenceInWeeks(endDate, startDate);
+
+  if (months >= 1) {
+    return 'week';
+  } else if (weeks >= 1) {
+    return 'day';
+  } else {
+    return 'hour';
+  }
+}

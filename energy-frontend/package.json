@@ -15,6 +15,7 @@
     "axios": "^1.7.2",
     "chart.js": "^4.4.3",
     "chartjs": "^0.3.24",
+    "chartjs-adapter-date-fns": "^3.0.0",
     "chartjs-plugin-datalabels": "^2.2.0",
     "geojson": "^0.5.0",
     "html2canvas": "^1.4.1",
