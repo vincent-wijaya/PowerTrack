@@ -10,7 +10,7 @@ import moment from 'moment';
 import { exportsForTesting } from '../routes/retailerRoute';
 const { splitEvents } = exportsForTesting;
 import { kWhConversionMultiplier } from '../utils/utils';
-import { addYears, differenceInHours } from 'date-fns';
+import { addYears, differenceInHours, startOfHour } from 'date-fns';
 
 describe('GET /retailer/consumption', () => {
   let sequelize: Sequelize;
@@ -883,11 +883,11 @@ describe('GET /retailer/profitMargin', () => {
     { date: new Date('2024-01-05T11:10:00'), amount: 3 },
   ];
   const sellingPriceTestData = [
-    { date: new Date('2024-01-01T11:10:00'), amount: 2 },
-    { date: new Date('2024-01-02T11:10:00'), amount: 2 },
-    { date: new Date('2024-01-03T11:10:00'), amount: 2 },
-    { date: new Date('2024-01-04T11:00:00'), amount: 2 },
-    { date: new Date('2024-01-05T11:00:00'), amount: 2 },
+    { date: new Date('2024-01-01T11:10:00'), amount: 4 },
+    { date: new Date('2024-01-02T11:10:00'), amount: 4 },
+    { date: new Date('2024-01-03T11:10:00'), amount: 4 },
+    { date: new Date('2024-01-04T11:00:00'), amount: 4 },
+    { date: new Date('2024-01-05T11:00:00'), amount: 4 },
   ];
 
   const startDate = new Date('2024-01-01T11:10:00');
@@ -909,31 +909,67 @@ describe('GET /retailer/profitMargin', () => {
     await dropTestDb(sequelize);
   });
 
-  it('should return all data', async () => {
+  it('should return error 400 if start date is missing', async () => {
     const response = await request(appInstance).get('/retailer/profitMargin');
 
-    let expectedSellingPrice = sellingPriceTestData.map((data) => ({
-      date: data.date.toISOString(),
-      amount: data.amount,
-    }));
-    expectedSellingPrice.sort(
-      (a: any, b: any) =>
-        new Date(a.date).valueOf() - new Date(b.date).valueOf()
-    );
-
-    let expectedSpotPrice = spotPriceTestData.map((data) => ({
-      date: data.date.toISOString(),
-      amount: data.amount,
-    }));
-    expectedSpotPrice.sort(
-      (a: any, b: any) =>
-        new Date(a.date).valueOf() - new Date(b.date).valueOf()
-    );
-
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(400);
     expect(response.body).toEqual({
-      selling_prices: expectedSellingPrice,
-      spot_prices: expectedSpotPrice,
+      error: 'Start date must be provided.',
+    });
+  });
+
+  it('should return error 400 if invalid start date format is provided', async () => {
+    const START_DATE = '01/01/2024'; // Invalid date format
+
+    const response = await request(appInstance).get(
+      `/retailer/profitMargin?start_date=${START_DATE}`
+    );
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({
+      error: 'Invalid start date format. Provide dates in ISO string format.',
+    });
+  });
+
+  it('should return error 400 if invalid end date format is provided', async () => {
+    const START_DATE = '2024-01-01T09:00:00.000Z';
+    const END_DATE = '01/01/2024'; // Invalid date format
+
+    const response = await request(appInstance).get(
+      `/retailer/profitMargin?start_date=${START_DATE}&end_date=${END_DATE}`
+    );
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({
+      error: 'Invalid end date format. Provide dates in ISO string format.',
+    });
+  });
+
+  it('should return error 400 if start_date provided is after end_date', async () => {
+    const START_DATE = '2024-06-10T09:00:00.000Z'; // Date is afte end_date
+    const END_DATE = '2022-06-10T09:00:00.000Z';
+
+    const response = await request(appInstance).get(
+      `/retailer/profitMargin?start_date=${START_DATE}&end_date=${END_DATE}`
+    );
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({
+      error: 'Start date must be before end date.',
+    });
+  });
+
+  it('should return error 400 if end_date provided is in the future', async () => {
+    const START_DATE = new Date().toISOString();
+    const END_DATE = addYears(new Date(), 1).toISOString(); // end_date is in the future
+
+    const response = await request(appInstance).get(
+      `/retailer/profitMargin?start_date=${START_DATE}&end_date=${END_DATE}`
+    );
+
+    expect(response.status).toBe(400);
+    expect(response.body).toEqual({
+      error: 'End date must not be in the future.',
     });
   });
 
@@ -942,32 +978,77 @@ describe('GET /retailer/profitMargin', () => {
       `/retailer/profitMargin?start_date=${startDate.toISOString()}`
     );
 
-    let expectedSellingPrice = sellingPriceTestData
-      .filter((price) => price.date > startDate) // filter to after start date
-      .map((data) => ({
-        date: data.date.toISOString(),
-        amount: data.amount,
-      }));
-    expectedSellingPrice.sort(
-      (a: any, b: any) =>
-        new Date(a.date).valueOf() - new Date(b.date).valueOf()
-    );
+    const adjustedSellingPrices = sellingPriceTestData.map((sellingPrice) => {
+      return {
+        ...sellingPrice,
+        truncatedDate: moment(sellingPrice.date)
+          .startOf('isoWeek')
+          .toISOString(),
+      };
+    });
 
-    let expectedSpotPrice = spotPriceTestData
-      .filter((price) => price.date > startDate) // filter to after start date
-      .map((data) => ({
-        date: data.date.toISOString(),
-        amount: data.amount,
-      }));
-    expectedSpotPrice.sort(
-      (a: any, b: any) =>
-        new Date(a.date).valueOf() - new Date(b.date).valueOf()
-    );
+    const adjustedSpotPrices = spotPriceTestData.map((spotPrice) => {
+      return {
+        ...spotPrice,
+        truncatedDate: moment(spotPrice.date).startOf('isoWeek').toISOString(),
+      };
+    });
+
+    let expectedSellingPrices = adjustedSellingPrices
+      .filter((sellingPrice) => sellingPrice.date > startDate)
+      .reduce((acc: any, sellingPrice: any) => {
+        if (!acc[sellingPrice.truncatedDate]) {
+          acc[sellingPrice.truncatedDate] = {
+            amount: 0,
+            count: 0,
+          };
+        }
+        acc[sellingPrice.truncatedDate].amount += sellingPrice.amount;
+        acc[sellingPrice.truncatedDate].count++;
+        return acc;
+      }, {});
+
+    expectedSellingPrices = Object.keys(expectedSellingPrices).map((date) => {
+      return {
+        date,
+        amount:
+          expectedSellingPrices[date].amount /
+          expectedSellingPrices[date].count,
+      };
+    });
+
+    let expectedSpotPrices = adjustedSpotPrices
+      .filter((spotPrice) => spotPrice.date > startDate)
+      .reduce((acc: any, spotPrice: any) => {
+        if (!acc[spotPrice.truncatedDate]) {
+          acc[spotPrice.truncatedDate] = {
+            amount: 0,
+            count: 0,
+          };
+        }
+        acc[spotPrice.truncatedDate].amount += spotPrice.amount;
+        acc[spotPrice.truncatedDate].count++;
+        return acc;
+      }, {});
+
+    expectedSpotPrices = Object.keys(expectedSpotPrices).map((date) => {
+      return {
+        date,
+        amount:
+          expectedSpotPrices[date].amount / expectedSpotPrices[date].count,
+      };
+    });
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
-      selling_prices: expectedSellingPrice,
-      spot_prices: expectedSpotPrice,
+      start_date: startDate.toISOString(),
+      values: {
+        selling_prices: expectedSellingPrices,
+        spot_prices: expectedSpotPrices,
+        profits: [
+          { date: new Date('2024-01-01T00:00:00').toISOString(), amount: 1 }, // Profit of the only month in the period is 4-3 = 1
+        ],
+      },
     });
   });
 
@@ -979,7 +1060,7 @@ describe('GET /retailer/profitMargin', () => {
     let expectedSellingPrice = sellingPriceTestData
       .filter((price) => price.date > startDate && price.date <= endDate) // filter to after start date and before end date
       .map((data) => ({
-        date: data.date.toISOString(),
+        date: startOfHour(data.date).toISOString(),
         amount: data.amount,
       }));
     expectedSellingPrice.sort(
@@ -990,7 +1071,7 @@ describe('GET /retailer/profitMargin', () => {
     let expectedSpotPrice = spotPriceTestData
       .filter((price) => price.date > startDate && price.date <= endDate) // filter to after start date and before end date
       .map((data) => ({
-        date: data.date.toISOString(),
+        date: startOfHour(data.date).toISOString(),
         amount: data.amount,
       }));
     expectedSpotPrice.sort(
@@ -1000,8 +1081,18 @@ describe('GET /retailer/profitMargin', () => {
 
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
-      selling_prices: expectedSellingPrice,
-      spot_prices: expectedSpotPrice,
+      start_date: startDate.toISOString(),
+      end_date: endDate.toISOString(),
+      values: {
+        selling_prices: expectedSellingPrice,
+        spot_prices: expectedSpotPrice,
+        profits: [
+          { date: new Date('2024-01-02T11:00:00').toISOString(), amount: 1 }, // 1 January 2024 has no value as the prices were stored before the startDate of this query
+          { date: new Date('2024-01-03T11:00:00').toISOString(), amount: 1 },
+          { date: new Date('2024-01-04T11:00:00').toISOString(), amount: 1 },
+          { date: new Date('2024-01-05T11:00:00').toISOString(), amount: 1 },
+        ],
+      },
     });
   });
 });
@@ -1745,7 +1836,10 @@ describe('GET /retailer/sources', () => {
           category: 'Wind',
           renewable: true,
           percentage: 1,
-          amount: (mockEnergyGenerationData[2].amount + mockEnergyGenerationData[3].amount) * hoursInPeriod,
+          amount:
+            (mockEnergyGenerationData[2].amount +
+              mockEnergyGenerationData[3].amount) *
+            hoursInPeriod,
         },
       ],
     });
@@ -1776,7 +1870,10 @@ describe('GET /retailer/sources', () => {
           category: 'Wind',
           renewable: true,
           percentage: 1,
-          amount: (mockEnergyGenerationData[2].amount + mockEnergyGenerationData[3].amount) * hoursInPeriod,
+          amount:
+            (mockEnergyGenerationData[2].amount +
+              mockEnergyGenerationData[3].amount) *
+            hoursInPeriod,
         },
       ],
     });
@@ -1822,8 +1919,14 @@ describe('GET /retailer/sources', () => {
         expect.objectContaining({
           category: 'Wind',
           renewable: true,
-          percentage: (mockEnergyGenerationData[2].amount + mockEnergyGenerationData[3].amount) / totalGeneration,
-          amount: (mockEnergyGenerationData[2].amount + mockEnergyGenerationData[3].amount) * hoursInPeriod,
+          percentage:
+            (mockEnergyGenerationData[2].amount +
+              mockEnergyGenerationData[3].amount) /
+            totalGeneration,
+          amount:
+            (mockEnergyGenerationData[2].amount +
+              mockEnergyGenerationData[3].amount) *
+            hoursInPeriod,
         }),
       ],
     });
@@ -3295,8 +3398,16 @@ describe('GET /retailer/reports/:id Suburb', () => {
         consumer_id: testReport.consumer_id,
       },
       energy: [],
-      selling_price: testSellingPrice,
-      spot_price: testSpotPrice,
+      profits: [
+        { date: '2024-02-02T00:00:00.000Z', amount: 0 },
+        { date: '2024-02-03T00:00:00.000Z', amount: 0 },
+        { date: '2024-02-04T00:00:00.000Z', amount: 0 },
+        { date: '2024-02-05T00:00:00.000Z', amount: 0 },
+        { date: '2024-02-06T00:00:00.000Z', amount: 0 },
+        { date: '2024-02-07T00:00:00.000Z', amount: 0 },
+      ],
+      selling_prices: testSellingPrice,
+      spot_prices: testSpotPrice,
       sources: [],
     });
   });
@@ -3307,7 +3418,10 @@ describe('GET /retailer/reports/:id Suburb', () => {
       `/retailer/reports/${testReport.id}`
     );
 
-    const hourDifference = differenceInHours(testReport.end_date, testReport.start_date);
+    const hourDifference = differenceInHours(
+      testReport.end_date,
+      testReport.start_date
+    );
 
     console.log(response.body);
     expect(response.status).toBe(200);
@@ -3489,26 +3603,34 @@ describe('GET /retailer/reports/:id Suburb', () => {
           consumption: 24,
         },
       ],
-      selling_price: testSellingPrice,
-      spot_price: testSpotPrice,
+      selling_prices: testSellingPrice,
+      spot_prices: testSpotPrice,
+      profits: [
+        { date: '2024-02-02T00:00:00.000Z', amount: 0 },
+        { date: '2024-02-03T00:00:00.000Z', amount: 0 },
+        { date: '2024-02-04T00:00:00.000Z', amount: 0 },
+        { date: '2024-02-05T00:00:00.000Z', amount: 0 },
+        { date: '2024-02-06T00:00:00.000Z', amount: 0 },
+        { date: '2024-02-07T00:00:00.000Z', amount: 0 },
+      ],
       sources: [
         {
           category: 'Brown Coal',
           renewable: false,
           percentage: 0.25,
-          amount: 1 * hourDifference
+          amount: 1 * hourDifference,
         },
         {
           category: 'Solar',
           renewable: true,
           percentage: 0.5,
-          amount: 2 * hourDifference
+          amount: 2 * hourDifference,
         },
         {
           category: 'Wind',
           renewable: true,
           percentage: 0.25,
-          amount: 1 * hourDifference
+          amount: 1 * hourDifference,
         },
       ],
     });
@@ -3651,8 +3773,9 @@ describe('GET /retailer/reports/:id Suburb', () => {
         consumer_id: testReport.consumer_id,
       },
       energy: [],
-      selling_price: [],
-      spot_price: [],
+      selling_prices: [],
+      spot_prices: [],
+      profits: [],
       sources: [],
     });
   });

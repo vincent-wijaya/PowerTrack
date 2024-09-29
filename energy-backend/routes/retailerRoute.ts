@@ -15,11 +15,18 @@ import {
   getTemporalGranularity,
 } from '../utils/utils';
 import {
+  addDays,
+  addHours,
+  addWeeks,
   differenceInHours,
   formatISO,
   isBefore,
   isValid,
+  min,
   parse,
+  startOfDay,
+  startOfHour,
+  startOfISOWeek,
 } from 'date-fns';
 import { Consumer } from 'kafkajs';
 
@@ -87,7 +94,7 @@ router.get('/map', async (req, res) => {
  * GET /retailer/consumption
  *
  * Retrieve average energy consumption data for a suburb/consumer/nationwide over a period of time in kWh.
- * Based on the time period, the data is aggregated by hour, day, or week. 
+ * Based on the time period, the data is aggregated by hour, day, or week.
  *
  * Query parameters:
  * - suburb_id: The ID of the suburb to retrieve data for. (optional)
@@ -122,8 +129,7 @@ router.get('/map', async (req, res) => {
 router.get('/consumption', async (req, res) => {
   // Retrieve energy consumption for a suburb or consumer over a period of time
   let { suburb_id, consumer_id, start_date, end_date } = req.query;
-  const { sequelize, SuburbConsumption, ConsumerConsumption } =
-    req.app.get('models');
+  const { SuburbConsumption, ConsumerConsumption } = req.app.get('models');
 
   // If no date range is provided, return error 400
   if (!start_date) {
@@ -179,13 +185,9 @@ router.get('/consumption', async (req, res) => {
   } else if (suburb_id) {
     consumptions = await SuburbConsumption.findAll({
       attributes: [
-        [sequelize.fn('AVG', sequelize.col('amount')), 'amount'], // Averages the amount of energy generated
+        [fn('AVG', col('amount')), 'amount'], // Averages the amount of energy generated
         [
-          sequelize.fn(
-            'date_trunc',
-            dateGranularity.sequelize,
-            sequelize.col('date')
-          ),
+          fn('date_trunc', dateGranularity.sequelize, col('date')),
           'truncatedDate',
         ], // Truncate the date based on the date granularity
       ],
@@ -199,13 +201,9 @@ router.get('/consumption', async (req, res) => {
   } else if (consumer_id) {
     consumptions = await ConsumerConsumption.findAll({
       attributes: [
-        [sequelize.fn('AVG', sequelize.col('amount')), 'amount'], // Averages the amount of energy consumed
+        [fn('AVG', col('amount')), 'amount'], // Averages the amount of energy consumed
         [
-          sequelize.fn(
-            'date_trunc',
-            dateGranularity.sequelize,
-            sequelize.col('date')
-          ),
+          fn('date_trunc', dateGranularity.sequelize, col('date')),
           'truncatedDate',
         ], // Truncate the date based on the date granularity
       ],
@@ -220,13 +218,9 @@ router.get('/consumption', async (req, res) => {
     // Return nation-wide totals
     consumptions = await SuburbConsumption.findAll({
       attributes: [
-        [sequelize.fn('AVG', sequelize.col('amount')), 'amount'], // Averages the amount of energy consumed
+        [fn('AVG', col('amount')), 'amount'], // Averages the amount of energy consumed
         [
-          sequelize.fn(
-            'date_trunc',
-            dateGranularity.sequelize,
-            sequelize.col('date')
-          ),
+          fn('date_trunc', dateGranularity.sequelize, col('date')),
           'truncatedDate',
         ], // Truncate the date based on the date granularity
       ],
@@ -354,8 +348,8 @@ router.get('/generation', async (req, res) => {
     // Set the date range to be within the start and end dates
     dateWhere.date = {
       [Op.and]: {
-        [Op.gt]: moment(String(start_date)).toISOString(),
-        [Op.lte]: moment(String(end_date)).toISOString(),
+        [Op.gt]: new Date(String(start_date)).toISOString(),
+        [Op.lte]: new Date(String(end_date)).toISOString(),
       },
     };
 
@@ -614,58 +608,339 @@ router.get('/generator', async (req, res) => {
   }
 });
 
+/**
+ * GET /retailer/profitMargin
+ *
+ * Calls getProfitMargin function.
+ *
+ * Query parameters:
+ * - start_date: The start date of the period to retrieve data for, in ISO format
+ * - end_date: The end date of the period to retrieve data for, in ISO format (optional)
+ *
+ * Response format:
+ * {
+ *   start_date: string,
+ *   end_date: string,
+ *   values: [
+ *     {
+ *         selling_prices: [
+ *             {
+ *                date: string,
+ *                amount: number
+ *             }
+ *         ],
+ *         spot_prices: [
+ *             {
+ *                date: string,
+ *                amount: number
+ *             }
+ *         ],
+ *         profits: [
+ *             {
+ *                date: string,
+ *                amount: number
+ *             }
+ *         ]
+ *     },
+ *   ]
+ * }
+ *
+ * Example response:
+ * {
+ *   start_date: '2024-01-01T00:00:00.000Z',
+ *   end_date: '2024-01-02T00:00:00.000Z',
+ *   values: [
+ *     {
+ *         selling_prices: [
+ *             {
+ *                date: '2024-01-01T00:00:00.000Z',
+ *                amount: 100
+ *             }
+ *         ],
+ *         spot_prices: [
+ *             {
+ *                date: '2024-01-01T00:00:00.000Z',
+ *                amount: 70
+ *             }
+ *         ],
+ *         profits: [
+ *             {
+ *                date: '2024-01-01T00:00:00.000Z',
+ *                amount: 30
+ *             }
+ *         ]
+ *     },
+ *   ]
+ * }
+ */
 router.get('/profitMargin', async (req, res) => {
-  const { start_date, end_date } = req.query;
-  const { SpotPrice, SellingPrice } = req.app.get('models');
+  let { start_date, end_date } = req.query;
+  const db = req.app.get('models');
 
-  if (
-    (start_date && isNaN(new Date(String(start_date)).getTime())) ||
-    (end_date && isNaN(new Date(String(end_date)).getTime()))
-  ) {
+  // If no date range is provided, return error 400
+  if (!start_date) {
+    return res.status(400).send({
+      error: 'Start date must be provided.',
+    });
+  }
+
+  // Validate format of start_date
+  const parsedStartDate = parse(
+    String(start_date),
+    "yyyy-MM-dd'T'HH:mm:ss.SSSX",
+    new Date()
+  );
+  if (!isValid(parsedStartDate)) {
+    return res.status(400).send({
+      error: 'Invalid start date format. Provide dates in ISO string format.',
+    });
+  }
+
+  let parsedEndDate;
+  if (end_date) {
+    // Validate format of end_date
+    parsedEndDate = parse(
+      String(end_date),
+      "yyyy-MM-dd'T'HH:mm:ss.SSSX",
+      new Date()
+    );
+
+    if (!isValid(parsedEndDate)) {
+      return res.status(400).send({
+        error: 'Invalid end date format. Provide dates in ISO string format.',
+      });
+    }
+  } else {
+    // Set end_date to now if not provided
+    parsedEndDate = new Date();
+  }
+
+  // Validate that end_date is after start_date
+  if (isBefore(parsedEndDate, parsedStartDate)) {
     return res
       .status(400)
-      .send('Invalid date format. Provide dates in ISO string format.');
+      .send({ error: 'Start date must be before end date.' });
   }
 
-  let date_where_clause: any = {
-    [Op.ne]: null,
+  if (isBefore(new Date(), parsedEndDate)) {
+    return res
+      .status(400)
+      .send({ error: 'End date must not be in the future.' });
+  }
+
+  const prices = await getProfitMargin(db, parsedStartDate, parsedEndDate);
+
+  return res.status(200).send({
+    start_date,
+    end_date,
+    values: {
+      spot_prices: prices.spotPrices,
+      selling_prices: prices.sellingPrices,
+      profits: prices.profits,
+    },
+  });
+});
+
+/**
+ *
+ * @param db Retrieve the average spot prices, selling prices, and profits (derived from selling price - spot price) during a given period of time.
+ * Based on the time period, the data is aggregated by hour, day, or week. Profit is only calculated on dates that contain a selling price
+ * or spot price. If a date is missing one of the price values, the previous value is used instead to calculate the profit of the particular
+ * date.
+ *
+ * @param startDate start of date range
+ * @param endDate end of date range
+ * @returns arrays of selling price, spot price, and profit data
+ */
+const getProfitMargin = async (
+  db: DbModelType,
+  startDate: Date,
+  endDate: Date
+) => {
+  const { SellingPrice, SpotPrice } = db;
+
+  // Set up date range for query
+  const dateWhere = {
+    [Op.and]: {
+      [Op.gt]: startDate,
+      [Op.lte]: endDate,
+    },
   };
-  if (start_date) {
-    date_where_clause[Op.gt] = new Date(String(start_date));
-  }
-  if (end_date) {
-    date_where_clause[Op.lte] = new Date(String(end_date));
+
+  // Determine the date granularity based on the date range
+  let dateGranularity = getTemporalGranularity(
+    startDate.toISOString(),
+    endDate.toISOString()
+  );
+
+  interface Price {
+    date: string;
+    amount: number;
   }
 
-  let sellingPrices = await SellingPrice.findAll({
+  let sellingPricesData = (await SellingPrice.findAll({
+    attributes: [
+      [fn('AVG', col('amount')), 'amount'], // Averages the amount of energy generated
+      [
+        fn('date_trunc', dateGranularity.sequelize, col('date')),
+        'truncatedDate',
+      ], // Truncate the date based on the date granularity
+    ],
+    group: ['truncatedDate'],
     where: {
-      date: date_where_clause,
+      date: dateWhere,
     },
+    order: [['truncatedDate', 'ASC']],
+  })) as unknown as {
+    date?: string;
+    truncatedDate?: string;
+    amount: number;
+  }[];
+
+  let spotPricesData = await SpotPrice.findAll({
+    attributes: [
+      [fn('AVG', col('amount')), 'amount'], // Averages the amount of energy generated
+      [
+        fn('date_trunc', dateGranularity.sequelize, col('date')),
+        'truncatedDate',
+      ], // Truncate the date based on the date granularity
+    ],
+    group: ['truncatedDate'],
+    where: {
+      date: dateWhere,
+    },
+    order: [['truncatedDate', 'ASC']],
   });
 
-  let spotPrices = await SpotPrice.findAll({
-    where: {
-      date: date_where_clause,
-    },
-  });
+  // Return empty arrays if no data is retrieved
+  if (sellingPricesData.length === 0 && spotPricesData.length === 0) {
+    return {
+      spotPrices: [],
+      sellingPrices: [],
+      profits: [],
+    };
+  }
 
-  spotPrices.sort(eventSorter);
-  sellingPrices.sort(eventSorter);
+  // Get the last value before the query period if there are no selling/spot price data in this search
+  if (sellingPricesData.length === 0) {
+    const singleSellingPrice = await SellingPrice.findOne({
+      where: {
+        date: {
+          [Op.lt]: startDate,
+        },
+      },
+      order: [['id', 'DESC']],
+    });
 
-  spotPrices = spotPrices.map((spotPrice: any) => ({
-    date: spotPrice.date.toISOString(),
+    if (singleSellingPrice) {
+      sellingPricesData.push({
+        date: singleSellingPrice.date,
+        amount: Number(singleSellingPrice.amount),
+      });
+    }
+  }
+
+  // Get the last value before the query period if there are no selling/spot price data in this search
+  if (spotPricesData.length === 0) {
+    const singleSpotPrice = await SpotPrice.findOne({
+      where: {
+        date: {
+          [Op.lt]: startDate,
+        },
+      },
+      order: [['id', 'DESC']],
+    });
+
+    if (singleSpotPrice) {
+      sellingPricesData.push({
+        date: singleSpotPrice.date,
+        amount: Number(singleSpotPrice.amount),
+      });
+    }
+  }
+
+  // Parse into expected output format
+  const spotPrices: Price[] = spotPricesData.map((spotPrice: any) => ({
+    date: spotPrice.dataValues.truncatedDate.toISOString(),
     amount: Number(spotPrice.amount),
   }));
-  sellingPrices = sellingPrices.map((sellingPrice: any) => ({
-    date: sellingPrice.date.toISOString(),
+
+  const sellingPrices: Price[] = sellingPricesData.map((sellingPrice: any) => ({
+    date: sellingPrice.dataValues.truncatedDate.toISOString(),
     amount: Number(sellingPrice.amount),
   }));
 
-  return res.status(200).send({
-    spot_prices: spotPrices,
-    selling_prices: sellingPrices,
+  // Obtain unique dates of combined spot and selling prices by storing in a set
+  let combinedDatesSet = new Set<String>();
+  sellingPrices.forEach((sp) => {
+    combinedDatesSet.add(sp.date);
   });
-});
+  spotPrices.forEach((sp) => {
+    combinedDatesSet.add(sp.date);
+  });
+
+  const combinedDatesArray = Array.from(combinedDatesSet).sort((a, b) => {
+    const dateA = new Date(a as string);
+    const dateB = new Date(b as string);
+    return dateA.getTime() - dateB.getTime();
+  });
+  /* Calculate Profit */
+  // Convert selling prices into a map so that its key can be used for easier access
+  const sellingPricesMap: Map<string, Price> = sellingPrices.reduce(
+    (map: Map<string, Price>, sellingPrice: Price) => {
+      const date = sellingPrice.date;
+      map.set(date, {
+        date,
+        amount: Number(sellingPrice.amount),
+      });
+
+      return map;
+    },
+    new Map<string, Price>()
+  );
+
+  // Convert spot prices into a map so that its key can be used for easier access
+  const spotPricesMap: Map<string, Price> = spotPrices.reduce(
+    (map: Map<string, Price>, spotPrice: Price) => {
+      const date = spotPrice.date;
+      map.set(date, {
+        date,
+        amount: Number(spotPrice.amount),
+      });
+
+      return map;
+    },
+    new Map<string, Price>()
+  );
+
+  let profits: Price[] = [];
+  let lastSellingPrice: number = Number(sellingPricesData[0]?.amount); // Store last available selling price for following calculations where selling price is missing but spot price exists for a particular date
+  let lastSpotPrice: number = Number(spotPricesData[0]?.amount); // Opposite of above
+  // Iterate through the granular dates in the period and get the profit by getting the difference between the selling price and spot price
+  for (const date of combinedDatesArray) {
+    const sellingPriceEntry = sellingPricesMap.get(date as string);
+    const spotPriceEntry = spotPricesMap.get(date as string);
+
+    // If spot price or selling price is missing, take the last available value
+    const sellingPrice: number = sellingPriceEntry?.amount ?? lastSellingPrice;
+    const spotPrice: number = spotPriceEntry?.amount ?? lastSpotPrice;
+
+    profits.push({
+      date: date as string,
+      amount: Number(sellingPrice) - Number(spotPrice),
+    });
+
+    // Store current prices as last selling/spot prices to be used on subsequent calculations for missing values
+    lastSellingPrice = sellingPrice;
+    lastSpotPrice = spotPrice;
+  }
+
+  return {
+    sellingPrices,
+    spotPrices,
+    profits,
+  };
+};
 
 router.get('/warnings', async (req, res) => {
   // Retrieve warnings for a suburb
@@ -1161,13 +1436,13 @@ router.post('/reports', async (req, res) => {
  *      "category": "Fossil Fuels",
  *      "renewable": false,
  *      "percentage": 0.1033,
- *      "count": 148
+ *      "amount": 148
  *    },
  *    {
  *      "category": "Renewable",
  *      "renewable": true,
  *      "percentage": 0.0419,
- *      "count": 67
+ *      "amount": 67
  *    }
  *  ]
  * }
@@ -1182,6 +1457,7 @@ router.get('/reports/:id', async (req, res) => {
     GeneratorType,
     SuburbConsumption,
   } = req.app.get('models');
+  const db = req.app.get('models');
   const id = req.params.id;
 
   // Get the relevant row from the reports table
@@ -1198,7 +1474,10 @@ router.get('/reports/:id', async (req, res) => {
   let reportSuburbId: number = report.suburb_id;
   if (!report.suburb_id) {
     // Finds suburb_id of a consumer if not provided
-    const consumer = await getConsumer(req.app.get('models'), report.consumer_id);
+    const consumer = await getConsumer(
+      req.app.get('models'),
+      report.consumer_id
+    );
 
     reportSuburbId = Number(consumer?.dataValues.suburb_id);
   }
@@ -1211,20 +1490,6 @@ router.get('/reports/:id', async (req, res) => {
       },
     },
   };
-
-  let selling_price = await SellingPrice.findAll({ where: eventWhereClause });
-  selling_price = selling_price.map(
-    (price: { date: string; amount: string }) => ({
-      date: new Date(price.date).toISOString(),
-      amount: Number(price.amount),
-    })
-  );
-
-  let spot_price = await SpotPrice.findAll({ where: eventWhereClause });
-  spot_price = spot_price.map((price: { date: string; amount: string }) => ({
-    date: new Date(price.date).toISOString(),
-    amount: Number(price.amount),
-  }));
 
   let energy_generators = await EnergyGenerator.findAll({
     where: {
@@ -1310,7 +1575,18 @@ router.get('/reports/:id', async (req, res) => {
     }));
   }
 
-  const energySources = await getEnergySourceBreakdown(req.app.get('models'), report.start_date, report.end_date, reportSuburbId);
+  const energySources = await getEnergySourceBreakdown(
+    db,
+    report.start_date,
+    report.end_date,
+    reportSuburbId
+  );
+
+  const profitMarginData = await getProfitMargin(
+    db,
+    report.start_date,
+    report.end_date
+  );
 
   const finalReport = {
     id,
@@ -1321,8 +1597,9 @@ router.get('/reports/:id', async (req, res) => {
       consumer_id: report.consumer_id,
     },
     energy: energy,
-    selling_price: selling_price,
-    spot_price: spot_price,
+    selling_prices: profitMarginData.sellingPrices,
+    spot_prices: profitMarginData.spotPrices,
+    profits: profitMarginData.profits,
     sources: energySources,
   };
 
@@ -1809,7 +2086,6 @@ router.get('/powerOutages', async (req, res) => {
   }
 });
 
-
 /**
  * GET /retailer/sources
  *
@@ -1828,12 +2104,12 @@ router.get('/powerOutages', async (req, res) => {
  *   start_date: string, // The start date input
  *   end_date: string, // The end date input (now if not provided)
  *   sources: [
- *     { 
+ *     {
  *        name: string,        // name of the energy source type
  *        amount: number,      // amount of energy in kWh
  *        percentage: number,  // percentage share of the source
  *        renewable: boolean   // is it a renewable source of energy?
- *     }, 
+ *     },
  *   ]
  * }
  *
@@ -1862,7 +2138,7 @@ router.get('/sources', async (req, res) => {
   let { suburb_id, consumer_id, start_date, end_date } = req.query;
 
   const db = req.app.get('models') as DbModelType;
-    
+
   try {
     // If no date range is provided, return error 400
     if (!start_date) {
@@ -1878,12 +2154,9 @@ router.get('/sources', async (req, res) => {
       new Date()
     );
     if (!isValid(parsedStartDate)) {
-      return res
-        .status(400)
-        .send({
-          error:
-            'Invalid start date format. Provide dates in ISO string format.',
-        });
+      return res.status(400).send({
+        error: 'Invalid start date format. Provide dates in ISO string format.',
+      });
     }
 
     let parsedEndDate;
@@ -1896,12 +2169,9 @@ router.get('/sources', async (req, res) => {
       );
 
       if (!isValid(parsedEndDate)) {
-        return res
-          .status(400)
-          .send({
-            error:
-              'Invalid end date format. Provide dates in ISO string format.',
-          });
+        return res.status(400).send({
+          error: 'Invalid end date format. Provide dates in ISO string format.',
+        });
       }
     } else {
       // Set end_date to now if not provided
@@ -1934,7 +2204,12 @@ router.get('/sources', async (req, res) => {
       suburb_id = String(consumer?.suburb_id);
     }
 
-    const energySources = await getEnergySourceBreakdown(db, parsedStartDate, parsedEndDate, Number(suburb_id));
+    const energySources = await getEnergySourceBreakdown(
+      db,
+      parsedStartDate,
+      parsedEndDate,
+      Number(suburb_id)
+    );
 
     // Prepare return object
     let returnData: any = {
@@ -1965,7 +2240,12 @@ router.get('/sources', async (req, res) => {
  * @param suburbId id of suburb
  * @returns array of energy source types and its amount and share of total generation
  */
-const getEnergySourceBreakdown = async (db: DbModelType, startDate: Date, endDate: Date, suburbId?: number | string) => {
+const getEnergySourceBreakdown = async (
+  db: DbModelType,
+  startDate: Date,
+  endDate: Date,
+  suburbId?: number | string
+) => {
   const { EnergyGeneration, EnergyGenerator, GeneratorType } = db;
 
   // Set up date range for query
@@ -2029,7 +2309,7 @@ const getEnergySourceBreakdown = async (db: DbModelType, startDate: Date, endDat
         category: source.category,
         renewable: source.renewable,
         amount: 0,
-      }
+      };
     }
 
     sources[source.category].amount += Number(source.amount);
@@ -2043,16 +2323,19 @@ const getEnergySourceBreakdown = async (db: DbModelType, startDate: Date, endDat
   });
 
   // Calculate total generation
-  const totalAmount = processedSources.reduce((total: number, source: { amount: number; }) => {
-    total += Number(source.amount);
+  const totalAmount = processedSources.reduce(
+    (total: number, source: { amount: number }) => {
+      total += Number(source.amount);
 
-    return total;
-  }, 0);
+      return total;
+    },
+    0
+  );
 
   // Get the number of hours in the period to convert kW to kWh
   const hoursInPeriod = differenceInHours(endDate, startDate);
-  
-  return processedSources.map((source: { amount: number; }) => ({
+
+  return processedSources.map((source: { amount: number }) => ({
     ...source,
     percentage: Number(source.amount) / totalAmount, // Get the percentage share of this source
     amount: Number(source.amount) * hoursInPeriod, // Convert kW to kWh,
@@ -2069,7 +2352,7 @@ const getConsumer = async (db: DbModelType, id: number | string) => {
   const { Consumer } = db;
 
   return await Consumer.findByPk(id);
-}
+};
 
 export default router;
 

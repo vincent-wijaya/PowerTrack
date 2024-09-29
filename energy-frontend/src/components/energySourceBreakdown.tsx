@@ -12,13 +12,16 @@ import { EnergySource } from '@/api/getSources';
 ChartJS.register(DoughnutController, ArcElement, Legend);
 
 interface EnergySourceBreakdownProps {
+  chartTitle: string;
   energySources: EnergySource[];
   showTimeRangeDropdown?: boolean;
   onTimeRangeChange?: (value: DropdownOption) => void;
   className?: string;
 }
 
-export default function EnergySourceBreakdown(props: EnergySourceBreakdownProps) {
+export default function EnergySourceBreakdown(
+  props: EnergySourceBreakdownProps
+) {
   const colours = [
     '#9747FF',
     '#FCA997',
@@ -47,7 +50,7 @@ export default function EnergySourceBreakdown(props: EnergySourceBreakdownProps)
       {props.showTimeRangeDropdown && props.onTimeRangeChange ? (
         <Dropdown
           onChange={props.onTimeRangeChange}
-          chartTitle={'Energy Sources'}
+          chartTitle={props.chartTitle}
         />
       ) : (
         <div className="flex w-full py-4 px-2 justify-between">
@@ -67,12 +70,15 @@ export default function EnergySourceBreakdown(props: EnergySourceBreakdownProps)
           data={
             props.energySources && props.energySources.length > 0
               ? {
-                  labels: props.energySources?.map((source: EnergySource) => source.category),
+                  labels: props.energySources?.map(
+                    (source: EnergySource) => source.category
+                  ),
                   datasets: [
                     {
                       label: 'Percentage',
                       data: props.energySources.map(
-                        (source: EnergySource) => +(source.percentage * 100).toFixed(2)
+                        (source: EnergySource) =>
+                          +(source.percentage * 100).toFixed(2)
                       ),
                       backgroundColor: colours,
                       borderWidth: 0,

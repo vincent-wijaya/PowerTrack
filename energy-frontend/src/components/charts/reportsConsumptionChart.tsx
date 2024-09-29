@@ -16,7 +16,7 @@ function ReportsConsumptionChart(props: {
             xAxisLabels={props.xAxisData}
             datasets={props.dataArray}
             xAxisTitle="Date"
-          yAxisTitle="Amount (KWH)"
+            yAxisTitle="Amount (KWH)"
           />
         </div>
       </div>

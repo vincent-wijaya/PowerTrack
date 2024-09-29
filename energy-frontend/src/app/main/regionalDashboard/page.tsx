@@ -63,10 +63,10 @@ export default function RegionalDashboard({
             description="Price of electricity per kWh"
           />
           <ProfitMargin
-            // profitMargin={useMemo(
-            //   () => calculateProfitMargin(profitMarginFetch),
-            //   [profitMarginFetch]
-            // )}
+          // profitMargin={useMemo(
+          //   () => calculateProfitMargin(profitMarginFetch),
+          //   [profitMarginFetch]
+          // )}
           />
           <InfoBox
             title="20%"

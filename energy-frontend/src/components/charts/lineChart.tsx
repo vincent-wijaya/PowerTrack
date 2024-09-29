@@ -1,6 +1,9 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { Line } from 'react-chartjs-2';
+import 'chartjs-adapter-date-fns';
+import { enUS } from 'date-fns/locale';
+
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -10,6 +13,7 @@ import {
   Title,
   Tooltip,
   Legend,
+  TimeScale,
 } from 'chart.js';
 
 // Register Chart.js components
@@ -20,12 +24,13 @@ ChartJS.register(
   LineElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  TimeScale
 );
 
 interface Dataset {
   label: string;
-  data: number[];
+  data: { x: string; y: number | string }[];
   borderColor: string;
   backgroundColor: string;
 }
@@ -36,6 +41,7 @@ interface Props {
   datasets: Dataset[];
   xAxisTitle: string;
   yAxisTitle: string;
+  xAxisUnit: string;
 }
 
 const LineChart: React.FC<Props> = ({
@@ -44,6 +50,7 @@ const LineChart: React.FC<Props> = ({
   datasets,
   xAxisTitle,
   yAxisTitle,
+  xAxisUnit,
 }) => {
   const [chartData, setChartData] = useState({
     labels: xAxisLabels,
@@ -84,9 +91,17 @@ const LineChart: React.FC<Props> = ({
     },
     scales: {
       x: {
-        type: 'category' as const,
+        type: 'time' as const,
         ticks: {
           color: 'white', // Set x-axis tick text color to white
+        },
+        adapters: {
+          date: {
+            locale: enUS,
+          },
+        },
+        time: {
+          unit: xAxisUnit,
         },
         title: {
           display: true,
