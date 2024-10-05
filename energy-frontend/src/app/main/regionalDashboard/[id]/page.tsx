@@ -13,6 +13,8 @@ import useSWR from 'swr';
 import ReportFormButton from '@/components/reportFormButton';
 import { EnergySources, fetchSources } from '@/api/getSources';
 import { DropdownOption } from '@/components/charts/dropDownFilter';
+import RenewableGenerationChart from '@/components/charts/renewableGenerationChart';
+
 import { useEffect, useState } from 'react';
 import { fetchProfitMargin } from '@/api/getProfitMargin';
 import { fetchEnergyConsumption } from '@/api/getEnergyConsumption';
@@ -167,6 +169,13 @@ export default function RegionalDashboard({
             onTimeRangeChange={onProfitChartTimeRangeChange}
             showTimeRangeDropdown={true}
             granularity={profitChartDateRange.granularity}
+          />
+          <RenewableGenerationChart
+            chartTitle="Suburb Renewable Energy Generation"
+            energyGenerationData={energyGenerationData}
+            onTimeRangeChange={onEnergyChartDateRangeChange}
+            showTimeRangeDropdown={true}
+            granularity={energyChartDateRange.granularity}
           />
         </div>
       </div>

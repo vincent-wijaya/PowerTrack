@@ -318,6 +318,7 @@ export default function IndividualReport({
             chartTitle={energyChartTitle}
             dataArray={energychartData}
             xAxisData={energyDateArray}
+            xAxisUnits={granularity ?? 'year'}
           />
           {data?.for.consumer_id === null && suburbData ? (
             <ProfitChart
@@ -330,6 +331,7 @@ export default function IndividualReport({
               chartTitle="Spending"
               dataArray={spendingPriceData}
               xAxisData={profitDateArray}
+              xAxisUnits={granularity ?? 'year'}
             />
           )}
 

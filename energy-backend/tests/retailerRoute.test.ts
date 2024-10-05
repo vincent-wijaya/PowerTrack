@@ -3780,3 +3780,233 @@ describe('GET /retailer/reports/:id Suburb', () => {
     });
   });
 });
+
+describe('GET /retailer/renewable-generation', () => {
+  let sequelize: Sequelize;
+  let appInstance: Application;
+
+  const mockRenewableGenerationData = [
+    { energy_generator_id: 1, date: '2024-01-01T09:00:00Z', amount: 100 },
+    { energy_generator_id: 1, date: '2024-01-01T09:30:00Z', amount: 200 },
+    { energy_generator_id: 1, date: '2024-02-01T09:00:00Z', amount: 200 },
+    { energy_generator_id: 1, date: '2024-02-01T09:30:00Z', amount: 300 },
+    { energy_generator_id: 1, date: '2024-03-01T09:00:00Z', amount: 300 },
+    { energy_generator_id: 1, date: '2024-03-01T09:30:00Z', amount: 400 },
+    { energy_generator_id: 1, date: '2024-04-01T09:00:00Z', amount: 400 },
+    { energy_generator_id: 1, date: '2024-04-01T09:30:00Z', amount: 500 },
+    // Non-renewable data should not be included in results
+    { energy_generator_id: 2, date: '2024-01-01T09:00:00Z', amount: 500 },
+    { energy_generator_id: 2, date: '2024-02-01T09:30:00Z', amount: 600 },
+  ];
+
+  beforeAll(async () => {
+    // Set up and connect to test database
+    sequelize = await connectToTestDb();
+    appInstance = app(sequelize);
+
+    const Suburb = appInstance.get('models').Suburb;
+    const GeneratorType = appInstance.get('models').GeneratorType;
+    const EnergyGenerator = appInstance.get('models').EnergyGenerator;
+    const EnergyGeneration = appInstance.get('models').EnergyGeneration;
+
+    // Insert prerequisite data for tests
+    await Suburb.bulkCreate([
+      {
+        id: 1,
+        name: 'Test Suburb',
+        postcode: 3000,
+        state: 'Victoria',
+        latitude: 0,
+        longitude: 0,
+      },
+    ]);
+
+    await GeneratorType.bulkCreate([
+      { id: 1, category: 'Solar', renewable: true }, // Renewable generator
+      { id: 2, category: 'Coal', renewable: false }, // Non-renewable generator
+    ]);
+
+    await EnergyGenerator.bulkCreate([
+      { id: 1, name: 'Solar Generator', suburb_id: 1, generator_type_id: 1 }, // Renewable generator
+      { id: 2, name: 'Coal Generator', suburb_id: 1, generator_type_id: 2 },  // Non-renewable generator
+    ]);
+
+    await EnergyGeneration.bulkCreate(mockRenewableGenerationData);
+  });
+
+  afterAll(async () => {
+    // Drop the test database
+    await sequelize.close();
+    await dropTestDb(sequelize);
+  });
+
+  it('should return error 400 if start date is missing', async () => {
+    const response = await request(appInstance).get('/retailer/renewable-generation');
+
+    expect(response.status).toBe(400);
+  });
+
+  it('should return error 400 if invalid suburb_id is provided', async () => {
+    const SUBURB_ID = '1.111'; // Invalid suburb_id
+
+    const response = await request(appInstance).get(
+      `/retailer/renewable-generation?suburb_id=${SUBURB_ID}`
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it('should return error 400 if start date is invalid', async () => {
+    const START_DATE = 'invalid-date';
+
+    const response = await request(appInstance).get(
+      `/retailer/renewable-generation?start_date=${START_DATE}`
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  it('should return renewable energy generation with daily granularity', async () => {
+    const SUBURB_ID = 1;
+    const START_DATE = '2024-01-01T00:00:00Z';
+    const END_DATE = '2024-01-09T00:00:00Z';
+  
+    // Filter only the data within the requested date range BEFORE aggregation
+    const filteredGenerationData = mockRenewableGenerationData
+      .filter((generation) => 
+        generation.energy_generator_id === 1 &&
+        moment(generation.date).isBetween(START_DATE, END_DATE, null, '[]') // Inclusive filter
+      )
+      .map((generation) => {
+        return {
+          ...generation,
+          truncatedDate: moment(generation.date).startOf('day').toISOString(),
+        };
+      });
+  
+    // Aggregate the data by day and calculate the average
+    let expectedEnergy = filteredGenerationData.reduce((acc: any, generation: any) => {
+      if (!acc[generation.truncatedDate]) {
+        acc[generation.truncatedDate] = { amount: 0, count: 0 };
+      }
+      acc[generation.truncatedDate].amount += generation.amount;
+      acc[generation.truncatedDate].count++;
+      return acc;
+    }, {});
+  
+    expectedEnergy = Object.keys(expectedEnergy).map((date) => {
+      return {
+        date,
+        amount: 
+          (expectedEnergy[date].amount / expectedEnergy[date].count) * 
+          kWhConversionMultiplier('daily'), // Daily multiplier
+      };
+    });
+  
+    const response = await request(appInstance).get(
+      `/retailer/renewable-generation?suburb_id=${SUBURB_ID}&start_date=${START_DATE}&end_date=${END_DATE}`
+    );
+  
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      suburb_id: SUBURB_ID,
+      start_date: START_DATE,
+      end_date: END_DATE,
+      renewable_energy: expectedEnergy,
+    });
+  });
+  
+
+  
+
+  it('should return renewable energy generation with weekly granularity', async () => {
+    const SUBURB_ID = 1;
+    const START_DATE = '2024-01-01T00:00:00Z';
+    const END_DATE = '2024-06-01T00:00:00Z';
+
+    const adjustedGenerationData = mockRenewableGenerationData
+      .filter((generation) => generation.energy_generator_id === 1) // Only renewable generator data
+      .map((generation) => {
+        return {
+          ...generation,
+          truncatedDate: moment(generation.date).startOf('isoWeek').toISOString(),
+        };
+      });
+
+    // Aggregate the data by week and average the amount
+    let expectedEnergy = adjustedGenerationData.reduce((acc: any, generation: any) => {
+      if (!acc[generation.truncatedDate]) {
+        acc[generation.truncatedDate] = { amount: 0, count: 0 };
+      }
+      acc[generation.truncatedDate].amount += generation.amount;
+      acc[generation.truncatedDate].count++;
+      return acc;
+    }, {});
+
+    expectedEnergy = Object.keys(expectedEnergy).map((date) => {
+      return {
+        date,
+        amount:
+          (expectedEnergy[date].amount / expectedEnergy[date].count) *
+          kWhConversionMultiplier('weekly'), // Gets the average amount
+      };
+    });
+
+    const response = await request(appInstance).get(
+      `/retailer/renewable-generation?suburb_id=${SUBURB_ID}&start_date=${START_DATE}&end_date=${END_DATE}`
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      suburb_id: SUBURB_ID,
+      start_date: START_DATE,
+      end_date: END_DATE,
+      renewable_energy: expectedEnergy,
+    });
+  });
+
+  it('should return nationwide renewable energy generation if no suburb_id is provided', async () => {
+    const START_DATE = '2024-01-01T00:00:00Z';
+    const END_DATE = '2024-06-01T00:00:00Z';
+
+    const adjustedGenerationData = mockRenewableGenerationData
+      .filter((generation) => generation.energy_generator_id === 1) // Only renewable generator data
+      .map((generation) => {
+        return {
+          ...generation,
+          truncatedDate: moment(generation.date).startOf('isoWeek').toISOString(),
+        };
+      });
+
+    // Aggregate the data by week and average the amount
+    let expectedEnergy = adjustedGenerationData.reduce((acc: any, generation: any) => {
+      if (!acc[generation.truncatedDate]) {
+        acc[generation.truncatedDate] = { amount: 0, count: 0 };
+      }
+      acc[generation.truncatedDate].amount += generation.amount;
+      acc[generation.truncatedDate].count++;
+      return acc;
+    }, {});
+
+    expectedEnergy = Object.keys(expectedEnergy).map((date) => {
+      return {
+        date,
+        amount:
+          (expectedEnergy[date].amount / expectedEnergy[date].count) *
+          kWhConversionMultiplier('weekly'), // Gets the average amount
+      };
+    });
+
+    const response = await request(appInstance).get(
+      `/retailer/renewable-generation?start_date=${START_DATE}&end_date=${END_DATE}`
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      start_date: START_DATE,
+      end_date: END_DATE,
+      renewable_energy: expectedEnergy,
+    });
+  });
+});
+
