@@ -17,6 +17,7 @@
     "chartjs": "^0.3.24",
     "chartjs-adapter-date-fns": "^3.0.0",
     "chartjs-plugin-datalabels": "^2.2.0",
+    "date-fns": "^4.1.0",
     "geojson": "^0.5.0",
     "html2canvas": "^1.4.1",
     "html2pdf.js": "^0.10.2",

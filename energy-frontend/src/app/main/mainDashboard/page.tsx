@@ -22,6 +22,7 @@ import { fetchEnergyConsumption } from '@/api/getEnergyConsumption';
 import { fetchEnergyGeneration } from '@/api/getEnergyGeneration';
 import { fetchSources } from '@/api/getSources';
 import EnergySourceBreakdown from '@/components/energySourceBreakdown';
+import RenewableGenerationChart from '@/components/charts/renewableGenerationChart';
 
 // Dynamically import the Map component with SSR disabled
 const Map = dynamic(() => import('@/components/map'), {
@@ -137,6 +138,14 @@ export default function MainDashboard() {
             onTimeRangeChange={onProfitChartDateRangeChange}
             showTimeRangeDropdown={true}
             granularity={profitChartDateRange.granularity}
+          />
+
+          <RenewableGenerationChart
+            chartTitle="Nationwide Renewable Energy Generation"
+            energyGenerationData={energyGenerationData}
+            onTimeRangeChange={onEnergyChartDateRangeChange}
+            showTimeRangeDropdown={true}
+            granularity={energyChartDateRange.granularity}
           />
         </div>
       </div>

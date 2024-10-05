@@ -7,6 +7,7 @@ import PageHeading from '@/components/pageHeading';
 import ProfitChart from '@/components/charts/profitChart';
 import ProfitMargin from '@/components/infoBoxes/profitMargin';
 import WarningTable from '@/components/tables/warningTable';
+import RenewableGenerationChart from '@/components/charts/renewableGenerationChart';
 import { POLLING_RATE } from '@/config';
 import { fetcher } from '@/utils';
 import { useMemo } from 'react';

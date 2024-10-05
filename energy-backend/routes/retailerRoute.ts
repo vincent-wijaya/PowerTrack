@@ -2343,6 +2343,164 @@ const getEnergySourceBreakdown = async (
 };
 
 /**
+ * GET /retailer/renewable-generation
+ *
+ * Retrieve average renewable energy generation data for a suburb over a period of time in kWh.
+ * Based on the time period, the data is aggregated by hour, day, or week.
+ * 
+ * This API specifically filters the energy generation sources that are marked as "renewable."
+ *
+ * Query parameters:
+ * - suburb_id: The ID of the suburb to retrieve data for. (optional)
+ * - start_date: The start date of the period to retrieve data for, in ISO format. (required)
+ * - end_date: The end date of the period to retrieve data for, in ISO format. (optional, defaults to now)
+ *
+ * Response format:
+ * {
+ *   suburb_id: number, // The ID of the suburb (if provided)
+ *   start_date: string, // The start date input
+ *   end_date: string, // The end date input (now if not provided)
+ *   renewable_energy: [
+ *     { date: string, amount: number }, // An array of { date: string, amount: number } objects, where the date is based on granularity and the amount represents renewable energy generated.
+ *   ]
+ * }
+ *
+ * Example response:
+ * {
+ *   suburb_id: 1,
+ *   start_date: '2024-01-01T05:00:00Z',
+ *   end_date: '2024-01-01T10:00:00Z',
+ *   renewable_energy: [
+ *     {
+ *         date: '2024-01-01T08:00:00Z',
+ *         amount: 800, // Renewable energy generation in kWh
+ *     },
+ *     ...
+ *   ]
+ * }
+ */
+
+router.get('/renewable-generation', async (req, res) => {
+  try {
+    let { suburb_id, start_date, end_date } = req.query; // Get query parameters
+    let { sequelize, EnergyGeneration, EnergyGenerator, GeneratorType } =
+      req.app.get('models');
+
+    // Define where clause for suburb (if provided)
+    let suburbWhere: any = {};
+    if (suburb_id) {
+      // Check if suburb_id is an integer
+      if (!Number.isInteger(Number(suburb_id))) {
+        return res.status(400).send('Suburb ID must be an integer');
+      }
+
+      suburbWhere.suburb_id = suburb_id;
+    }
+
+    // If no start date is provided, return error 400
+    if (!start_date)
+      return res.status(400).send('Start date must be provided.');
+
+    // If no end date is provided, set it to the current date
+    if (!end_date) {
+      end_date = moment().toISOString();
+    }
+
+    // Validate date formats
+    if (!moment(String(start_date), moment.ISO_8601, true).isValid()) {
+      return res.status(400).send('Invalid start date format. Use ISO format.');
+    }
+
+    if (!moment(String(end_date), moment.ISO_8601, true).isValid()) {
+      return res.status(400).send('Invalid end date format. Use ISO format.');
+    }
+
+    if (start_date > end_date) {
+      return res.status(400).send('Invalid date range.');
+    }
+
+    // Define where clause for date range
+    let dateGranularity: { name: string; sequelize: string } =
+      getTemporalGranularity(String(start_date), String(end_date));
+    let dateWhere: any = {};
+    // Set the date range to be within the start and end dates
+    dateWhere.date = {
+      [Op.and]: {
+        [Op.gt]: moment(String(start_date)).toISOString(),
+        [Op.lte]: moment(String(end_date)).toISOString(),
+      },
+    };
+
+    // Retrieve renewable energy generation data based on the date granularity
+    const result = await EnergyGeneration.findAll({
+      attributes: [
+        [sequelize.fn('AVG', sequelize.col('amount')), 'amount'], // Average the amount of renewable energy generated
+        [
+          sequelize.fn(
+            'date_trunc',
+            dateGranularity.sequelize,
+            sequelize.col('date')
+          ),
+          'truncatedDate',
+        ], // Truncate the date based on the date granularity
+      ],
+      group: ['truncatedDate'],
+      include: [
+        {
+          model: EnergyGenerator,
+          attributes: [],
+          where: suburbWhere,
+          include: [
+            {
+              model: GeneratorType,
+              attributes: [],
+              where: {
+                renewable: true, // Filter for renewable energy generators
+              },
+            },
+          ],
+        },
+      ],
+      where: {
+        ...dateWhere,
+      },
+      order: [['truncatedDate', 'ASC']],
+    });
+
+    // Prepare the data to be returned
+    let returnData: any = {
+      start_date: start_date,
+      end_date: end_date,
+      renewable_energy: [],
+    };
+
+    // Add suburb_id to the return data (if provided)
+    if (suburb_id) {
+      returnData.suburb_id = Number(suburb_id);
+    }
+
+    // Extract the renewable energy generation data
+    result.forEach((generation: any) => {
+      const date = moment(generation.dataValues.truncatedDate).toISOString();
+
+      // Add the date and amount of renewable energy generated to the return data
+      returnData.renewable_energy.push({
+        date,
+        amount:
+          Number(generation.dataValues.amount) *
+          kWhConversionMultiplier(dateGranularity.name), // Converts from kW to kWh based on granularity
+      });
+    });
+
+    return res.status(200).send(returnData);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).send('Internal server error');
+  }
+});
+
+
+/**
  * Retrieves consumer data.
  * @param db sequalize models
  * @param id id of consumer

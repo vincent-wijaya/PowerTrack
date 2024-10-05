@@ -3,23 +3,26 @@ import React, { useState } from 'react';
 import Dropdown, { DropdownOption } from './dropDownFilter'; // Adjust the path based on your folder structure
 import LineChart from './lineChart';
 import {
-  EnergyConsumptionAmount,
-  EnergyConsumptionData,
-} from '@/api/getEnergyConsumption';
+  RenewableEnergyGenerationData,
+  RenewableEnergyGenerationAmount,
+} from '@/api/getRenewableEnergyGeneration';
 
+import {
+  EnergyGenerationAmount,
+  EnergyGenerationData,
+} from '@/api/getEnergyGeneration';
 import { generateDateRange } from '@/utils';
 
 interface EnergyChartProps {
   chartTitle: string;
-  energyConsumptionData: EnergyConsumptionData;
+  energyGenerationData?: RenewableEnergyGenerationData;
   showTimeRangeDropdown?: boolean;
   onTimeRangeChange?: (value: DropdownOption) => void;
   granularity: string;
   className?: string;
-  buyingPrice: number;
 }
 
-function ConsumerSpendChart(props: EnergyChartProps) {
+function RenewableEnergyChart(props: EnergyChartProps) {
   const [energyChartDateRange, setEnergyChartDateRange] = useState<{
     start: string;
     end: string;
@@ -28,16 +31,16 @@ function ConsumerSpendChart(props: EnergyChartProps) {
 
   let datasets = [
     {
-      label: 'Spending',
-      data: props.energyConsumptionData?.energy.map(
-        (c: EnergyConsumptionAmount) => {
+      label: 'Energy Generation kWh',
+      data: props.energyGenerationData?.energy.map(
+        (c: RenewableEnergyGenerationAmount) => {
           return {
             x: c.date,
-            y: (Number(c.amount) * props.buyingPrice).toFixed(2),
+            y: c.amount.toFixed(2),
           };
         }
       ),
-      borderColor: 'red',
+      borderColor: 'green',
       backgroundColor: 'white',
     },
   ];
@@ -56,7 +59,7 @@ function ConsumerSpendChart(props: EnergyChartProps) {
             chartTitle=""
             datasets={datasets}
             xAxisTitle="Date"
-            yAxisTitle="Amount (AUD $)"
+            yAxisTitle="Amount (kWh)"
             xAxisUnit={energyChartDateRange.granularity}
           />
         </div>
@@ -66,4 +69,4 @@ function ConsumerSpendChart(props: EnergyChartProps) {
   );
 }
 
-export default ConsumerSpendChart;
+export default RenewableEnergyChart;

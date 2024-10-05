@@ -13,10 +13,11 @@ import ConsumerSpendChart from '@/components/charts/consumerSpendChart';
 import useSWR from 'swr';
 import EnergySourceBreakdown from '@/components/energySourceBreakdown';
 import { EnergySources, fetchSources } from '@/api/getSources';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { DropdownOption } from '@/components/charts/dropDownFilter';
 import EnergyChart from '@/components/charts/energyChart';
 import { fetchEnergyConsumption } from '@/api/getEnergyConsumption';
+import { POLLING_RATE } from '@/config';
 
 interface Consumer {
   suburb_id: number;
@@ -48,7 +49,21 @@ export default function UserDashboard({ params }: { params: { id: number } }) {
     params.id,
     'consumer'
   );
+  const url = process.env.NEXT_PUBLIC_API_URL;
+  const { data: buyingPrice, error } = useSWR(
+    `${url}/consumer/buyingPrice`,
+    fetcher,
+    {
+      refreshInterval: POLLING_RATE,
+    }
+  );
 
+  const [buyPrce, setBuyPrce] = useState(0);
+
+  useEffect(() => {
+    if (!buyingPrice) return;
+    setBuyPrce(buyingPrice.amount);
+  }, [buyingPrice]);
   const onEnergyChartDateRangeChange = (value: DropdownOption) => {
     const dateRange = generateDateRange(value);
 
@@ -133,10 +148,14 @@ export default function UserDashboard({ params }: { params: { id: number } }) {
             granularity={energyChartDateRange.granularity}
           />
           <ConsumerSpendChart
-            chartName="Spending"
-            context_id={params.id.toString()}
-            buyingPrice={0.31}
+            chartTitle="Spending"
+            energyConsumptionData={energyConsumptionData}
+            onTimeRangeChange={onEnergyChartDateRangeChange}
+            showTimeRangeDropdown={true}
+            granularity={energyChartDateRange.granularity}
+            buyingPrice={Number(buyPrce)}
           />
+
           {/* Uncomment and add styles for ConsumerEnergyChart if needed */}
           {/* <div className="p-4 bg-itembg border border-stroke rounded-lg">
             <ConsumerEnergyChart />
