@@ -76,14 +76,14 @@ router.get('/greenEnergy', async (req, res) => {
   // Check if there is no generation information
   const noData = !renewableGeneration && !nonrenewableGeneration;
   if (noData)
-    return res.status(500).json({ error: 'No generation records found.' });
+    return res.status(400).json({ error: 'No generation records found.' });
 
   // Calculate green energy generation percentage
   let greenUsagePercent;
   if (!renewableGeneration) {
     greenUsagePercent = 0;
   } else if (!nonrenewableGeneration) {
-    greenUsagePercent = 100;
+    greenUsagePercent = 1;
   } else {
     greenUsagePercent =
       parseFloat(renewableGeneration) /
@@ -95,13 +95,13 @@ router.get('/greenEnergy', async (req, res) => {
     await db.WarningType.findOne({ where: { category: 'fossil_fuels' } })
   )?.target;
   if (!greenTarget) {
-    return res.status(500).json({ error: 'No green target found.' });
+    return res.status(400).json({ error: 'No green target found.' });
   }
   const greenGoalPercent = greenUsagePercent / parseFloat(greenTarget);
 
   return res.json({
-    greenUsagePercent: greenUsagePercent,
-    greenGoalPercent: greenGoalPercent,
+    greenUsagePercent,
+    greenGoalPercent,
   });
 });
 

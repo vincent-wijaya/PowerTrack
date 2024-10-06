@@ -96,7 +96,7 @@ export default function RegionalTable() {
 
   return (
     <div>
-      <div>
+      <div className='flex items-center mb-4'>
         <input
           type="text"
           className="flex w-full p-2 bg-itembg border border-chartBorder text-white"

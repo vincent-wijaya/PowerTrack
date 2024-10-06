@@ -111,16 +111,6 @@ describe('GET /consumer/greenEnergy', () => {
       { id: 0, name: 'Gen 0', generator_type_id: 1, suburb_id: 1 },
       { id: 1, name: 'Gen 1', generator_type_id: 2, suburb_id: 1 },
     ]);
-    await db.EnergyGeneration.create({
-      amount: 10,
-      date: new Date().toISOString(),
-      energy_generator_id: 0,
-    });
-    await db.EnergyGeneration.create({
-      amount: 10,
-      date: new Date().toISOString(),
-      energy_generator_id: 1,
-    });
 
     await db.GoalType.create({
       id: 4,
@@ -144,11 +134,73 @@ describe('GET /consumer/greenEnergy', () => {
     await sequelize.close();
     await dropTestDb(sequelize);
   });
+  
+  afterEach(async () => {
+    // Clear the ConsumerConsumption table
+    await appInstance.get('models').EnergyGeneration.destroy({
+      where: {},
+      truncate: true,
+    });
+  });
 
-  it('should return the green energy data', async () => {
+  it('should return error if no generation records exist', async () => {
     const response = await request(appInstance).get('/consumer/greenEnergy');
 
-    // Get the latest selling price from the test data
+    expect(response.status).toBe(400);
+  })
+
+  it('should return 0% green usage if no renewable energy generation', async () => {
+    const { EnergyGeneration } = appInstance.get('models');
+
+    await EnergyGeneration.create({
+      amount: 10,
+      date: new Date().toISOString(),
+      energy_generator_id: 0,
+    });
+
+    const response = await request(appInstance).get('/consumer/greenEnergy');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      greenUsagePercent: 0,
+      greenGoalPercent: 0,
+    });
+  });
+
+  it('should return 100% green usage if no non-renewable energy generation', async () => {
+    const { EnergyGeneration } = appInstance.get('models');
+
+    await EnergyGeneration.create({
+      amount: 10,
+      date: new Date().toISOString(),
+      energy_generator_id: 1,
+    });
+
+    const response = await request(appInstance).get('/consumer/greenEnergy');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      greenUsagePercent: 1,
+      greenGoalPercent: 2
+    });
+  });
+
+  it('should return the green energy data', async () => {
+    const { EnergyGeneration } = appInstance.get('models');
+
+    await EnergyGeneration.create({
+      amount: 10,
+      date: new Date().toISOString(),
+      energy_generator_id: 0,
+    });
+    await EnergyGeneration.create({
+      amount: 10,
+      date: new Date().toISOString(),
+      energy_generator_id: 1,
+    });
+
+    const response = await request(appInstance).get('/consumer/greenEnergy');
+
     expect(response.status).toBe(200);
     expect(response.body).toEqual({
       greenUsagePercent: 0.5,

@@ -110,7 +110,13 @@ export default function UserDashboard({ params }: { params: { id: number } }) {
 
   return (
     <>
-      <PageHeading title={title} />
+      <div className="flex justify-between items-center mb-6">
+        <PageHeading title={title} />
+        <ReportFormButton
+          id={stringID}
+          type="consumer"
+        />
+      </div>
 
       <div className="flex gap-6">
         {' '}
@@ -162,11 +168,6 @@ export default function UserDashboard({ params }: { params: { id: number } }) {
           </div> */}
         </div>
       </div>
-
-      <ReportFormButton
-        id={stringID}
-        type="consumer"
-      />
     </>
   );
 }

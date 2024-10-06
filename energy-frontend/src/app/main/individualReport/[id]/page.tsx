@@ -266,11 +266,19 @@ export default function IndividualReport({
       className="bg-bgmain"
       id="contentToExport"
     >
+      <div className="flex justify-between">
       <PageHeading title="REPORT" />
-
-      {highPriority && <div className="text-[#FFA500]">High Priority</div>}
-
-      <div className="text-white py-2">
+      <button
+            onClick={handleExport}
+            className={`p-4 bg-purple text-white text-center rounded-lg ${
+              isExporting ? 'hidden' : ''
+            }`}
+            disabled={isExporting}
+          >
+            {isExporting ? 'Exporting...' : 'Export to PDF'}
+          </button>
+      </div>
+      <div className="text-white pb-2">
         {DateTime.fromISO(data.start_date).toFormat('D')} -{' '}
         {DateTime.fromISO(data.end_date).toFormat('D')}
         <br></br>
@@ -303,15 +311,7 @@ export default function IndividualReport({
             energySources={energySources}
             showTimeRangeDropdown={false}
           />
-          <button
-            onClick={handleExport}
-            className={`p-4 w-full h-1/4 bg-purple text-white text-center rounded-lg mt-4 ${
-              isExporting ? 'hidden' : ''
-            }`}
-            disabled={isExporting}
-          >
-            {isExporting ? 'Exporting...' : 'Export to PDF'}
-          </button>
+          
         </div>
         <div className="flex flex-col gap-3">
           <ReportsConsumptionChart

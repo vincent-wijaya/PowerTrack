@@ -120,10 +120,10 @@ const LineChart: React.FC<Props> = ({
           color: 'white', // Set y-axis title text color to white
         },
         grid: {
-          color: 'rgba(255, 255, 255, 0.2)', // Set y-axis gridlines color to white with opacity
+          color: 'rgba(255, 255, 255, 0.5)', // Set y-axis gridlines color to white with opacity
         },
         border: {
-          dash: [3, 3],
+          dash: [2, 3],
         },
       },
     },
