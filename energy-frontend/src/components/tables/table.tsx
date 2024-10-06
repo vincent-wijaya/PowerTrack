@@ -78,12 +78,12 @@ export default function Table({
   return (
     <>
       <div>
-        <table className="w-full border-stroke border-2 rounded-sm">
-          <thead className="items-start flex-shrink-0 self-stretch">
-            <tr className="flex items-start flex-shrink-0 self-stretch">
+        <table className="w-full border border-stroke rounded-sm">
+          <thead className="items-start flex-shrink-0 self-stretch bg-mainbg">
+            <tr className="flex items-start flex-shrink-0 self-stretch ">
               {updatedColumns.map((column, columnIndex) => (
                 <th
-                  className="flex p-4 items-start gap-8 flex-1 self-stretch border-stroke border-r-2 border-b-2"
+                  className="flex p-4 items-start gap-8 flex-1 self-stretch border border-stroke "
                   key={columnIndex}
                 >
                   <div className="font-inter text-white text-nowrap">
@@ -93,11 +93,11 @@ export default function Table({
               ))}
             </tr>
           </thead>
-          <tbody className="items-start flex-shrink-0 self-stretch bg-itembg">
+          <tbody className="items-start flex-shrink-0 self-stretch bg-tablebg">
             {pageItems.length === 0 ? (
               <tr className="flex items-start flex-shrink-0 self-stretch">
                 <td
-                  className="px-3 py-8 items-center text-center flex-1 self-stretch border-stroke border-r-2 border-b-2"
+                  className="px-3 py-8 items-center text-center flex-1 self-stretch border border-stroke"
                   colSpan={updatedColumns.length}
                 >
                   <div className="font-inter text-white">No data found</div>
@@ -111,7 +111,7 @@ export default function Table({
                 >
                   {columns.map((column, columnIndex) => (
                     <td
-                      className="px-3 py-8 items-start gap-8 flex-1 self-stretch border-stroke border-r-2 border-b-2"
+                      className="px-3 py-8 items-start gap-8 flex-1 self-stretch border bg-itembg border-stroke"
                       key={columnIndex}
                     >
                       <div className="font-inter text-white">
@@ -123,7 +123,7 @@ export default function Table({
                   ))}
                   {link && (
                     <td
-                      className="px-3 py-8 items-start gap-8 flex-1 self-stretch border-stroke border-r-2 border-b-2"
+                      className="px-3 py-8 items-start gap-8 flex-1 self-stretch bg-itembg border-stroke border-2"
                       key={`action-${rowIndex}`}
                     >
                       <Link

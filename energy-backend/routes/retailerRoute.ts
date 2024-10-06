@@ -1258,11 +1258,42 @@ router.get('/suburbs', async (req, res) => {
 });
 
 router.get('/suburbs/:id', async (req, res) => {
-  const { sequelize, Suburb } = req.app.get('models') as DbModelType;
+  const { sequelize, Suburb, Consumer } = req.app.get('models') as DbModelType;
   const id = req.params.id;
   try {
     const suburb = await Suburb.findOne({ where: { id: id } });
-    res.send(suburb);
+    if (!suburb) {
+      return res.status(404).send('Suburb not found');
+    }
+    const consumerCounts = (await Consumer.findAll({
+      attributes: [
+        [sequelize.fn('COUNT', sequelize.col('consumer.id')), 'count'],
+        'consumer.high_priority',
+      ],
+      include: [
+        {
+          model: Suburb,
+          attributes: [],
+          where: { id: id },
+        },
+      ],
+      group: ['consumer.high_priority'],
+      raw: true,
+    })) as unknown as { count: string; high_priority: boolean }[];
+    const highPriorityCount = parseInt(
+      consumerCounts.find((c) => c.high_priority)?.count || '0'
+    );
+    const lowPriorityCount = parseInt(
+      consumerCounts.find((c) => !c.high_priority)?.count || '0'
+    );
+    res.send({
+      id: suburb.id,
+      name: suburb.name,
+      postcode: suburb.postcode,
+      state: suburb.state,
+      highPriorityConsumers: highPriorityCount,
+      lowPriorityConsumers: lowPriorityCount,
+    });
   } catch (error) {
     res.status(500).send({
       error: 'An error occurred while fetching suburbs',
@@ -1854,6 +1885,15 @@ router.get('/powerOutages', async (req, res) => {
     'models'
   ) as DbModelType;
 
+  interface ConsumerData {
+    id: number,
+    street_address: string,
+    suburb_id: number,
+    latitude: number,
+    longitude: number,
+    high_priority: boolean,
+  }
+
   // Retrieve consumers with zero consumption for the past 30 minutes
   try {
     // Retrieve list of consumers that have logged data to filter out consumers that have not been connected to the power grid yet.
@@ -1877,6 +1917,7 @@ router.get('/powerOutages', async (req, res) => {
         'longitude',
         'latitude',
         'high_priority',
+        'suburb_id',
         [fn('SUM', col('consumer_consumptions.amount')), 'total_amount'],
       ],
       where: {
@@ -1906,14 +1947,16 @@ router.get('/powerOutages', async (req, res) => {
         'consumer.street_address',
         'consumer.longitude',
         'consumer.latitude',
+        'consumer.suburb_id',
       ],
       having: literal(
         'SUM(consumer_consumptions.amount) IS NULL OR SUM(consumer_consumptions.amount) = 0'
       ), // Filter out consumers with non-zero consumption
       order: [['id', 'ASC']],
     })) as unknown as {
-      id: string;
+      id: number;
       street_address: string;
+      suburb_id: number;
       longitude: string;
       latitude: string;
       high_priority: boolean;
@@ -1928,6 +1971,7 @@ router.get('/powerOutages', async (req, res) => {
         'longitude',
         'latitude',
         'high_priority',
+        'suburb_id',
         [fn('SUM', col('consumer_consumptions.amount')), 'total_amount'],
       ],
       where: {
@@ -1957,14 +2001,16 @@ router.get('/powerOutages', async (req, res) => {
         'consumer.street_address',
         'consumer.longitude',
         'consumer.latitude',
+        'consumer.suburb_id',
       ],
       having: literal(
         'SUM(consumer_consumptions.amount) IS NULL OR SUM(consumer_consumptions.amount) = 0'
       ), // Filter out consumers with non-zero consumption
       order: [['id', 'ASC']],
     })) as unknown as {
-      id: string;
+      id: number;
       street_address: string;
+      suburb_id: number;
       longitude: string;
       latitude: string;
       high_priority: boolean;
@@ -1982,6 +2028,7 @@ router.get('/powerOutages', async (req, res) => {
           consumer_id: consumer.id,
           street_address: consumer.street_address,
           high_priority: consumer.high_priority,
+          suburb_id: consumer.suburb_id,
         },
         geometry: {
           type: 'Point',
@@ -2003,11 +2050,9 @@ router.get('/powerOutages', async (req, res) => {
       units: 'kilometers',
     });
 
-    type ConsumerInstance = InstanceType<typeof Consumer>;
-
     // Define the data structure for the cluster data
-    const clusterMap = new Map<number, { consumers: ConsumerInstance[] }>(); // Map to store clusters of outages
-    const consumerOutages: ConsumerInstance[] = []; // Array to store all consumers in outage clusters
+    const clusterMap = new Map<number, { consumers: ConsumerData[] }>(); // Map to store clusters of outages
+    const consumerOutages: ConsumerData[] = []; // Array to store all consumers in outage clusters
 
     // Iterate through the clustered features and group consumers by cluster
     (
@@ -2017,6 +2062,7 @@ router.get('/powerOutages', async (req, res) => {
           consumer_id: number;
           street_address: string;
           high_priority: boolean;
+          suburb_id: number;
           cluster?: number;
         }
       >[]
@@ -2024,13 +2070,14 @@ router.get('/powerOutages', async (req, res) => {
       const clusterId = feature.properties.cluster;
 
       // Extract consumer data from the feature properties
-      const consumerData: ConsumerInstance = Consumer.build({
+      const consumerData: ConsumerData = {
         id: Number(feature.properties.consumer_id),
         street_address: feature.properties.street_address,
-        latitude: String(feature.geometry.coordinates[1]),
-        longitude: String(feature.geometry.coordinates[0]),
+        suburb_id: Number(feature.properties.suburb_id),
+        latitude: feature.geometry.coordinates[1],
+        longitude: feature.geometry.coordinates[0],
         high_priority: Boolean(feature.properties.high_priority),
-      });
+      };
 
       // Skip if feature is not part of a cluster
       if (clusterId === undefined) {
@@ -2057,13 +2104,14 @@ router.get('/powerOutages', async (req, res) => {
       if (
         consumerOutages.find((c) => c.id === Number(consumer.id)) === undefined
       ) {
-        const consumerData: ConsumerInstance = Consumer.build({
+        const consumerData: ConsumerData = {
           id: Number(consumer.id),
           street_address: consumer.street_address,
-          latitude: consumer.latitude,
-          longitude: consumer.longitude,
+          suburb_id: Number(consumer.suburb_id),
+          latitude: Number(consumer.latitude),
+          longitude: Number(consumer.longitude),
           high_priority: Boolean(consumer.high_priority),
-        });
+        };
 
         consumerOutages.push(consumerData); // Add to list of consumers with outages
         // Add high priority consumer to its own cluster

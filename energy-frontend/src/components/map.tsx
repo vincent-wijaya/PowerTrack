@@ -28,6 +28,7 @@ type Consumer = {
   latitude: number;
   longitude: number;
   high_priority: boolean;
+  suburb_id: number;
 };
 
 type Cluster = {
@@ -71,7 +72,7 @@ function getColorBasedOnConsumption(consumption: number | undefined): string {
 export default function Map(props: { className?: string }) {
   const router = useRouter();
   const [powerOutageData, setPowerOutageData] = useState<
-    { latLng: LatLng; id: number }[]
+    { latLng: LatLng; id: number; suburb_id: number }[]
   >([]);
   const [victorianSuburbs, setVictorianSuburbs] = useState<
     FeatureCollection<any>
@@ -106,7 +107,7 @@ export default function Map(props: { className?: string }) {
       if (mapData && outageData) {
         const consumptionResults = mapData;
         const outageResults = outageData.power_outages;
-
+        
         const response = await fetch('/data/combined.json');
         if (!response.ok) {
           throw new Error('Failed to fetch combined JSON data');
@@ -153,6 +154,7 @@ export default function Map(props: { className?: string }) {
           return {
             latLng: new LatLng(consumer.latitude, consumer.longitude),
             id: consumer.id,
+            suburb_id: consumer.suburb_id
           };
         });
 
@@ -176,8 +178,15 @@ export default function Map(props: { className?: string }) {
   }
 
   const useOnEachFeature = (feature: Feature<any>, layer: any) => {
+    
+    const suburbId = feature.properties?.id;
+    const outageConsumersCount = powerOutageData.filter(
+      (marker) => marker.suburb_id === parseInt(suburbId)
+    ).length;
+
     const consumptionAmount = feature.properties?.amount;
     const color = getColorBasedOnConsumption(consumptionAmount);
+
     layer.setStyle({
       fillColor: color,
       weight: 1,
@@ -189,6 +198,7 @@ export default function Map(props: { className?: string }) {
       `<div>
            <p>Suburb: ${feature.properties?.name}</p>
            <p>Consumption (kW): ${feature.properties?.amount}</p>
+            <p>Outages: ${outageConsumersCount} consumer(s)</p>
          </div>`
     );
 

@@ -114,7 +114,12 @@ export default function MainDashboard() {
             />
           </div>
           <Map className="h-[400px]" />
-          <WarningTable />
+          <div className="flex flex-col justify-center p-4 w-full bg-itembg border border-stroke rounded-lg text-left space-y-2">
+            <div className='text-white w-full text-left font-bold'>
+            Warnings
+            </div>
+            <WarningTable />
+          </div>
           <EnergySourceBreakdown
             chartTitle="Nationwide Energy Generation Source Breakdown"
             energySources={energySources?.sources}

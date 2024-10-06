@@ -27,6 +27,8 @@ interface SuburbData {
   name: string;
   postcode: number;
   state: string;
+  highPriorityConsumers: number;
+  lowPriorityConsumers: number;
 }
 
 export default function RegionalDashboard({
@@ -124,10 +126,28 @@ export default function RegionalDashboard({
   );
 
   return (
-    <>
-      <PageHeading
-        title={`${suburbData?.name}, ${suburbData?.postcode}, ${suburbData?.state}`}
-      />
+    <div className="text-white">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <PageHeading
+            title={`${suburbData?.name}, ${suburbData?.postcode}, ${suburbData?.state}`}
+          />
+          <p className="text-sm">
+            <span className="font-bold">
+              {suburbData?.highPriorityConsumers}
+            </span>{' '}
+            High Priority Users {'  '}|{'  '}
+            <span className="font-bold">
+              {suburbData?.lowPriorityConsumers}
+            </span>{' '}
+            Low Priority Users
+          </p>
+        </div>
+        <ReportFormButton
+          id={params.id}
+          type="suburb"
+        />
+      </div>
 
       <div className="flex gap-6">
         {' '}
@@ -179,11 +199,6 @@ export default function RegionalDashboard({
           />
         </div>
       </div>
-
-      <ReportFormButton
-        id={params.id}
-        type="suburb"
-      />
-    </>
+    </div>
   );
 }
