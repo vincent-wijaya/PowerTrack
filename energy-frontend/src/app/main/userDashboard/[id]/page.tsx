@@ -45,7 +45,6 @@ export default function UserDashboard({ params }: { params: { id: number } }) {
 
   const energyConsumptionData = fetchEnergyConsumption(
     energyChartDateRange.start,
-    energyChartDateRange.end,
     params.id,
     'consumer'
   );
@@ -90,7 +89,6 @@ export default function UserDashboard({ params }: { params: { id: number } }) {
 
   const energySources = fetchSources(
     energySourcesDateRange.start,
-    energySourcesDateRange.end,
     params.id,
     'consumer'
   );

@@ -99,7 +99,7 @@ router.get('/greenEnergy', async (req, res) => {
   }
   const greenGoalPercent = greenUsagePercent / parseFloat(greenTarget);
 
-  return res.json({
+  return res.status(200).json({
     greenUsagePercent,
     greenGoalPercent,
   });

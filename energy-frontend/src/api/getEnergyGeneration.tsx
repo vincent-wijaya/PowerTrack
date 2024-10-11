@@ -1,6 +1,6 @@
 import { POLLING_RATE } from '@/config';
 import { fetcher } from '@/utils';
-import useSWRImmutable from 'swr/immutable';
+import useSWR from 'swr';
 
 export interface EnergyGenerationAmount {
   date: string;
@@ -17,17 +17,18 @@ export interface EnergyGenerationData {
 
 export const fetchEnergyGeneration = (
   startDate: string | Date,
-  endDate: string | Date,
   id?: string | number,
   type?: string
 ): EnergyGenerationData => {
-  const { data: energyGenerationData } = useSWRImmutable(
-    `${process.env.NEXT_PUBLIC_API_URL}/retailer/generation?start_date=${startDate}&end_date=${endDate}${type ? `&${type}_id=${id}` : ''}`,
+  const { data: energyGenerationData } = useSWR(
+    `${process.env.NEXT_PUBLIC_API_URL}/retailer/generation?start_date=${startDate}${type ? `&${type}_id=${id}` : ''}`,
     fetcher,
     {
       refreshInterval: POLLING_RATE,
     }
   );
+
+  console.log(energyGenerationData)
 
   return energyGenerationData;
 };

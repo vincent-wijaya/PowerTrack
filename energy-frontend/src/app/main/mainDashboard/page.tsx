@@ -56,17 +56,14 @@ export default function MainDashboard() {
   );
 
   const energyConsumptionData = fetchEnergyConsumption(
-    energyChartDateRange.start,
-    energyChartDateRange.end
+    energyChartDateRange.start
   );
   const energyGenerationData = fetchEnergyGeneration(
-    energyChartDateRange.start,
-    energyChartDateRange.end
+    energyChartDateRange.start
   );
 
   const profitMarginData = fetchProfitMargin(
-    profitChartDateRange.start,
-    profitChartDateRange.end
+    profitChartDateRange.start
   );
 
   const onEnergyChartDateRangeChange = (value: DropdownOption) => {
@@ -83,7 +80,6 @@ export default function MainDashboard() {
 
   const energySources = fetchSources(
     energySourcesDateRange.start,
-    energySourcesDateRange.end
   );
 
   const onEnergySourceTimeRangeChange = (value: DropdownOption) => {

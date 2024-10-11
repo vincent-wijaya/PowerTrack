@@ -54,13 +54,11 @@ export default function RegionalDashboard({
 
   const energyConsumptionData = fetchEnergyConsumption(
     energyChartDateRange.start,
-    energyChartDateRange.end,
     params.id,
     'suburb'
   );
   const energyGenerationData = fetchEnergyGeneration(
     energyChartDateRange.start,
-    energyChartDateRange.end,
     params.id,
     'suburb'
   );
@@ -79,7 +77,6 @@ export default function RegionalDashboard({
 
   const profitMarginData = fetchProfitMargin(
     profitChartDateRange.start,
-    profitChartDateRange.end
   );
 
   const { data: suburbData, error: suburbError } = useSWR<SuburbData>(
@@ -92,7 +89,6 @@ export default function RegionalDashboard({
 
   const energySources = fetchSources(
     energySourcesDateRange.start,
-    energySourcesDateRange.end,
     params.id,
     'suburb'
   );

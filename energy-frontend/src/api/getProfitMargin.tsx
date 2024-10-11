@@ -1,6 +1,6 @@
 import { POLLING_RATE } from '@/config';
 import { fetcher } from '@/utils';
-import useSWRImmutable from 'swr/immutable';
+import useSWR from 'swr';
 
 export interface Price {
   date: string;
@@ -19,10 +19,9 @@ export interface ProfitMarginData {
 
 export const fetchProfitMargin = (
   startDate: string | Date,
-  endDate: string | Date
 ): ProfitMarginData => {
-  const { data: profitMarginData } = useSWRImmutable(
-    `${process.env.NEXT_PUBLIC_API_URL}/retailer/profitMargin?start_date=${startDate}&end_date${endDate}`,
+  const { data: profitMarginData } = useSWR(
+    `${process.env.NEXT_PUBLIC_API_URL}/retailer/profitMargin?start_date=${startDate}`,
     fetcher,
     {
       refreshInterval: POLLING_RATE,

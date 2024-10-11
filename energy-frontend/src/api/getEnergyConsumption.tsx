@@ -1,6 +1,6 @@
 import { POLLING_RATE } from '@/config';
 import { fetcher } from '@/utils';
-import useSWRImmutable from 'swr/immutable';
+import useSWR from 'swr';
 
 export interface EnergyConsumptionAmount {
   date: string;
@@ -17,12 +17,11 @@ export interface EnergyConsumptionData {
 
 export const fetchEnergyConsumption = (
   startDate: string | Date,
-  endDate: string | Date,
   id?: string | number,
   type?: string
 ): EnergyConsumptionData => {
-  const { data: energyConsumptionData } = useSWRImmutable(
-    `${process.env.NEXT_PUBLIC_API_URL}/retailer/consumption?start_date=${startDate}&end_date=${endDate}${type ? `&${type}_id=${id}` : ''}`,
+  const { data: energyConsumptionData } = useSWR(
+    `${process.env.NEXT_PUBLIC_API_URL}/retailer/consumption?start_date=${startDate}${type ? `&${type}_id=${id}` : ''}`,
     fetcher,
     {
       refreshInterval: POLLING_RATE,
