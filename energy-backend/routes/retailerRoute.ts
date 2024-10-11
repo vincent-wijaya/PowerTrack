@@ -1322,10 +1322,16 @@ router.get('/suburbs/:id', async (req, res) => {
  * }
  */
 router.get('/reports', async (req, res) => {
-  const { sequelize, Report } = req.app.get('models');
+  const { Report } = req.app.get('models');
 
   // Get all rows in reports table
   const reports = await Report.findAll();
+
+  if (!reports) {
+    return res.status(200).send({
+      reports: [],
+    })
+  }
 
   const reportsFormatted = reports.map((report: any) => {
     return {
