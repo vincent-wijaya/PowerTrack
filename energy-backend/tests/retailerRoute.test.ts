@@ -7,8 +7,6 @@ import { Sequelize } from 'sequelize';
 import app from '../app';
 import { connectToTestDb, dropTestDb } from './testDb';
 import moment from 'moment';
-import { exportsForTesting } from '../routes/retailerRoute';
-const { splitEvents } = exportsForTesting;
 import { kWhConversionMultiplier } from '../utils/utils';
 import { addYears, differenceInHours, startOfHour } from 'date-fns';
 
@@ -67,7 +65,7 @@ describe('GET /retailer/consumption', () => {
       .SuburbConsumption.bulkCreate(mockSuburbConsumptionData);
     await appInstance.get('models').SellingPrice.create({
       id: 1,
-      date: '2024-04-01T09:00:00Z',
+      date: '2024-04-01T09:00:00.000Z',
       amount: 0.25,
     });
     await appInstance.get('models').Consumer.bulkCreate([
@@ -118,7 +116,7 @@ describe('GET /retailer/consumption', () => {
   });
 
   it('should return error 400 if invalid end_date format is provided', async () => {
-    const START_DATE = '2024-01-01T09:00:00Z';
+    const START_DATE = '2024-01-01T09:00:00.000Z';
     const END_DATE = '01/01/2024'; // Invalid date format
 
     const response = await request(appInstance).get(
@@ -129,7 +127,7 @@ describe('GET /retailer/consumption', () => {
   });
 
   it('should return error 400 if future start date is provided', async () => {
-    const START_DATE = '2099-01-01T09:00:00Z'; // Future date
+    const START_DATE = '2099-01-01T09:00:00.000Z'; // Future date
 
     const response = await request(appInstance).get(
       `/retailer/consumption?start_date=${START_DATE}`
@@ -139,7 +137,7 @@ describe('GET /retailer/consumption', () => {
   });
 
   it('should return error 400 if both consumer_id and suburb_id are provided', async () => {
-    const START_DATE = '2024-01-01T09:00:00Z';
+    const START_DATE = '2024-01-01T09:00:00.000Z';
     const CONSUMER_ID = 1;
     const SUBURB_ID = 1;
 
@@ -152,8 +150,8 @@ describe('GET /retailer/consumption', () => {
 
   it('should return non-empty data for a suburb', async () => {
     // Insert sample data into the database
-    const START_DATE = '2024-04-17T09:05:00Z';
-    const END_DATE = '2024-04-17T09:11:00Z';
+    const START_DATE = '2024-04-17T09:05:00.000Z';
+    const END_DATE = '2024-04-17T09:11:00.000Z';
     const SUBURB_ID = 1;
 
     const adjustedSuburbConsumptionData = mockSuburbConsumptionData.map(
@@ -210,8 +208,8 @@ describe('GET /retailer/consumption', () => {
   });
 
   it('should return non-empty data for a consumer with weekly granularity', async () => {
-    const START_DATE = '2024-03-17T09:05:00Z';
-    const END_DATE = '2024-08-17T09:11:00Z';
+    const START_DATE = '2024-03-17T09:05:00.000Z';
+    const END_DATE = '2024-08-17T09:11:00.000Z';
     const CONSUMER_ID = 1;
 
     const adjustedConsumerConsumptionData = mockConsumerConsumptionData.map(
@@ -269,8 +267,8 @@ describe('GET /retailer/consumption', () => {
   });
 
   it('should return non-empty data for a consumer with daily granularity', async () => {
-    const START_DATE = '2024-04-13T09:05:00Z';
-    const END_DATE = '2024-04-21T09:11:00Z';
+    const START_DATE = '2024-04-13T09:05:00.000Z';
+    const END_DATE = '2024-04-21T09:11:00.000Z';
     const CONSUMER_ID = 1;
 
     const adjustedConsumerConsumptionData = mockConsumerConsumptionData.map(
@@ -326,8 +324,8 @@ describe('GET /retailer/consumption', () => {
   });
 
   it('should return non-empty data for a consumer with hourly granularity', async () => {
-    const START_DATE = '2024-04-17T09:05:00Z';
-    const END_DATE = '2024-04-17T09:11:00Z';
+    const START_DATE = '2024-04-17T09:05:00.000Z';
+    const END_DATE = '2024-04-17T09:11:00.000Z';
     const CONSUMER_ID = 1;
 
     const adjustedConsumerConsumptionData = mockConsumerConsumptionData.map(
@@ -383,8 +381,8 @@ describe('GET /retailer/consumption', () => {
   });
 
   it('should return data for nation-wide consumption', async () => {
-    const START_DATE = '2024-04-17T09:05:00Z';
-    const END_DATE = '2024-04-17T09:11:00Z';
+    const START_DATE = '2024-04-17T09:05:00.000Z';
+    const END_DATE = '2024-04-17T09:11:00.000Z';
 
     const adjustedSuburbConsumptionData = mockSuburbConsumptionData.map(
       (consumption) => {
@@ -605,8 +603,8 @@ describe('GET /retailer/generation', () => {
 
   it('should return empty generation if invalid suburb_id is provided', async () => {
     const SUBURB_ID = 10000; // Invalid suburb_id
-    const START_DATE = '2023-06-01T09:00:00Z';
-    const END_DATE = '2023-06-03T12:00:00Z';
+    const START_DATE = '2023-06-01T09:00:00.000Z';
+    const END_DATE = '2023-06-03T12:00:00.000Z';
 
     const response = await request(appInstance).get(
       `/retailer/generation?suburb_id=${SUBURB_ID}&start_date=${START_DATE}&end_date=${END_DATE}`
@@ -625,6 +623,9 @@ describe('GET /retailer/generation', () => {
     const response = await request(appInstance).get('/retailer/generation');
 
     expect(response.status).toBe(400);
+    expect(response.body).toEqual({
+      error: 'Start date must be provided.',
+    });
   });
 
   it('should return error 400 if invalid start date format is provided', async () => {
@@ -638,7 +639,7 @@ describe('GET /retailer/generation', () => {
   });
 
   it('should return error 400 if invalid end date format is provided', async () => {
-    const START_DATE = '2024-01-01T09:00:00Z';
+    const START_DATE = '2024-01-01T09:00:00.000Z';
     const END_DATE = '01/01/2024'; // Invalid date format
 
     const response = await request(appInstance).get(
@@ -649,7 +650,7 @@ describe('GET /retailer/generation', () => {
   });
 
   it('should return error 400 if future start date is provided', async () => {
-    const START_DATE = '2099-01-01T09:00:00Z'; // Future date
+    const START_DATE = '2099-01-01T09:00:00.000Z'; // Future date
 
     const response = await request(appInstance).get(
       `/retailer/generation?start_date=${START_DATE}`
@@ -660,8 +661,8 @@ describe('GET /retailer/generation', () => {
 
   it('should return with status and the generation with hourly granularity', async () => {
     const SUBURB_ID = 1;
-    const START_DATE = '2023-06-01T08:00:00Z';
-    const END_DATE = '2023-06-03T12:00:00Z';
+    const START_DATE = '2023-06-01T08:00:00.000Z';
+    const END_DATE = '2023-06-03T12:00:00.000Z';
 
     const adjustedGenerationData = mockGenerationData.map((generation) => {
       return {
@@ -714,8 +715,8 @@ describe('GET /retailer/generation', () => {
 
   it('should respond with status 200 and generation between 1 Jan 2024 and 7 Jan 2024 with daily granularity', async () => {
     const SUBURB_ID = 1;
-    const START_DATE = '2023-06-01T08:00:00Z';
-    const END_DATE = '2023-06-08T08:00:00Z';
+    const START_DATE = '2023-06-01T08:00:00.000Z';
+    const END_DATE = '2023-06-08T08:00:00.000Z';
 
     const adjustedGenerationData = mockGenerationData.map((generation) => {
       return {
@@ -768,8 +769,8 @@ describe('GET /retailer/generation', () => {
 
   it('should respond with status 200 and generation between January 2023 and August 2023 with weekly granularity', async () => {
     const SUBURB_ID = 1;
-    const START_DATE = '2023-01-01T08:00:00Z';
-    const END_DATE = '2023-08-01T08:00:00Z';
+    const START_DATE = '2023-01-01T08:00:00.000Z';
+    const END_DATE = '2023-08-01T08:00:00.000Z';
 
     const adjustedGenerationData = mockGenerationData.map((generation) => {
       return {
@@ -821,8 +822,8 @@ describe('GET /retailer/generation', () => {
   });
 
   it('should return nationwide average with weekly granularity', async () => {
-    const START_DATE = '2023-01-01T08:00:00Z';
-    const END_DATE = '2023-08-01T08:00:00Z';
+    const START_DATE = '2023-01-01T08:00:00.000Z';
+    const END_DATE = '2023-08-01T08:00:00.000Z';
 
     const adjustedGenerationData = mockGenerationData.map((generation) => {
       return {
@@ -3383,6 +3384,23 @@ describe('GET /retailer/reports/:id Suburb', () => {
     await models.EnergyGeneration.bulkCreate(testEnergyGeneration);
 
     await models.Report.bulkCreate(testReports);
+
+    await models.GoalType.create({
+      id: 4,
+      category: 'green_energy',
+      description:
+        'I want the majority of my energy to come from environmentally-friendly sources.',
+      target_type: 'consumer',
+    });
+
+    await models.WarningType.create({
+      id: 6,
+      category: 'fossil_fuels',
+      description: 'High usage of energy from fossil fuel sources',
+      trigger_greater_than: true,
+      target: 0.5,
+      goal_type_id: 4,
+    });
   });
 
   afterAll(async () => {
@@ -3411,7 +3429,15 @@ describe('GET /retailer/reports/:id Suburb', () => {
         suburb_id: testReport.suburb_id,
         consumer_id: testReport.consumer_id,
       },
-      energy: [],
+      energy: {
+        consumption: [],
+        generation: [],
+        green_energy:{
+          green_usage_percent: null,
+          green_goal_percent: null
+        },
+        sources: []
+      },
       profits: [
         { date: '2024-02-02T00:00:00.000Z', amount: 0 },
         { date: '2024-02-03T00:00:00.000Z', amount: 0 },
@@ -3422,7 +3448,6 @@ describe('GET /retailer/reports/:id Suburb', () => {
       ],
       selling_prices: testSellingPrice,
       spot_prices: testSpotPrice,
-      sources: [],
     });
   });
 
@@ -3447,176 +3472,84 @@ describe('GET /retailer/reports/:id Suburb', () => {
         suburb_id: testReport.suburb_id,
         consumer_id: testReport.consumer_id,
       },
-      energy: [
-        {
-          start_date: '2024-02-01T00:00:00.000Z',
-          end_date: '2024-02-02T00:00:00.000Z',
-          generation: 24,
-          consumption: 24,
+      energy: {
+        consumption: [
+          {
+            amount: 24,
+            date: '2024-02-02T00:00:00.000Z',
+          },
+          {
+            amount: 24,
+            date: '2024-02-03T00:00:00.000Z',
+          },
+          {
+            amount: 24,
+            date: '2024-02-04T00:00:00.000Z',
+          },
+          {
+            amount: 24,
+            date: '2024-02-05T00:00:00.000Z',
+          },
+          {
+            amount: 24,
+            date: '2024-02-06T00:00:00.000Z',
+          },
+          {
+            amount: 24,
+            date: '2024-02-07T00:00:00.000Z',
+          },
+        ],
+        generation: [
+          {
+            amount: 24,
+            date: '2024-02-02T00:00:00.000Z',
+          },
+          {
+            amount: 24,
+            date: '2024-02-03T00:00:00.000Z',
+          },
+          {
+            amount: 24,
+            date: '2024-02-04T00:00:00.000Z',
+          },
+          {
+            amount: 24,
+            date: '2024-02-05T00:00:00.000Z',
+          },
+          {
+            amount: 24,
+            date: '2024-02-06T00:00:00.000Z',
+          },
+          {
+            amount: 24,
+            date: '2024-02-07T00:00:00.000Z',
+          },
+        ],
+        green_energy:{
+          green_usage_percent: 0.75,
+          green_goal_percent: 1.5
         },
-        {
-          start_date: '2024-02-02T00:00:00.000Z',
-          end_date: '2024-02-03T00:00:00.000Z',
-          generation: 24,
-          consumption: 24,
-        },
-        {
-          start_date: '2024-02-03T00:00:00.000Z',
-          end_date: '2024-02-04T00:00:00.000Z',
-          generation: 24,
-          consumption: 24,
-        },
-        {
-          start_date: '2024-02-04T00:00:00.000Z',
-          end_date: '2024-02-05T00:00:00.000Z',
-          generation: 24,
-          consumption: 24,
-        },
-        {
-          start_date: '2024-02-05T00:00:00.000Z',
-          end_date: '2024-02-06T00:00:00.000Z',
-          generation: 24,
-          consumption: 24,
-        },
-        {
-          start_date: '2024-02-06T00:00:00.000Z',
-          end_date: '2024-02-07T00:00:00.000Z',
-          generation: 24,
-          consumption: 24,
-        },
-        {
-          start_date: '2024-02-07T00:00:00.000Z',
-          end_date: '2024-02-08T00:00:00.000Z',
-          generation: 24,
-          consumption: 24,
-        },
-        {
-          start_date: '2024-02-08T00:00:00.000Z',
-          end_date: '2024-02-09T00:00:00.000Z',
-          generation: 24,
-          consumption: 24,
-        },
-        {
-          start_date: '2024-02-09T00:00:00.000Z',
-          end_date: '2024-02-10T00:00:00.000Z',
-          generation: 24,
-          consumption: 24,
-        },
-        {
-          start_date: '2024-02-10T00:00:00.000Z',
-          end_date: '2024-02-11T00:00:00.000Z',
-          generation: 24,
-          consumption: 24,
-        },
-        {
-          start_date: '2024-02-11T00:00:00.000Z',
-          end_date: '2024-02-12T00:00:00.000Z',
-          generation: 24,
-          consumption: 24,
-        },
-        {
-          start_date: '2024-02-12T00:00:00.000Z',
-          end_date: '2024-02-13T00:00:00.000Z',
-          generation: 24,
-          consumption: 24,
-        },
-        {
-          start_date: '2024-02-13T00:00:00.000Z',
-          end_date: '2024-02-14T00:00:00.000Z',
-          generation: 24,
-          consumption: 24,
-        },
-        {
-          start_date: '2024-02-14T00:00:00.000Z',
-          end_date: '2024-02-15T00:00:00.000Z',
-          generation: 24,
-          consumption: 24,
-        },
-        {
-          start_date: '2024-02-15T00:00:00.000Z',
-          end_date: '2024-02-16T00:00:00.000Z',
-          generation: 24,
-          consumption: 24,
-        },
-        {
-          start_date: '2024-02-16T00:00:00.000Z',
-          end_date: '2024-02-17T00:00:00.000Z',
-          generation: 24,
-          consumption: 24,
-        },
-        {
-          start_date: '2024-02-17T00:00:00.000Z',
-          end_date: '2024-02-18T00:00:00.000Z',
-          generation: 24,
-          consumption: 24,
-        },
-        {
-          start_date: '2024-02-18T00:00:00.000Z',
-          end_date: '2024-02-19T00:00:00.000Z',
-          generation: 24,
-          consumption: 24,
-        },
-        {
-          start_date: '2024-02-19T00:00:00.000Z',
-          end_date: '2024-02-20T00:00:00.000Z',
-          generation: 24,
-          consumption: 24,
-        },
-        {
-          start_date: '2024-02-20T00:00:00.000Z',
-          end_date: '2024-02-21T00:00:00.000Z',
-          generation: 24,
-          consumption: 24,
-        },
-        {
-          start_date: '2024-02-21T00:00:00.000Z',
-          end_date: '2024-02-22T00:00:00.000Z',
-          generation: 24,
-          consumption: 24,
-        },
-        {
-          start_date: '2024-02-22T00:00:00.000Z',
-          end_date: '2024-02-23T00:00:00.000Z',
-          generation: 24,
-          consumption: 24,
-        },
-        {
-          start_date: '2024-02-23T00:00:00.000Z',
-          end_date: '2024-02-24T00:00:00.000Z',
-          generation: 24,
-          consumption: 24,
-        },
-        {
-          start_date: '2024-02-24T00:00:00.000Z',
-          end_date: '2024-02-25T00:00:00.000Z',
-          generation: 24,
-          consumption: 24,
-        },
-        {
-          start_date: '2024-02-25T00:00:00.000Z',
-          end_date: '2024-02-26T00:00:00.000Z',
-          generation: 24,
-          consumption: 24,
-        },
-        {
-          start_date: '2024-02-26T00:00:00.000Z',
-          end_date: '2024-02-27T00:00:00.000Z',
-          generation: 24,
-          consumption: 24,
-        },
-        {
-          start_date: '2024-02-27T00:00:00.000Z',
-          end_date: '2024-02-28T00:00:00.000Z',
-          generation: 24,
-          consumption: 24,
-        },
-        {
-          start_date: '2024-02-28T00:00:00.000Z',
-          end_date: '2024-02-29T00:00:00.000Z',
-          generation: 24,
-          consumption: 24,
-        },
-      ],
+        sources: [
+          {
+            category: 'Brown Coal',
+            renewable: false,
+            percentage: 0.25,
+            amount: 1 * hourDifference,
+          },
+          {
+            category: 'Solar',
+            renewable: true,
+            percentage: 0.5,
+            amount: 2 * hourDifference,
+          },
+          {
+            category: 'Wind',
+            renewable: true,
+            percentage: 0.25,
+            amount: 1 * hourDifference,
+          },
+        ],
+      },
       selling_prices: testSellingPrice,
       spot_prices: testSpotPrice,
       profits: [
@@ -3627,149 +3560,7 @@ describe('GET /retailer/reports/:id Suburb', () => {
         { date: '2024-02-06T00:00:00.000Z', amount: 0 },
         { date: '2024-02-07T00:00:00.000Z', amount: 0 },
       ],
-      sources: [
-        {
-          category: 'Brown Coal',
-          renewable: false,
-          percentage: 0.25,
-          amount: 1 * hourDifference,
-        },
-        {
-          category: 'Solar',
-          renewable: true,
-          percentage: 0.5,
-          amount: 2 * hourDifference,
-        },
-        {
-          category: 'Wind',
-          renewable: true,
-          percentage: 0.25,
-          amount: 1 * hourDifference,
-        },
-      ],
     });
-  });
-
-  it('Should split the events correctly. event>interval', async () => {
-    const testEvents = [
-      { date: '2024-02-02T00:00:00.000Z', amount: 1 },
-      { date: '2024-02-03T00:00:00.000Z', amount: 1 },
-      { date: '2024-02-04T00:00:00.000Z', amount: 2 },
-      { date: '2024-02-05T00:00:00.000Z', amount: 2 },
-      { date: '2024-02-06T00:00:00.000Z', amount: 1 },
-      { date: '2024-02-07T00:00:00.000Z', amount: 1 },
-    ];
-
-    let results = splitEvents(
-      testEvents,
-      '2024-02-01T00:00:00.000Z',
-      '2024-02-08T00:00:00.000Z',
-      12
-    );
-    let expectedResults = [
-      {
-        start_date: '2024-02-01T00:00:00.000Z',
-        end_date: '2024-02-01T12:00:00.000Z',
-        total: 12,
-      },
-      {
-        start_date: '2024-02-01T12:00:00.000Z',
-        end_date: '2024-02-02T00:00:00.000Z',
-        total: 12,
-      },
-      {
-        start_date: '2024-02-02T00:00:00.000Z',
-        end_date: '2024-02-02T12:00:00.000Z',
-        total: 12,
-      },
-      {
-        start_date: '2024-02-02T12:00:00.000Z',
-        end_date: '2024-02-03T00:00:00.000Z',
-        total: 12,
-      },
-      {
-        start_date: '2024-02-03T00:00:00.000Z',
-        end_date: '2024-02-03T12:00:00.000Z',
-        total: 12,
-      },
-      {
-        start_date: '2024-02-03T12:00:00.000Z',
-        end_date: '2024-02-04T00:00:00.000Z',
-        total: 24,
-      },
-      {
-        start_date: '2024-02-04T00:00:00.000Z',
-        end_date: '2024-02-04T12:00:00.000Z',
-        total: 24,
-      },
-      {
-        start_date: '2024-02-04T12:00:00.000Z',
-        end_date: '2024-02-05T00:00:00.000Z',
-        total: 24,
-      },
-      {
-        start_date: '2024-02-05T00:00:00.000Z',
-        end_date: '2024-02-05T12:00:00.000Z',
-        total: 24,
-      },
-      {
-        start_date: '2024-02-05T12:00:00.000Z',
-        end_date: '2024-02-06T00:00:00.000Z',
-        total: 12,
-      },
-      {
-        start_date: '2024-02-06T00:00:00.000Z',
-        end_date: '2024-02-06T12:00:00.000Z',
-        total: 12,
-      },
-      {
-        start_date: '2024-02-06T12:00:00.000Z',
-        end_date: '2024-02-07T00:00:00.000Z',
-        total: 12,
-      },
-      {
-        start_date: '2024-02-07T00:00:00.000Z',
-        end_date: '2024-02-07T12:00:00.000Z',
-        total: 12,
-      },
-    ];
-    console.log(results);
-    expect(results).toEqual(expectedResults);
-  });
-  it('Should split the events correctly. event<interval', async () => {
-    const testEvents = [
-      { date: '2024-02-02T00:00:00.000Z', amount: 1 },
-      { date: '2024-02-03T00:00:00.000Z', amount: 1 },
-      { date: '2024-02-04T00:00:00.000Z', amount: 2 },
-      { date: '2024-02-05T00:00:00.000Z', amount: 2 },
-      { date: '2024-02-06T00:00:00.000Z', amount: 1 },
-      { date: '2024-02-07T00:00:00.000Z', amount: 1 },
-    ];
-
-    let results = splitEvents(
-      testEvents,
-      '2024-02-01T00:00:00.000Z',
-      '2024-02-07T00:00:00.000Z',
-      48
-    );
-    let expectedResults = [
-      {
-        start_date: '2024-02-01T00:00:00.000Z',
-        end_date: '2024-02-03T00:00:00.000Z',
-        total: 48,
-      },
-      {
-        start_date: '2024-02-03T00:00:00.000Z',
-        end_date: '2024-02-05T00:00:00.000Z',
-        total: 84,
-      },
-      {
-        start_date: '2024-02-05T00:00:00.000Z',
-        end_date: '2024-02-07T00:00:00.000Z',
-        total: 60,
-      },
-    ];
-    expect(results).toEqual(expectedResults);
   });
 
   it('Should return empty report', async () => {
@@ -3786,16 +3577,23 @@ describe('GET /retailer/reports/:id Suburb', () => {
         suburb_id: testReport.suburb_id,
         consumer_id: testReport.consumer_id,
       },
-      energy: [],
+      energy: {
+        consumption: [],
+        generation: [],
+        green_energy: {
+          green_usage_percent: null,
+          green_goal_percent: null,
+        },
+        sources: [],
+      },
       selling_prices: [],
       spot_prices: [],
       profits: [],
-      sources: [],
     });
   });
 });
 
-describe('GET /retailer/renewable-generation', () => {
+describe('GET /retailer/renewableGeneration', () => {
   let sequelize: Sequelize;
   let appInstance: Application;
 
@@ -3855,16 +3653,19 @@ describe('GET /retailer/renewable-generation', () => {
   });
 
   it('should return error 400 if start date is missing', async () => {
-    const response = await request(appInstance).get('/retailer/renewable-generation');
+    const response = await request(appInstance).get('/retailer/renewableGeneration');
 
     expect(response.status).toBe(400);
+    expect(response.body).toEqual({
+      error: 'Start date must be provided.',
+    });
   });
 
   it('should return error 400 if invalid suburb_id is provided', async () => {
     const SUBURB_ID = '1.111'; // Invalid suburb_id
 
     const response = await request(appInstance).get(
-      `/retailer/renewable-generation?suburb_id=${SUBURB_ID}`
+      `/retailer/renewableGeneration?suburb_id=${SUBURB_ID}`
     );
 
     expect(response.status).toBe(400);
@@ -3874,7 +3675,7 @@ describe('GET /retailer/renewable-generation', () => {
     const START_DATE = 'invalid-date';
 
     const response = await request(appInstance).get(
-      `/retailer/renewable-generation?start_date=${START_DATE}`
+      `/retailer/renewableGeneration?start_date=${START_DATE}`
     );
 
     expect(response.status).toBe(400);
@@ -3918,7 +3719,7 @@ describe('GET /retailer/renewable-generation', () => {
     });
   
     const response = await request(appInstance).get(
-      `/retailer/renewable-generation?suburb_id=${SUBURB_ID}&start_date=${START_DATE}&end_date=${END_DATE}`
+      `/retailer/renewableGeneration?suburb_id=${SUBURB_ID}&start_date=${START_DATE}&end_date=${END_DATE}`
     );
   
     expect(response.status).toBe(200);
@@ -3967,7 +3768,7 @@ describe('GET /retailer/renewable-generation', () => {
     });
 
     const response = await request(appInstance).get(
-      `/retailer/renewable-generation?suburb_id=${SUBURB_ID}&start_date=${START_DATE}&end_date=${END_DATE}`
+      `/retailer/renewableGeneration?suburb_id=${SUBURB_ID}&start_date=${START_DATE}&end_date=${END_DATE}`
     );
 
     expect(response.status).toBe(200);
@@ -4012,7 +3813,7 @@ describe('GET /retailer/renewable-generation', () => {
     });
 
     const response = await request(appInstance).get(
-      `/retailer/renewable-generation?start_date=${START_DATE}&end_date=${END_DATE}`
+      `/retailer/renewableGeneration?start_date=${START_DATE}&end_date=${END_DATE}`
     );
 
     expect(response.status).toBe(200);
@@ -4024,3 +3825,138 @@ describe('GET /retailer/renewable-generation', () => {
   });
 });
 
+
+
+describe('GET /retailer/greenEnergy', () => {
+  let sequelize: Sequelize;
+  let appInstance: Application;
+
+  beforeAll(async () => {
+    // Set up and connect to test database
+    sequelize = await connectToTestDb();
+    appInstance = app(sequelize);
+
+    // Insert prerequesite data for tests
+
+    const db = await appInstance.get('models');
+    await db.GeneratorType.bulkCreate([
+      {
+        id: 1,
+        category: 'Natural Gas Pipeline',
+        renewable: false,
+      },
+      {
+        id: 2,
+        category: 'Solar',
+        renewable: true,
+      },
+    ]);
+    await db.Suburb.create({
+      id: 1,
+      name: 'Test Suburb',
+      postcode: 3000,
+      state: 'Victoria',
+      latitude: 0,
+      longitude: 0,
+    });
+    await db.EnergyGenerator.bulkCreate([
+      { id: 0, name: 'Gen 0', generator_type_id: 1, suburb_id: 1 },
+      { id: 1, name: 'Gen 1', generator_type_id: 2, suburb_id: 1 },
+    ]);
+
+    await db.GoalType.create({
+      id: 4,
+      category: 'green_energy',
+      description:
+        'I want the majority of my energy to come from environmentally-friendly sources.',
+      target_type: 'consumer',
+    });
+    await db.WarningType.create({
+      id: 6,
+      category: 'fossil_fuels',
+      description: 'High usage of energy from fossil fuel sources',
+      trigger_greater_than: true,
+      target: 0.5,
+      goal_type_id: 4,
+    });
+  });
+
+  afterAll(async () => {
+    // Drop the test database
+    await sequelize.close();
+    await dropTestDb(sequelize);
+  });
+  
+  afterEach(async () => {
+    // Clear the ConsumerConsumption table
+    await appInstance.get('models').EnergyGeneration.destroy({
+      where: {},
+      truncate: true,
+    });
+  });
+
+  it('should return error if no generation records exist', async () => {
+    const response = await request(appInstance).get('/retailer/greenEnergy');
+
+    expect(response.status).toBe(400);
+  })
+
+  it('should return 0% green usage if no renewable energy generation', async () => {
+    const { EnergyGeneration } = appInstance.get('models');
+
+    await EnergyGeneration.create({
+      amount: 10,
+      date: new Date().toISOString(),
+      energy_generator_id: 0,
+    });
+
+    const response = await request(appInstance).get('/retailer/greenEnergy');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      green_usage_percent: 0,
+      green_goal_percent: 0,
+    });
+  });
+
+  it('should return 100% green usage if no non-renewable energy generation', async () => {
+    const { EnergyGeneration } = appInstance.get('models');
+
+    await EnergyGeneration.create({
+      amount: 10,
+      date: new Date().toISOString(),
+      energy_generator_id: 1,
+    });
+
+    const response = await request(appInstance).get('/retailer/greenEnergy');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      green_usage_percent: 1,
+      green_goal_percent: 2
+    });
+  });
+
+  it('should return the green energy data', async () => {
+    const { EnergyGeneration } = appInstance.get('models');
+
+    await EnergyGeneration.create({
+      amount: 10,
+      date: new Date().toISOString(),
+      energy_generator_id: 0,
+    });
+    await EnergyGeneration.create({
+      amount: 10,
+      date: new Date().toISOString(),
+      energy_generator_id: 1,
+    });
+
+    const response = await request(appInstance).get('/retailer/greenEnergy');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      green_usage_percent: 0.5,
+      green_goal_percent: 1,
+    });
+  });
+});

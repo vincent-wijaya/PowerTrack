@@ -5,7 +5,7 @@ import InfoBox from './infoBox';
 
 export default function GreenUsage() {
   const url = process.env.NEXT_PUBLIC_API_URL;
-  const { data, error } = useSWR(`${url}/consumer/greenEnergy`, fetcher, {
+  const { data, error } = useSWR(`${url}/retailer/greenEnergy`, fetcher, {
     refreshInterval: POLLING_RATE,
   });
 
@@ -29,7 +29,7 @@ export default function GreenUsage() {
 
   return (
     <InfoBox
-      title={`${(data.greenUsagePercent * 100).toFixed(0)}%`}
+      title={`${(data.green_usage_percent * 100).toFixed(0)}%`}
       description="Green Energy Usage"
     />
   );

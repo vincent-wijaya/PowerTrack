@@ -5,7 +5,7 @@ import InfoBox from './infoBox';
 
 export default function GreenGoal() {
   const url = process.env.NEXT_PUBLIC_API_URL;
-  const { data, error } = useSWR(`${url}/consumer/greenEnergy`, fetcher, {
+  const { data, error } = useSWR(`${url}/retailer/greenEnergy`, fetcher, {
     refreshInterval: POLLING_RATE,
   });
 
@@ -22,14 +22,14 @@ export default function GreenGoal() {
     return (
       <InfoBox
         title={`N/A`}
-        description="Green Energy Usage"
+        description="of green energy goal"
       />
     );
   }
 
   return (
     <InfoBox
-      title={`${(data.greenGoalPercent * 100).toFixed(0)}%`}
+      title={`${(data.green_goal_percent * 100).toFixed(0)}%`}
       description="of green energy goal"
     />
   );

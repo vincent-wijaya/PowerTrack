@@ -24,7 +24,11 @@
 }
 
 .react-calendar__tile--now {
-  color: #9847ff;
+  abbr {
+    background-color: #9847ff;
+    border-radius: 50%;
+    padding: 6px 7px;
+  }
 }
 
 .react-calendar__tile--rangeStart {

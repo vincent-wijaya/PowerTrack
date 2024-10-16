@@ -4,19 +4,17 @@ import Dropdown, { DropdownOption } from './dropDownFilter'; // Adjust the path 
 import LineChart from './lineChart';
 import {
   EnergyConsumptionAmount,
-  EnergyConsumptionData,
 } from '@/api/getEnergyConsumption';
 
 import {
   EnergyGenerationAmount,
-  EnergyGenerationData,
 } from '@/api/getEnergyGeneration';
 import { generateDateRange } from '@/utils';
 
 interface EnergyChartProps {
   chartTitle: string;
-  energyConsumptionData: EnergyConsumptionData;
-  energyGenerationData?: EnergyGenerationData;
+  energyConsumptionData: EnergyConsumptionAmount[];
+  energyGenerationData?: EnergyGenerationAmount[];
   showTimeRangeDropdown?: boolean;
   onTimeRangeChange?: (value: DropdownOption) => void;
   granularity: string;
@@ -33,27 +31,27 @@ function EnergyChart(props: EnergyChartProps) {
   let datasets = [
     {
       label: 'Energy Consumption kWh',
-      data: props.energyConsumptionData?.energy.map(
+      data: props.energyConsumptionData?.map(
         (c: EnergyConsumptionAmount) => {
           return {
             x: c.date,
             y: c.amount.toFixed(2),
           };
         }
-      ),
+      ) ?? [],
       borderColor: 'red',
       backgroundColor: 'white',
     },
     {
       label: 'Energy Generation kWh',
-      data: props.energyGenerationData?.energy.map(
+      data: props.energyGenerationData?.map(
         (c: EnergyGenerationAmount) => {
           return {
             x: c.date,
             y: c.amount.toFixed(2),
           };
         }
-      ),
+      ) ?? [],
       borderColor: 'blue',
       backgroundColor: 'white',
     },
