@@ -127,8 +127,8 @@ export default function MainDashboard() {
         <div className="flex flex-col gap-3 flex-1">
           <EnergyChart
             chartTitle="Nationwide Energy Consumption/Generation"
-            energyConsumptionData={energyConsumptionData}
-            energyGenerationData={energyGenerationData}
+            energyConsumptionData={energyConsumptionData?.energy}
+            energyGenerationData={energyGenerationData?.energy}
             onTimeRangeChange={onEnergyChartDateRangeChange}
             showTimeRangeDropdown={true}
             granularity={energyChartDateRange.granularity}
@@ -143,7 +143,7 @@ export default function MainDashboard() {
 
           <RenewableGenerationChart
             chartTitle="Nationwide Renewable Energy Generation"
-            energyGenerationData={energyGenerationData}
+            energyGenerationData={energyGenerationData?.energy}
             onTimeRangeChange={onEnergyChartDateRangeChange}
             showTimeRangeDropdown={true}
             granularity={energyChartDateRange.granularity}

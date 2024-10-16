@@ -4,14 +4,13 @@ import Dropdown, { DropdownOption } from './dropDownFilter'; // Adjust the path 
 import LineChart from './lineChart';
 import {
   EnergyConsumptionAmount,
-  EnergyConsumptionData,
 } from '@/api/getEnergyConsumption';
 
 import { generateDateRange } from '@/utils';
 
-interface EnergyChartProps {
+interface ConsumerSpendChartProps {
   chartTitle: string;
-  energyConsumptionData: EnergyConsumptionData;
+  consumptionData: EnergyConsumptionAmount[];
   showTimeRangeDropdown?: boolean;
   onTimeRangeChange?: (value: DropdownOption) => void;
   granularity: string;
@@ -19,8 +18,8 @@ interface EnergyChartProps {
   buyingPrice: number;
 }
 
-function ConsumerSpendChart(props: EnergyChartProps) {
-  const [energyChartDateRange, setEnergyChartDateRange] = useState<{
+function ConsumerSpendChart(props: ConsumerSpendChartProps) {
+  const [consumerSpendChartDateRange, setConsumerSpendChartDateRange] = useState<{
     start: string;
     end: string;
     granularity: string;
@@ -29,14 +28,14 @@ function ConsumerSpendChart(props: EnergyChartProps) {
   let datasets = [
     {
       label: 'Spending',
-      data: props.energyConsumptionData?.energy.map(
+      data: props.consumptionData?.map(
         (c: EnergyConsumptionAmount) => {
           return {
             x: c.date,
             y: (Number(c.amount) * props.buyingPrice).toFixed(2),
           };
         }
-      ),
+      ) ?? [],
       borderColor: 'red',
       backgroundColor: 'white',
     },
@@ -53,11 +52,11 @@ function ConsumerSpendChart(props: EnergyChartProps) {
             />
           ) : null}
           <LineChart
-            chartTitle=""
+            chartTitle="Spending"
             datasets={datasets}
             xAxisTitle="Date"
             yAxisTitle="Amount (AUD $)"
-            xAxisUnit={energyChartDateRange.granularity}
+            xAxisUnit={consumerSpendChartDateRange.granularity}
           />
         </div>
       </div>

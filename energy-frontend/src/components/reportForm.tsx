@@ -107,13 +107,12 @@ const ReportForm = (props: { id: string; type: string }) => {
     }
   };
 
-  console.log(data);
-
   const handleCancel = () => {
     // Handle cancel logic here
     setSearchTerm('');
     setDateRange([new Date(), new Date()]);
     setErrorMessage(''); // Clear error message on cancel
+    router.back();
   };
 
   const formatDateRange = () => {
@@ -143,6 +142,7 @@ const ReportForm = (props: { id: string; type: string }) => {
             value={dateRange}
             onChange={handleDateChange}
             className="mb-6 mx-5"
+            showNeighboringMonth={false}
             maxDate={new Date()}
           />
           <div className="text-white font-italic mx-5">{formatDateRange()}</div>
@@ -154,14 +154,14 @@ const ReportForm = (props: { id: string; type: string }) => {
           <button
             type="button"
             onClick={handleCancel}
-            className="px-6 py-2 bg-red text-white rounded-lg shadow-md"
+            className="px-6 py-2 bg-red text-white rounded-lg shadow-md hover:bg-opacity-75 transition duration-300"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={handleSubmit}
-            className="px-6 py-2 bg-purple text-white rounded-lg shadow-md hover:bg-green-700"
+            className="px-6 py-2 bg-purple text-white rounded-lg shadow-md hover:bg-green-700 transition duration-300"
           >
             Submit
           </button>

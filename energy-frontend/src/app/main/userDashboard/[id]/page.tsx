@@ -107,7 +107,7 @@ export default function UserDashboard({ params }: { params: { id: number } }) {
   }
 
   return (
-    <>
+    <div>
       <div className="flex justify-between items-center mb-6">
         <PageHeading title={title} />
         <ReportFormButton
@@ -134,7 +134,12 @@ export default function UserDashboard({ params }: { params: { id: number } }) {
               description=""
             />
           </div>
-          <WarningTable consumer_id={params.id} />
+          <div className="flex flex-col justify-center p-4 w-full bg-itembg border border-stroke rounded-lg text-left space-y-2">
+            <div className='text-white w-full text-left font-bold'>
+            Warnings
+            </div>
+            <WarningTable consumer_id={params.id} />
+          </div>
           <EnergySourceBreakdown
             chartTitle={`${consumerData ? consumerData?.consumers[0].suburb_name + "'s " : ''}Energy Generation Source Breakdown`}
             energySources={energySources?.sources}
@@ -146,14 +151,14 @@ export default function UserDashboard({ params }: { params: { id: number } }) {
         <div className="flex flex-col gap-3 flex-1">
           <EnergyChart
             chartTitle="Consumer Energy Consumption"
-            energyConsumptionData={energyConsumptionData}
+            energyConsumptionData={energyConsumptionData?.energy}
             onTimeRangeChange={onEnergyChartDateRangeChange}
             showTimeRangeDropdown={true}
             granularity={energyChartDateRange.granularity}
           />
           <ConsumerSpendChart
-            chartTitle="Spending"
-            energyConsumptionData={energyConsumptionData}
+            chartTitle="Consumer Spending"
+            consumptionData={energyConsumptionData?.energy}
             onTimeRangeChange={onEnergyChartDateRangeChange}
             showTimeRangeDropdown={true}
             granularity={energyChartDateRange.granularity}
@@ -166,6 +171,6 @@ export default function UserDashboard({ params }: { params: { id: number } }) {
           </div> */}
         </div>
       </div>
-    </>
+    </div>
   );
 }

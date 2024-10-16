@@ -15,7 +15,7 @@ import { generateDateRange } from '@/utils';
 
 interface EnergyChartProps {
   chartTitle: string;
-  energyGenerationData?: RenewableEnergyGenerationData;
+  energyGenerationData?: RenewableEnergyGenerationAmount[];
   showTimeRangeDropdown?: boolean;
   onTimeRangeChange?: (value: DropdownOption) => void;
   granularity: string;
@@ -32,14 +32,14 @@ function RenewableEnergyChart(props: EnergyChartProps) {
   let datasets = [
     {
       label: 'Energy Generation kWh',
-      data: props.energyGenerationData?.energy.map(
+      data: props.energyGenerationData?.map(
         (c: RenewableEnergyGenerationAmount) => {
           return {
             x: c.date,
             y: c.amount.toFixed(2),
           };
         }
-      ),
+      ) ?? [],
       borderColor: 'green',
       backgroundColor: 'white',
     },

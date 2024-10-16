@@ -15,6 +15,10 @@ import { EnergySource } from '@/api/getSources';
 import { DropdownOption } from '@/components/charts/dropDownFilter';
 import ProfitChart from '@/components/charts/profitChart';
 import { Price, ProfitMarginData } from '@/api/getProfitMargin';
+import EnergyChart from '@/components/charts/energyChart';
+import { EnergyGenerationAmount } from '@/api/getEnergyGeneration';
+import { EnergyConsumptionAmount } from '@/api/getEnergyConsumption';
+import ConsumerSpendChart from '@/components/charts/consumerSpendChart';
 
 interface Report {
   id: number;
@@ -24,16 +28,18 @@ interface Report {
     suburb_id: number;
     consumer_id: number | null;
   };
-  energy: Array<{
-    start_date: string; // ISO date string
-    end_date: string; // ISO date string
-    consumption: number;
-    generation: number;
-  }>;
+  energy: {
+    consumption: EnergyConsumptionAmount[];
+    generation: EnergyGenerationAmount[];
+    green_energy: {
+      green_usage_percent: number;
+      green_goal_percent: number;
+    }
+    sources: EnergySource[];
+  };
   selling_prices: Price[];
   spot_prices: Price[];
   profits: Price[];
-  sources: EnergySource[];
 }
 
 interface SuburbData {
@@ -70,18 +76,9 @@ export default function IndividualReport({
   const [greenEnergyUsage, setgreenEnergyUsage] = useState(0);
   const [totalProfit, setTotalProfit] = useState(0);
   const [totalRevenue, setTotalRevenue] = useState(0);
-  const spendage = '$9000';
-  const [consumptionData, setConsumptionData] = useState<number[]>([]);
-  const [generationData, setGenerationData] = useState<number[]>([]);
-  const [profitData, setProfitData] = useState<number[]>([]);
-  const [energychartData, setEnergyChartData] = useState([{}]);
-  const [energyDateArray, setEnergyDateArray] = useState<string[]>([]);
+  const [consumptionData, setConsumptionData] = useState<EnergyConsumptionAmount[]>([]);
+  const [generationData, setGenerationData] = useState<EnergyGenerationAmount[]>([]);
   const [energyChartTitle, setEnergyChartTitle] = useState('');
-  const [profitArray, setProfitArray] = useState<number[]>([]);
-  const [spotPriceData, setSpotPriceData] = useState<number[]>([]);
-  const [sellingPriceData, setSellingPriceData] = useState<number[]>([]);
-  const [spendingPriceData, setSpendingPriceData] = useState<number[]>([]);
-  const [profitDateArray, setProfitDateArray] = useState<string[]>([]);
   const [profitChartData, setProfitChartData] = useState<ProfitMarginData>();
   const [profitChartTitle, setprofitChartTitle] = useState('');
   const [isExporting, setIsExporting] = useState(false); // New state for exporting
@@ -130,7 +127,6 @@ export default function IndividualReport({
 
     if (data?.for.consumer_id === null && suburbData) {
       // Title
-
       setTitle(
         `${suburbData.name}, ${suburbData.postcode}, ${suburbData.state}`
       );
@@ -147,40 +143,16 @@ export default function IndividualReport({
 
       // setgreenEnergyUsage((totalGreenEnergy / totalEnergy) * 100);
 
-      const generationVal = data.energy.map((item: any) => item.generation);
+      setConsumptionData(data.energy.consumption);
+      setGenerationData(data.energy.generation);
 
-      const consumptionVal = data.energy.map((item: any) => item.consumption);
-
-      setConsumptionData(consumptionVal);
-      setGenerationData(generationVal);
-
-      const energyDateVal = data.energy.map((item: any) => item.start_date);
-
-      const tempChartData = [
-        {
-          label: 'Energy Consumption',
-          data: consumptionData,
-          borderColor: 'red',
-          backgroundColor: 'white',
-        },
-        {
-          label: 'Energy Generation',
-          data: generationData,
-          borderColor: 'blue',
-          backgroundColor: 'white',
-        },
-      ];
-
-      setEnergyDateArray(energyDateVal);
-
-      setEnergyChartData(tempChartData);
       setEnergyChartTitle('Energy Consumption/Generation');
-      setEnergySources(data.sources);
+      setEnergySources(data.energy.sources);
+
 
       // Total Revenue
-      const totalRevenue = data.energy.reduce((acc, item, index) => {
-        const sellingPrice = data.selling_prices[index]?.amount || 0;
-        return acc + sellingPrice * item.generation;
+      const totalRevenue = data.energy.generation?.reduce((acc: number, item: { date: string; amount: number; }) => {
+        return acc + Number(data.selling_prices.at(-1)) * item.amount;
       }, 0);
 
       setTotalRevenue(totalRevenue);
@@ -210,43 +182,21 @@ export default function IndividualReport({
 
       setHighPriority(true);
 
-      const consumptionVal = data.energy.map((item: any) => item.consumption);
-      const spendingPrice = data.energy.map(
-        (item: any) => item.consumption * 0.31
+      console.log(data)
+
+      const spendingPrice = data.energy.consumption?.map((item) => ({
+          date: item.date,
+          amount: item.amount * Number(data.selling_prices.at(-1)?.amount)
+        })
       );
 
-      setConsumptionData(consumptionVal);
-      setSpendingPriceData(spendingPrice);
+      setConsumptionData(data.energy.consumption);
+      // setSpendingPriceData(spendingPrice);
       setprofitChartTitle('Consumer Spending');
-
-      const energyDateVal = data.energy.map((item: any) => item.start_date);
-
-      const tempChartData = [
-        {
-          label: 'Energy Consumption',
-          data: consumptionData,
-          borderColor: 'red',
-          backgroundColor: 'white',
-        },
-      ];
-      const tempSpendingChartData = [
-        {
-          label: 'Total Spent',
-          data: spendingPriceData,
-          borderColor: 'red',
-          backgroundColor: 'white',
-        },
-      ];
-
-      setSpendingPriceData(tempSpendingChartData);
-
-      setEnergyDateArray(energyDateVal);
-
-      setEnergyChartData(tempChartData);
 
       setEnergyChartTitle('Energy Consumption');
 
-      setEnergySources(data.sources);
+      setEnergySources(data.energy.sources);
     }
   }, [data, consumerData]);
 
@@ -286,25 +236,33 @@ export default function IndividualReport({
       </div>
       <div className="grid grid-flow-col grid-cols-2 gap-3">
         <div className="flex flex-col gap-3">
+            
+          {data?.for.consumer_id === null && suburbData ? ( // For suburb
           <div className="flex justify-between gap-3 h-[128px]">
-            <InfoBox
-              title={formatCurrency(averageProfitkwh)}
-              description="Average Profit per kWh sold when bought"
-            />
-            <InfoBox
-              title={formatCurrency(averageProfitMargin)}
-              description="Average Profit Margin"
-            />
-            <GreenUsage />
-            <InfoBox
-              title={formatCurrency(totalProfit)}
-              description="Profitted"
-            />
-            <InfoBox
-              title={formatCurrency(totalRevenue)}
-              description="Revenue made"
-            />
-          </div>
+              <InfoBox
+                title={formatCurrency(averageProfitkwh)}
+                description="Average Profit per kWh sold when bought"
+              />
+              <InfoBox
+                title={formatCurrency(averageProfitMargin)}
+                description="Average Profit Margin"
+              />
+              <GreenUsage />
+              
+              <InfoBox
+                title={formatCurrency(totalProfit)}
+                description="Profitted"
+              />
+              <InfoBox
+                title={formatCurrency(totalRevenue)}
+                description="Revenue made"
+              /> 
+            </div>
+            ) : (
+              <div>
+                {/* <InfoBox /> */}
+              </div>
+            )}
           {/*<EnergySourceBreakdown energySources={data.sources} />*/}
           <EnergySourceBreakdown
             chartTitle={`${suburbData?.name}'s Energy Generation Source Breakdown`}
@@ -314,24 +272,24 @@ export default function IndividualReport({
           
         </div>
         <div className="flex flex-col gap-3">
-          <ReportsConsumptionChart
+          <EnergyChart
             chartTitle={energyChartTitle}
-            dataArray={energychartData}
-            xAxisData={energyDateArray}
-            xAxisUnits={granularity ?? 'year'}
+            energyGenerationData={generationData}
+            energyConsumptionData={consumptionData}
+            granularity={granularity ?? 'year'}
           />
-          {data?.for.consumer_id === null && suburbData ? (
+          {data?.for.consumer_id === null && suburbData ? ( // For suburb
             <ProfitChart
               chartTitle={profitChartTitle}
               profitMarginData={profitChartData}
               granularity={granularity ?? 'year'}
             />
-          ) : (
-            <ReportsConsumptionChart
+          ) : ( // For consumer
+            <ConsumerSpendChart
               chartTitle="Spending"
-              dataArray={spendingPriceData}
-              xAxisData={profitDateArray}
-              xAxisUnits={granularity ?? 'year'}
+              consumptionData={consumptionData}
+              buyingPrice={Number(data.selling_prices.at(-1)?.amount)}
+              granularity={granularity ?? 'year'}
             />
           )}
 

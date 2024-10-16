@@ -126,15 +126,15 @@ export default function RegionalDashboard({
       <div className="flex justify-between items-center mb-6">
         <div>
           <PageHeading
-            title={`${suburbData?.name}, ${suburbData?.postcode}, ${suburbData?.state}`}
+            title={suburbData ? `${suburbData?.name}, ${suburbData?.postcode}, ${suburbData?.state}` : 'Loading...'}
           />
           <p className="text-sm">
             <span className="font-bold">
-              {suburbData?.highPriorityConsumers}
+              {suburbData?.highPriorityConsumers ?? 0}
             </span>{' '}
             High Priority Users {'  '}|{'  '}
             <span className="font-bold">
-              {suburbData?.lowPriorityConsumers}
+              {suburbData?.lowPriorityConsumers ?? 0}
             </span>{' '}
             Low Priority Users
           </p>
@@ -160,7 +160,12 @@ export default function RegionalDashboard({
               description=""
             />
           </div>
-          <WarningTable suburb_id={Number(params.id)} />
+          <div className="flex flex-col justify-center p-4 w-full bg-itembg border border-stroke rounded-lg text-left space-y-2">
+            <div className='text-white w-full text-left font-bold'>
+            Warnings
+            </div>
+            <WarningTable suburb_id={Number(params.id)} />
+          </div>
 
           <EnergySourceBreakdown
             chartTitle={`${suburbData ? suburbData?.name + "'s " : ''}Energy Generation Source Breakdown`}
@@ -173,8 +178,8 @@ export default function RegionalDashboard({
         <div className="flex flex-col gap-3 flex-1">
           <EnergyChart
             chartTitle="Suburb Energy Consumption/Generation"
-            energyConsumptionData={energyConsumptionData}
-            energyGenerationData={energyGenerationData}
+            energyConsumptionData={energyConsumptionData?.energy}
+            energyGenerationData={energyGenerationData?.energy}
             onTimeRangeChange={onEnergyChartDateRangeChange}
             showTimeRangeDropdown={true}
             granularity={energyChartDateRange.granularity}
@@ -188,7 +193,7 @@ export default function RegionalDashboard({
           />
           <RenewableGenerationChart
             chartTitle="Suburb Renewable Energy Generation"
-            energyGenerationData={energyGenerationData}
+            energyGenerationData={energyGenerationData?.energy}
             onTimeRangeChange={onEnergyChartDateRangeChange}
             showTimeRangeDropdown={true}
             granularity={energyChartDateRange.granularity}

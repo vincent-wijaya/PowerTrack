@@ -22,7 +22,7 @@ export const fetchRenewableEnergyGeneration = (
   type?: string
 ): RenewableEnergyGenerationData => {
   const { data: renewableEnergyGenerationData } = useSWRImmutable(
-    `${process.env.NEXT_PUBLIC_API_URL}/retailer/renewable-generation?start_date=${startDate}&end_date=${endDate}${type ? `&${type}_id=${id}` : ''}`,
+    `${process.env.NEXT_PUBLIC_API_URL}/retailer/renewableGeneration?start_date=${startDate}&end_date=${endDate}${type ? `&${type}_id=${id}` : ''}`,
     fetcher,
     {
       refreshInterval: POLLING_RATE,
