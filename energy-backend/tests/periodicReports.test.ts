@@ -3,9 +3,9 @@ process.env.NODE_ENV = 'test';
 
 import { Sequelize } from 'sequelize';
 import { connectToTestDb, dropTestDb } from './testDb';
-import moment from 'moment';
 import { generatePeriodicReports } from '../utils/periodicReports';
 import { defineModels } from '../databaseModels';
+import { subMonths, subWeeks } from 'date-fns';
 
 describe('Periodic Reports', () => {
   let sequelize: Sequelize;
@@ -17,16 +17,14 @@ describe('Periodic Reports', () => {
     const { Consumer, Suburb } = models;
 
     // Generate necessary data
-    await Suburb.create(
-      {
-        id: 1,
-        name: 'Test Suburb',
-        postcode: 3000,
-        state: 'Victoria',
-        latitude: '100',
-        longitude: '100',
-      }
-    );
+    await Suburb.create({
+      id: 1,
+      name: 'Test Suburb',
+      postcode: 3000,
+      state: 'Victoria',
+      latitude: '100',
+      longitude: '100',
+    });
     await Consumer.bulkCreate([
       {
         id: 1,
@@ -54,24 +52,32 @@ describe('Periodic Reports', () => {
   });
 
   it('should generate weekly and monthly reports', async () => {
-    const currentTime = moment().format();
+    const currentTime = new Date().toISOString();
 
     // Weekly report
-    await generatePeriodicReports(sequelize, moment(currentTime).subtract(1, 'week').format(), currentTime);
+    await generatePeriodicReports(
+      sequelize,
+      subWeeks(currentTime, 1).toISOString(),
+      currentTime
+    );
 
     // Monthly report
-    await generatePeriodicReports(sequelize, moment(currentTime).subtract(1, 'month').format(), currentTime);
+    await generatePeriodicReports(
+      sequelize,
+      subMonths(currentTime, 1).toISOString(),
+      currentTime
+    );
 
     const { Report } = models;
     const weeklyReports = await Report.findAll({
       where: {
-        start_date: moment(currentTime).subtract(1, 'week').format(),
+        start_date: subWeeks(currentTime, 1),
         end_date: currentTime,
       },
     });
     const monthlyReports = await Report.findAll({
       where: {
-        start_date: moment(currentTime).subtract(1, 'month').format(),
+        start_date: subMonths(currentTime, 1),
         end_date: currentTime,
       },
     });

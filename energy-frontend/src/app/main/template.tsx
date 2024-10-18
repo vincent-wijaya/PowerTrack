@@ -17,11 +17,12 @@ export default function Template({ children }: TemplateProps) {
   };
 
   return (
-    
     <div className="relative flex h-screen overflow-hidden">
-      
       {/* Navbar overlay */}
-      <Navbar isOpen={isNavbarOpen} onClose={() => setIsNavbarOpen(false)} />
+      <Navbar
+        isOpen={isNavbarOpen}
+        onClose={() => setIsNavbarOpen(false)}
+      />
 
       {/* Main Content */}
       <div
@@ -31,18 +32,21 @@ export default function Template({ children }: TemplateProps) {
       >
         {/* Header with "POWER TRACK" and menu toggle */}
         <div className="flex justify-between items-center py-6 px-10 bg-black">
-        <button
+          <button
             onClick={toggleNavbar}
             className="text-white text-lg focus:outline-none"
           >
-            <ProfileIcon/>
+            <ProfileIcon />
           </button>
-          <Link href="/main/mainDashboard"> {/* Wrap the title in Link */}
-            <div className="text-xl text-white italic cursor-pointer"> {/* Add cursor-pointer for better UX */}
+          <Link href="/main/mainDashboard">
+            {' '}
+            {/* Wrap the title in Link */}
+            <div className="text-xl text-white italic cursor-pointer">
+              {' '}
+              {/* Add cursor-pointer for better UX */}
               POWER TRACK
             </div>
           </Link>
-          
         </div>
 
         {/* Content area */}

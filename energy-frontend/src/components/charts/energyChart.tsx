@@ -2,13 +2,9 @@
 import React, { useState } from 'react';
 import Dropdown, { DropdownOption } from './dropDownFilter'; // Adjust the path based on your folder structure
 import LineChart from './lineChart';
-import {
-  EnergyConsumptionAmount,
-} from '@/api/getEnergyConsumption';
+import { EnergyConsumptionAmount } from '@/api/getEnergyConsumption';
 
-import {
-  EnergyGenerationAmount,
-} from '@/api/getEnergyGeneration';
+import { EnergyGenerationAmount } from '@/api/getEnergyGeneration';
 import { generateDateRange } from '@/utils';
 
 interface EnergyChartProps {
@@ -31,27 +27,25 @@ function EnergyChart(props: EnergyChartProps) {
   let datasets = [
     {
       label: 'Energy Consumption kWh',
-      data: props.energyConsumptionData?.map(
-        (c: EnergyConsumptionAmount) => {
+      data:
+        props.energyConsumptionData?.map((c: EnergyConsumptionAmount) => {
           return {
             x: c.date,
             y: c.amount.toFixed(2),
           };
-        }
-      ) ?? [],
+        }) ?? [],
       borderColor: 'red',
       backgroundColor: 'white',
     },
     {
       label: 'Energy Generation kWh',
-      data: props.energyGenerationData?.map(
-        (c: EnergyGenerationAmount) => {
+      data:
+        props.energyGenerationData?.map((c: EnergyGenerationAmount) => {
           return {
             x: c.date,
             y: c.amount.toFixed(2),
           };
-        }
-      ) ?? [],
+        }) ?? [],
       borderColor: 'blue',
       backgroundColor: 'white',
     },

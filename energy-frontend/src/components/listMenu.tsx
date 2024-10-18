@@ -8,7 +8,7 @@ interface ListMenuProps {
 
 export default function ListMenu({ icon, description, href }: ListMenuProps) {
   return (
-    <div className="flex flex-col p-4 md:p-8 lg:p-8 items-start group"> 
+    <div className="flex flex-col p-4 md:p-8 lg:p-8 items-start group">
       {/* Responsive padding, group added for hover effect */}
       <div className="flex items-center gap-4 md:gap-8 lg:gap-16">
         <div className="flex-shrink-0 group-hover:scale-110 transition-transform duration-200">

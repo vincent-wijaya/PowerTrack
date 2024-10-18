@@ -18,7 +18,7 @@ export interface ProfitMarginData {
 }
 
 export const fetchProfitMargin = (
-  startDate: string | Date,
+  startDate: string | Date
 ): ProfitMarginData => {
   const { data: profitMarginData } = useSWR(
     `${process.env.NEXT_PUBLIC_API_URL}/retailer/profitMargin?start_date=${startDate}`,
