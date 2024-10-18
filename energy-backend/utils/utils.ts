@@ -1,4 +1,4 @@
-import moment from 'moment';
+import { differenceInMonths, differenceInWeeks } from 'date-fns';
 
 /**
  * Determines the temporal granularity based on the period between start and end dates.
@@ -16,13 +16,12 @@ export function getTemporalGranularity(
   startDate: string,
   endDate: string
 ): { name: string; sequelize: string } {
-  let dateDifference = moment(endDate).diff(startDate);
-  if (moment.duration(dateDifference).asMonths() >= 1) {
+  if (differenceInMonths(endDate, startDate) >= 1) {
     return {
       name: 'weekly',
       sequelize: 'week',
     };
-  } else if (moment.duration(dateDifference).asWeeks() >= 1) {
+  } else if (differenceInWeeks(endDate, startDate) >= 1) {
     return {
       name: 'daily',
       sequelize: 'day',

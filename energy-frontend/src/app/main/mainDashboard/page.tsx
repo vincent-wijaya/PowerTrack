@@ -62,9 +62,7 @@ export default function MainDashboard() {
     energyChartDateRange.start
   );
 
-  const profitMarginData = fetchProfitMargin(
-    profitChartDateRange.start
-  );
+  const profitMarginData = fetchProfitMargin(profitChartDateRange.start);
 
   const onEnergyChartDateRangeChange = (value: DropdownOption) => {
     const dateRange = generateDateRange(value);
@@ -78,9 +76,7 @@ export default function MainDashboard() {
     setProfitChartDateRange(dateRange);
   };
 
-  const energySources = fetchSources(
-    energySourcesDateRange.start,
-  );
+  const energySources = fetchSources(energySourcesDateRange.start);
 
   const onEnergySourceTimeRangeChange = (value: DropdownOption) => {
     const dateRange = generateDateRange(value);
@@ -111,8 +107,8 @@ export default function MainDashboard() {
           </div>
           <Map className="h-[400px]" />
           <div className="flex flex-col justify-center p-4 w-full bg-itembg border border-stroke rounded-lg text-left space-y-2">
-            <div className='text-white w-full text-left font-bold'>
-            Warnings
+            <div className="text-white w-full text-left font-bold">
+              Warnings
             </div>
             <WarningTable />
           </div>

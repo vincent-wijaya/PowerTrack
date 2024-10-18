@@ -2,9 +2,7 @@
 import React, { useState } from 'react';
 import Dropdown, { DropdownOption } from './dropDownFilter'; // Adjust the path based on your folder structure
 import LineChart from './lineChart';
-import {
-  EnergyConsumptionAmount,
-} from '@/api/getEnergyConsumption';
+import { EnergyConsumptionAmount } from '@/api/getEnergyConsumption';
 
 import { generateDateRange } from '@/utils';
 
@@ -19,23 +17,23 @@ interface ConsumerSpendChartProps {
 }
 
 function ConsumerSpendChart(props: ConsumerSpendChartProps) {
-  const [consumerSpendChartDateRange, setConsumerSpendChartDateRange] = useState<{
-    start: string;
-    end: string;
-    granularity: string;
-  }>(generateDateRange('last_year'));
+  const [consumerSpendChartDateRange, setConsumerSpendChartDateRange] =
+    useState<{
+      start: string;
+      end: string;
+      granularity: string;
+    }>(generateDateRange('last_year'));
 
   let datasets = [
     {
       label: 'Spending',
-      data: props.consumptionData?.map(
-        (c: EnergyConsumptionAmount) => {
+      data:
+        props.consumptionData?.map((c: EnergyConsumptionAmount) => {
           return {
             x: c.date,
             y: (Number(c.amount) * props.buyingPrice).toFixed(2),
           };
-        }
-      ) ?? [],
+        }) ?? [],
       borderColor: 'red',
       backgroundColor: 'white',
     },

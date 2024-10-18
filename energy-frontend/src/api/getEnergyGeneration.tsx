@@ -28,7 +28,7 @@ export const fetchEnergyGeneration = (
     }
   );
 
-  console.log(energyGenerationData)
+  console.log(energyGenerationData);
 
   return energyGenerationData;
 };

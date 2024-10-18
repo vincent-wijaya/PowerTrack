@@ -75,9 +75,7 @@ export default function RegionalDashboard({
     setProfitChartDateRange(dateRange);
   };
 
-  const profitMarginData = fetchProfitMargin(
-    profitChartDateRange.start,
-  );
+  const profitMarginData = fetchProfitMargin(profitChartDateRange.start);
 
   const { data: suburbData, error: suburbError } = useSWR<SuburbData>(
     `${process.env.NEXT_PUBLIC_API_URL}/retailer/suburbs/${params.id}`,
@@ -126,7 +124,11 @@ export default function RegionalDashboard({
       <div className="flex justify-between items-center mb-6">
         <div>
           <PageHeading
-            title={suburbData ? `${suburbData?.name}, ${suburbData?.postcode}, ${suburbData?.state}` : 'Loading...'}
+            title={
+              suburbData
+                ? `${suburbData?.name}, ${suburbData?.postcode}, ${suburbData?.state}`
+                : 'Loading...'
+            }
           />
           <p className="text-sm">
             <span className="font-bold">
@@ -161,8 +163,8 @@ export default function RegionalDashboard({
             />
           </div>
           <div className="flex flex-col justify-center p-4 w-full bg-itembg border border-stroke rounded-lg text-left space-y-2">
-            <div className='text-white w-full text-left font-bold'>
-            Warnings
+            <div className="text-white w-full text-left font-bold">
+              Warnings
             </div>
             <WarningTable suburb_id={Number(params.id)} />
           </div>

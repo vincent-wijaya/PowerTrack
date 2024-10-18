@@ -34,7 +34,7 @@ interface Report {
     green_energy: {
       green_usage_percent: number;
       green_goal_percent: number;
-    }
+    };
     sources: EnergySource[];
   };
   selling_prices: Price[];
@@ -76,8 +76,12 @@ export default function IndividualReport({
   const [greenEnergyUsage, setgreenEnergyUsage] = useState(0);
   const [totalProfit, setTotalProfit] = useState(0);
   const [totalRevenue, setTotalRevenue] = useState(0);
-  const [consumptionData, setConsumptionData] = useState<EnergyConsumptionAmount[]>([]);
-  const [generationData, setGenerationData] = useState<EnergyGenerationAmount[]>([]);
+  const [consumptionData, setConsumptionData] = useState<
+    EnergyConsumptionAmount[]
+  >([]);
+  const [generationData, setGenerationData] = useState<
+    EnergyGenerationAmount[]
+  >([]);
   const [energyChartTitle, setEnergyChartTitle] = useState('');
   const [profitChartData, setProfitChartData] = useState<ProfitMarginData>();
   const [profitChartTitle, setprofitChartTitle] = useState('');
@@ -149,11 +153,13 @@ export default function IndividualReport({
       setEnergyChartTitle('Energy Consumption/Generation');
       setEnergySources(data.energy.sources);
 
-
       // Total Revenue
-      const totalRevenue = data.energy.generation?.reduce((acc: number, item: { date: string; amount: number; }) => {
-        return acc + Number(data.selling_prices.at(-1)) * item.amount;
-      }, 0);
+      const totalRevenue = data.energy.generation?.reduce(
+        (acc: number, item: { date: string; amount: number }) => {
+          return acc + Number(data.selling_prices.at(-1)) * item.amount;
+        },
+        0
+      );
 
       setTotalRevenue(totalRevenue);
     }
@@ -182,13 +188,12 @@ export default function IndividualReport({
 
       setHighPriority(true);
 
-      console.log(data)
+      console.log(data);
 
       const spendingPrice = data.energy.consumption?.map((item) => ({
-          date: item.date,
-          amount: item.amount * Number(data.selling_prices.at(-1)?.amount)
-        })
-      );
+        date: item.date,
+        amount: item.amount * Number(data.selling_prices.at(-1)?.amount),
+      }));
 
       setConsumptionData(data.energy.consumption);
       // setSpendingPriceData(spendingPrice);
@@ -217,16 +222,16 @@ export default function IndividualReport({
       id="contentToExport"
     >
       <div className="flex justify-between">
-      <PageHeading title="REPORT" />
-      <button
-            onClick={handleExport}
-            className={`p-4 bg-purple text-white text-center rounded-lg ${
-              isExporting ? 'hidden' : ''
-            }`}
-            disabled={isExporting}
-          >
-            {isExporting ? 'Exporting...' : 'Export to PDF'}
-          </button>
+        <PageHeading title="REPORT" />
+        <button
+          onClick={handleExport}
+          className={`p-4 bg-purple text-white text-center rounded-lg ${
+            isExporting ? 'hidden' : ''
+          }`}
+          disabled={isExporting}
+        >
+          {isExporting ? 'Exporting...' : 'Export to PDF'}
+        </button>
       </div>
       <div className="text-white pb-2">
         {DateTime.fromISO(data.start_date).toFormat('D')} -{' '}
@@ -236,9 +241,8 @@ export default function IndividualReport({
       </div>
       <div className="grid grid-flow-col grid-cols-2 gap-3">
         <div className="flex flex-col gap-3">
-            
           {data?.for.consumer_id === null && suburbData ? ( // For suburb
-          <div className="flex justify-between gap-3 h-[128px]">
+            <div className="flex justify-between gap-3 h-[128px]">
               <InfoBox
                 title={formatCurrency(averageProfitkwh)}
                 description="Average Profit per kWh sold when bought"
@@ -248,7 +252,7 @@ export default function IndividualReport({
                 description="Average Profit Margin"
               />
               <GreenUsage />
-              
+
               <InfoBox
                 title={formatCurrency(totalProfit)}
                 description="Profitted"
@@ -256,20 +260,17 @@ export default function IndividualReport({
               <InfoBox
                 title={formatCurrency(totalRevenue)}
                 description="Revenue made"
-              /> 
+              />
             </div>
-            ) : (
-              <div>
-                {/* <InfoBox /> */}
-              </div>
-            )}
+          ) : (
+            <div>{/* <InfoBox /> */}</div>
+          )}
           {/*<EnergySourceBreakdown energySources={data.sources} />*/}
           <EnergySourceBreakdown
             chartTitle={`${suburbData?.name}'s Energy Generation Source Breakdown`}
             energySources={energySources}
             showTimeRangeDropdown={false}
           />
-          
         </div>
         <div className="flex flex-col gap-3">
           <EnergyChart
@@ -284,7 +285,8 @@ export default function IndividualReport({
               profitMarginData={profitChartData}
               granularity={granularity ?? 'year'}
             />
-          ) : ( // For consumer
+          ) : (
+            // For consumer
             <ConsumerSpendChart
               chartTitle="Spending"
               consumptionData={consumptionData}

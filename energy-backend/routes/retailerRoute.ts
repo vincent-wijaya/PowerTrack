@@ -1,5 +1,4 @@
 import express from 'express';
-import moment, { Moment } from 'moment';
 import { col, fn, literal, Op } from 'sequelize';
 
 // Import the turf module for clustering
@@ -18,6 +17,7 @@ import {
   differenceInHours,
   isBefore,
   isValid,
+  subMinutes,
   parseISO,
 } from 'date-fns';
 
@@ -138,15 +138,24 @@ router.get('/consumption', async (req, res) => {
     return res.status(400).send('Consumer ID must be an integer');
   }
 
-  const { data: dates, error: dateError } = validateDateInputs(String(start_date), String(end_date));
+  const { data: dates, error: dateError } = validateDateInputs(
+    String(start_date),
+    String(end_date)
+  );
 
   if (dateError) {
     return res.status(dateError.status).json({
-      error: dateError.message
-    })
+      error: dateError.message,
+    });
   }
 
-  const consumption = await getEnergyConsumption(models, dates.startDate, dates.endDate, Number(suburb_id), Number(consumer_id));
+  const consumption = await getEnergyConsumption(
+    models,
+    dates.startDate,
+    dates.endDate,
+    Number(suburb_id),
+    Number(consumer_id)
+  );
 
   return res.status(200).send({
     start_date,
@@ -157,12 +166,11 @@ router.get('/consumption', async (req, res) => {
   });
 });
 
-
 /**
  * Retrieves average energy consumption data of a suburb (optional) or suburb of a consumer (optional) or nationwide from the database.
- * 
+ *
  * Cannot provide suburbId and consumerId together.
- * 
+ *
  * @param models sequelize models
  * @param startDate start of date period
  * @param endDate end of date period
@@ -178,11 +186,13 @@ const getEnergyConsumption = async (
   consumerId?: number | string
 ): Promise<Energy[]> => {
   const { ConsumerConsumption, SuburbConsumption } = models;
-  
+
   // Define where clause for date range
-  let dateGranularity =
-    getTemporalGranularity(startDate.toISOString(), endDate.toISOString());
-    
+  let dateGranularity = getTemporalGranularity(
+    startDate.toISOString(),
+    endDate.toISOString()
+  );
+
   // Set up date range for query
   const dateWhere = {
     [Op.and]: {
@@ -250,8 +260,8 @@ const getEnergyConsumption = async (
     amount: Number(item.dataValues.amount) * multiplier, // Converts the energy consumed into kWh based on the temporal granularity
   }));
 
-  return consumption
-}
+  return consumption;
+};
 
 /**
  * GET /retailer/generation
@@ -292,21 +302,29 @@ router.get('/generation', async (req, res) => {
   const { suburb_id, start_date, end_date } = req.query; // Get query parameters
   const models = req.app.get('models');
 
-    // Check if suburb_id is an integer
+  // Check if suburb_id is an integer
   if (suburb_id && !isValidId(Number(suburb_id))) {
     return res.status(400).send('Suburb ID must be an integer');
   }
 
   // Validate date inputs
-  const { data: dates, error: dateError } = validateDateInputs(String(start_date), String(end_date));
+  const { data: dates, error: dateError } = validateDateInputs(
+    String(start_date),
+    String(end_date)
+  );
 
   if (dateError) {
     return res.status(dateError.status).json({
-      error: dateError.message
-    })
+      error: dateError.message,
+    });
   }
 
-  const generation = await getEnergyGeneration(models, dates.startDate, dates.endDate, Number(suburb_id));
+  const generation = await getEnergyGeneration(
+    models,
+    dates.startDate,
+    dates.endDate,
+    Number(suburb_id)
+  );
 
   return res.status(200).send({
     start_date,
@@ -323,7 +341,7 @@ interface Energy {
 
 /**
  * Retrieves average energy generation data of a suburb (if provided) or nationwide from the database.
- * 
+ *
  * @param models sequelize models
  * @param startDate start of date period
  * @param endDate end of date period
@@ -345,9 +363,11 @@ const getEnergyGeneration = async (
   }
 
   // Define where clause for date range
-  let dateGranularity =
-    getTemporalGranularity(startDate.toISOString(), endDate.toISOString());
-    
+  let dateGranularity = getTemporalGranularity(
+    startDate.toISOString(),
+    endDate.toISOString()
+  );
+
   // Set up date range for query
   const dateWhere = {
     [Op.and]: {
@@ -366,7 +386,7 @@ const getEnergyGeneration = async (
       ], // Truncate the date based on the date granularity
     ],
     where: {
-      date: dateWhere
+      date: dateWhere,
     },
     include: [
       {
@@ -383,16 +403,15 @@ const getEnergyGeneration = async (
 
   const generation = result.map((item: any) => ({
     date: new Date(item.dataValues.truncatedDate).toISOString(),
-    amount:
-      Number(item.dataValues.amount) * multiplier, // Converts the energy consumed into kWh based on the temporal granularity
+    amount: Number(item.dataValues.amount) * multiplier, // Converts the energy consumed into kWh based on the temporal granularity
   }));
 
-  return generation
-}
+  return generation;
+};
 
 const isValidId = (id: number | string) => {
-  return Number.isInteger(Number(id))
-}
+  return Number.isInteger(Number(id));
+};
 
 /**
  * GET /retailer/generator
@@ -457,7 +476,7 @@ router.get('/generator', async (req, res) => {
       // Check if suburb_id is an integer
       if (suburb_id && !isValidId(Number(suburb_id))) {
         return res.status(400).send('Suburb ID must be an integer');
-      }    
+      }
 
       suburbWhere.suburb_id = suburb_id;
     } else {
@@ -467,17 +486,23 @@ router.get('/generator', async (req, res) => {
     }
 
     // Validate date inputs
-    const { data: dates, error: dateError } = validateDateInputs(String(start_date), String(end_date));
-  
+    const { data: dates, error: dateError } = validateDateInputs(
+      String(start_date),
+      String(end_date)
+    );
+
     if (dateError) {
       return res.status(dateError.status).send({
-        error: dateError.message
-      })
+        error: dateError.message,
+      });
     }
 
     // Determine the date granularity based on the date range
     let dateGranularity: { name: string; sequelize: string } =
-      getTemporalGranularity(dates.startDate.toISOString(), dates.endDate.toISOString());
+      getTemporalGranularity(
+        dates.startDate.toISOString(),
+        dates.endDate.toISOString()
+      );
 
     // Set the date range to be between the two dates
     const dateWhere = {
@@ -522,7 +547,7 @@ router.get('/generator', async (req, res) => {
     // Cycles through each energy generation and appends it to the array of the corresponding energy generator
     const generators = result.reduce((generators: any, generator: any) => {
       const generatorId = generator.dataValues.energy_generator_id;
-      const date = moment(generator.dataValues.truncatedDate).toISOString();
+      const date = new Date(generator.dataValues.truncatedDate).toISOString();
       const amount =
         Number(generator.dataValues.amount) *
         kWhConversionMultiplier(dateGranularity.name); // Convert energy generated into kWh based on the temporal granularity
@@ -542,14 +567,14 @@ router.get('/generator', async (req, res) => {
         amount,
       });
 
-      return generators
+      return generators;
     }, {});
 
     return res.status(200).send({
       start_date,
       end_date,
-      ...( suburb_id && { suburb_id: Number(suburb_id) }),
-      generators: Object.values(generators),  // Convert the generators object to an array
+      ...(suburb_id && { suburb_id: Number(suburb_id) }),
+      generators: Object.values(generators), // Convert the generators object to an array
     });
   } catch (error) {
     console.error(error);
@@ -634,12 +659,15 @@ router.get('/profitMargin', async (req, res) => {
   }
 
   // Validate date inputs
-  const { data: dates, error: dateError } = validateDateInputs(String(start_date), String(end_date));
+  const { data: dates, error: dateError } = validateDateInputs(
+    String(start_date),
+    String(end_date)
+  );
 
   if (dateError) {
     return res.status(dateError.status).json({
-      error: dateError.message
-    })
+      error: dateError.message,
+    });
   }
 
   const prices = await getProfitMargin(models, dates.startDate, dates.endDate);
@@ -971,9 +999,10 @@ router.get('/warnings', async (req, res) => {
               attributes: [], // We don't need to return details of ConsumerConsumption
               where: {
                 date: {
-                  [Op.gt]: moment()
-                    .subtract(OUTAGE_HP_DURATION_THRESHOLD, 'minutes')
-                    .toISOString(),
+                  [Op.gt]: subMinutes(
+                    new Date(),
+                    OUTAGE_HP_DURATION_THRESHOLD
+                  ).toISOString(),
                 },
               },
               required: false, // Perform a LEFT JOIN to include consumers even without ConsumerConsumption records
@@ -1243,7 +1272,7 @@ router.get('/reports', async (req, res) => {
   if (!reports) {
     return res.status(200).send({
       reports: [],
-    })
+    });
   }
 
   const reportsFormatted = reports.map((report: any) => {
@@ -1398,12 +1427,8 @@ router.post('/reports', async (req, res) => {
  * }
  */
 router.get('/reports/:id', async (req, res) => {
-  const {
-    Report,
-    EnergyGenerator,
-    EnergyGeneration,
-    SuburbConsumption,
-  } = req.app.get('models');
+  const { Report, EnergyGenerator, EnergyGeneration, SuburbConsumption } =
+    req.app.get('models');
   const models = req.app.get('models');
   const id = req.params.id;
 
@@ -1424,11 +1449,27 @@ router.get('/reports/:id', async (req, res) => {
     reportSuburbId = Number(consumer?.dataValues.suburb_id);
   }
 
-  const energyGeneration = await getEnergyGeneration(models, report.start_date, report.end_date, reportSuburbId);
+  const energyGeneration = await getEnergyGeneration(
+    models,
+    report.start_date,
+    report.end_date,
+    reportSuburbId
+  );
 
-  const energyConsumption = await getEnergyConsumption(models, report.start_date, report.end_date, report.suburb_id, report.consumer_id);
+  const energyConsumption = await getEnergyConsumption(
+    models,
+    report.start_date,
+    report.end_date,
+    report.suburb_id,
+    report.consumer_id
+  );
 
-  const { data: greenEnergy } = await getGreenEnergy(models, report.start_date, report.end_date, report.suburb_id);
+  const { data: greenEnergy } = await getGreenEnergy(
+    models,
+    report.start_date,
+    report.end_date,
+    report.suburb_id
+  );
 
   const energySources = await getEnergySourceBreakdown(
     models,
@@ -1457,8 +1498,8 @@ router.get('/reports/:id', async (req, res) => {
       sources: energySources,
       green_energy: {
         green_goal_percent: greenEnergy.greenGoalPercent,
-        green_usage_percent: greenEnergy.greenUsagePercent
-      }
+        green_usage_percent: greenEnergy.greenUsagePercent,
+      },
     },
     selling_prices: profitMarginData.sellingPrices,
     spot_prices: profitMarginData.spotPrices,
@@ -1516,12 +1557,12 @@ router.get('/powerOutages', async (req, res) => {
   ) as DbModelType;
 
   interface ConsumerData {
-    id: number,
-    street_address: string,
-    suburb_id: number,
-    latitude: number,
-    longitude: number,
-    high_priority: boolean,
+    id: number;
+    street_address: string;
+    suburb_id: number;
+    latitude: number;
+    longitude: number;
+    high_priority: boolean;
   }
 
   // Retrieve consumers with zero consumption for the past 30 minutes
@@ -1564,9 +1605,10 @@ router.get('/powerOutages', async (req, res) => {
           attributes: [], // We don't need to return details of ConsumerConsumption
           where: {
             date: {
-              [Op.gt]: moment()
-                .subtract(OUTAGE_DURATION_THRESHOLD, 'minutes')
-                .toISOString(),
+              [Op.gt]: subMinutes(
+                new Date(),
+                OUTAGE_DURATION_THRESHOLD
+              ).toISOString(),
             },
           },
           required: false, // Perform a LEFT JOIN to include consumers even without ConsumerConsumption records
@@ -1618,9 +1660,10 @@ router.get('/powerOutages', async (req, res) => {
           attributes: [], // We don't need to return details of ConsumerConsumption
           where: {
             date: {
-              [Op.gt]: moment()
-                .subtract(OUTAGE_HP_DURATION_THRESHOLD, 'minutes')
-                .toISOString(),
+              [Op.gt]: subMinutes(
+                new Date(),
+                OUTAGE_HP_DURATION_THRESHOLD
+              ).toISOString(),
             },
           },
           required: false, // Perform a LEFT JOIN to include consumers even without ConsumerConsumption records
@@ -1824,12 +1867,15 @@ router.get('/sources', async (req, res) => {
   }
 
   // Validate date inputs
-  const { data: dates, error: dateError } = validateDateInputs(String(start_date), String(end_date));
+  const { data: dates, error: dateError } = validateDateInputs(
+    String(start_date),
+    String(end_date)
+  );
 
   if (dateError) {
     return res.status(dateError.status).send({
-      error: dateError.message
-    })
+      error: dateError.message,
+    });
   }
 
   // Retrieve suburb_id of consumer if only consumer_id is provided
@@ -1886,7 +1932,7 @@ const getEnergySourceBreakdown = async (
     suburbWhere.suburb_id = suburbId;
   }
 
-  const result = await EnergyGeneration.findAll({
+  const result = (await EnergyGeneration.findAll({
     attributes: [
       [col('energy_generator.id'), 'generator_id'],
       [col('energy_generator.generator_type.category'), 'category'],
@@ -1919,19 +1965,19 @@ const getEnergySourceBreakdown = async (
     order: [['category', 'ASC']],
     raw: true,
     nest: true,
-  }) as unknown as {
+  })) as unknown as {
     generator_id: number;
     category: string;
     amount: number;
     renewable: boolean;
   }[];
-  
+
   interface AggregatedSource {
     category: string;
     renewable: boolean;
     amount: number;
   }
-  
+
   interface SourcesMap {
     [category: string]: AggregatedSource;
   }
@@ -1981,7 +2027,7 @@ const getEnergySourceBreakdown = async (
  *
  * Retrieve average renewable energy generation data for a suburb over a period of time in kWh.
  * Based on the time period, the data is aggregated by hour, day, or week.
- * 
+ *
  * This API specifically filters the energy generation sources that are marked as "renewable."
  *
  * Query parameters:
@@ -2032,12 +2078,15 @@ router.get('/renewableGeneration', async (req, res) => {
     }
 
     // Validate date inputs
-    const { data: dates, error: dateError } = validateDateInputs(String(start_date), String(end_date));
+    const { data: dates, error: dateError } = validateDateInputs(
+      String(start_date),
+      String(end_date)
+    );
 
     if (dateError) {
       return res.status(dateError.status).json({
-        error: dateError.message
-      })
+        error: dateError.message,
+      });
     }
 
     // Define where clause for date range
@@ -2100,25 +2149,39 @@ router.get('/renewableGeneration', async (req, res) => {
     }
 
     // Extract the renewable energy generation data
-    result.forEach((generation: any) => {
-      const date = moment(generation.dataValues.truncatedDate).toISOString();
+    const renewable_energy = result.reduce(
+      (
+        renewable_energy: { date: string; amount: number }[],
+        generation: any
+      ) => {
+        const date = new Date(
+          generation.dataValues.truncatedDate
+        ).toISOString();
 
-      // Add the date and amount of renewable energy generated to the return data
-      returnData.renewable_energy.push({
-        date,
-        amount:
-          Number(generation.dataValues.amount) *
-          kWhConversionMultiplier(dateGranularity.name), // Converts from kW to kWh based on granularity
-      });
+        // Add the date and amount of renewable energy generated to the return data
+        renewable_energy.push({
+          date,
+          amount:
+            Number(generation.dataValues.amount) *
+            kWhConversionMultiplier(dateGranularity.name), // Converts from kW to kWh based on granularity
+        });
+
+        return renewable_energy;
+      },
+      []
+    );
+
+    return res.status(200).send({
+      start_date,
+      end_date,
+      ...(suburb_id && { suburb_id: Number(suburb_id) }),
+      renewable_energy,
     });
-
-    return res.status(200).send(returnData);
   } catch (error) {
     console.error(error);
     return res.status(500).send('Internal server error');
   }
 });
-
 
 router.get('/greenEnergy', async (req, res) => {
   const models = req.app.get('models') as DbModelType;
@@ -2127,10 +2190,10 @@ router.get('/greenEnergy', async (req, res) => {
 
   if (error) {
     return res.status(error.status).json({
-      error: error.message
-    })
+      error: error.message,
+    });
   }
-  
+
   return res.status(200).json({
     green_usage_percent: data.greenUsagePercent,
     green_goal_percent: data.greenGoalPercent,
@@ -2139,14 +2202,19 @@ router.get('/greenEnergy', async (req, res) => {
 
 /**
  * Retrieves green energy usage and goal statistics from the database.
- * 
+ *
  * @param models sequelize models
  * @param startDate start of date period
  * @param endDate end of date period
  * @param suburbId ID of suburb
  * @returns percentage of energy generation is renewable, percentage progress towards green energy goal, and potential errors
  */
-const getGreenEnergy = async (models: DbModelType, startDate?: Date, endDate?: Date, suburbId?: number | string) => {
+const getGreenEnergy = async (
+  models: DbModelType,
+  startDate?: Date,
+  endDate?: Date,
+  suburbId?: number | string
+) => {
   let dateWhere = {};
   if (startDate && endDate) {
     dateWhere = {
@@ -2154,12 +2222,12 @@ const getGreenEnergy = async (models: DbModelType, startDate?: Date, endDate?: D
         [Op.gt]: startDate,
         [Op.lte]: endDate,
       },
-    }
+    };
   } else {
     const yesterday = new Date();
     yesterday.setDate(yesterday.getDate() - 1);
     dateWhere = { [Op.gte]: yesterday };
-  } 
+  }
 
   // Define where clause for suburb (if provided)
   let suburbWhere: { suburb_id?: number } = {};
@@ -2178,7 +2246,7 @@ const getGreenEnergy = async (models: DbModelType, startDate?: Date, endDate?: D
         model: models.EnergyGenerator,
         attributes: [],
         where: {
-          ...suburbWhere
+          ...suburbWhere,
         },
         include: [
           {
@@ -2189,7 +2257,7 @@ const getGreenEnergy = async (models: DbModelType, startDate?: Date, endDate?: D
       },
     ],
     where: {
-      date: dateWhere
+      date: dateWhere,
     },
     group: ['energy_generator.generator_type.renewable'], // Groups the result by renewable status
     raw: true,
@@ -2212,9 +2280,9 @@ const getGreenEnergy = async (models: DbModelType, startDate?: Date, endDate?: D
       },
       error: {
         status: 400,
-        message: 'No generation records in the last 24 hours were found.'
-      }
-    }
+        message: 'No generation records in the last 24 hours were found.',
+      },
+    };
 
   // Calculate green energy generation percentage
   let greenUsagePercent;
@@ -2240,9 +2308,9 @@ const getGreenEnergy = async (models: DbModelType, startDate?: Date, endDate?: D
       },
       error: {
         status: 400,
-        message: 'No green target found.'
-      }
-    }
+        message: 'No green target found.',
+      },
+    };
   }
   const greenGoalPercent = greenUsagePercent / parseFloat(greenTarget);
 
@@ -2250,9 +2318,9 @@ const getGreenEnergy = async (models: DbModelType, startDate?: Date, endDate?: D
     data: {
       greenUsagePercent,
       greenGoalPercent,
-    }
-  }
-}
+    },
+  };
+};
 
 const validateDateInputs = (startDate: String, endDate?: String) => {
   // If no date range is provided, return error 400
@@ -2260,8 +2328,8 @@ const validateDateInputs = (startDate: String, endDate?: String) => {
     return {
       error: {
         status: 400,
-        message: 'Start date must be provided.'
-      }
+        message: 'Start date must be provided.',
+      },
     };
   }
 
@@ -2270,8 +2338,9 @@ const validateDateInputs = (startDate: String, endDate?: String) => {
     return {
       error: {
         status: 400,
-        message: 'Invalid start date format. Provide dates in ISO string format.' 
-      }
+        message:
+          'Invalid start date format. Provide dates in ISO string format.',
+      },
     };
   }
   const parsedStartDate = new Date(String(startDate));
@@ -2283,8 +2352,9 @@ const validateDateInputs = (startDate: String, endDate?: String) => {
       return {
         error: {
           status: 400,
-          message: 'Invalid end date format. Provide dates in ISO string format.'
-        }
+          message:
+            'Invalid end date format. Provide dates in ISO string format.',
+        },
       };
     }
     parsedEndDate = new Date(String(endDate));
@@ -2295,30 +2365,30 @@ const validateDateInputs = (startDate: String, endDate?: String) => {
 
   // Validate that end_date is after start_date
   if (isBefore(parsedEndDate, parsedStartDate)) {
-    return { 
+    return {
       error: {
         status: 400,
-        message: 'Start date must be before end date.' 
-      }
+        message: 'Start date must be before end date.',
+      },
     };
   }
 
   if (isBefore(new Date(), parsedEndDate)) {
-    return { 
+    return {
       error: {
         status: 400,
-        message: 'End date must not be in the future.' 
-      }
+        message: 'End date must not be in the future.',
+      },
     };
   }
 
   return {
     data: {
       startDate: parsedStartDate,
-      endDate: parsedEndDate
-    }
-  }
-}
+      endDate: parsedEndDate,
+    },
+  };
+};
 
 /**
  * Retrieves consumer data.

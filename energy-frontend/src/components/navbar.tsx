@@ -62,9 +62,7 @@ export default function Navbar({ isOpen, onClose }: NavbarProps) {
             </button>
           </div>
           {/* bottom section */}
-          <div className="flex flex-col">
-          
-          </div>
+          <div className="flex flex-col"></div>
         </div>
       )}
     </>

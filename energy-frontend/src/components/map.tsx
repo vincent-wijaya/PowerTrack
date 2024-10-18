@@ -107,7 +107,7 @@ export default function Map(props: { className?: string }) {
       if (mapData && outageData) {
         const consumptionResults = mapData;
         const outageResults = outageData.power_outages;
-        
+
         const response = await fetch('/data/combined.json');
         if (!response.ok) {
           throw new Error('Failed to fetch combined JSON data');
@@ -154,7 +154,7 @@ export default function Map(props: { className?: string }) {
           return {
             latLng: new LatLng(consumer.latitude, consumer.longitude),
             id: consumer.id,
-            suburb_id: consumer.suburb_id
+            suburb_id: consumer.suburb_id,
           };
         });
 
@@ -178,7 +178,6 @@ export default function Map(props: { className?: string }) {
   }
 
   const useOnEachFeature = (feature: Feature<any>, layer: any) => {
-    
     const suburbId = feature.properties?.id;
     const outageConsumersCount = powerOutageData.filter(
       (marker) => marker.suburb_id === parseInt(suburbId)

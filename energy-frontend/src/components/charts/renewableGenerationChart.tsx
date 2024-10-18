@@ -32,14 +32,15 @@ function RenewableEnergyChart(props: EnergyChartProps) {
   let datasets = [
     {
       label: 'Energy Generation kWh',
-      data: props.energyGenerationData?.map(
-        (c: RenewableEnergyGenerationAmount) => {
-          return {
-            x: c.date,
-            y: c.amount.toFixed(2),
-          };
-        }
-      ) ?? [],
+      data:
+        props.energyGenerationData?.map(
+          (c: RenewableEnergyGenerationAmount) => {
+            return {
+              x: c.date,
+              y: c.amount.toFixed(2),
+            };
+          }
+        ) ?? [],
       borderColor: 'green',
       backgroundColor: 'white',
     },

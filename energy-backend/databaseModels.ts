@@ -163,7 +163,7 @@ export const defineModels = (sequelize: Sequelize) => {
       email_address: {
         type: DataTypes.TEXT,
         allowNull: true,
-      }
+      },
     },
     { freezeTableName: true }
   );
