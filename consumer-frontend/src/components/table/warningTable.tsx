@@ -1,12 +1,12 @@
 'use client';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
+import useSWR from 'swr';
 import Table from './table';
-import fetchWarnings from '@/api/getWarnings';
+import { fetcher } from '@/utils'; // Assuming this is where your fetcher is defined
+import axios from 'axios';
 
 type DataItem = {
-  suburb_id: number;
-  consumer_id: number;
-  goal: string;
+  id: number;
   category: string;
   description: string;
   suggestion: string;
@@ -19,40 +19,62 @@ interface WarningTableProps {
 }
 
 // Mock function to fetch headers and data
-// Mock function to fetch headers and data
 async function fetchHeadersAndData(
   suburb_id?: number,
   consumer_id?: number
-): Promise<{ headers: string[]; data: DataItem[] }> {
+): Promise<{ headers: { name: string; title: string }[]; data: DataItem[] }> {
   // Initialize an array to store DataItem objects
   const dataItems: DataItem[] = [];
 
+  let link
+
+  if (suburb_id) {
+    link = `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings?suburb_id=${suburb_id}`;
+  } else if (consumer_id) {
+    link = `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings?consumer_id=${consumer_id}`;
+  } else {
+    link = `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings`;
+  }
+
   try {
-    const warningsResult = await fetchWarnings(suburb_id, consumer_id);
+    const warningsResult = await axios.get(link);
 
-    // Check if warningsResult is an object with 'warnings' property or directly an array
-    const warnings = Array.isArray(warningsResult)
-      ? warningsResult
-      : warningsResult.warnings;
+    // Access the warnings array directly
+    const warnings = warningsResult.data.warnings;
 
-    // Map the warnings into DataItem format
-    const mappedDataItems: DataItem[] = warnings.map((warning) => ({
-      suburb_id: suburb_id ?? 0, // Assuming 0 if suburb_id is not provided
-      consumer_id: warning.data.consumer_id,
-      goal: warning.goal, // Replace with actual goal if available
-      category: warning.category,
-      description: warning.description,
-      suggestion: warning.suggestion,
-      data: warning.data,
-    }));
+    // Ensure warnings is an array before mapping
+    const mappedDataItems: DataItem[] = Array.isArray(warnings)
+      ? warnings.map((warning: any) => ({
+          id: warning.data.id,
+          suburb_id: suburb_id ?? 0, // Assuming 0 if suburb_id is not provided
+          consumer_id: warning.data.consumer_id,
+          goal: warning.goal, // Replace with actual goal if available
+          category: warning.category,
+          description: warning.description,
+          suggestion: warning.suggestion,
+          data: warning.data,
+        }))
+      : [];
 
-    // Add the mapped DataItem objects to dataItems array
     dataItems.push(...mappedDataItems);
 
     return new Promise((resolve) => {
       setTimeout(() => {
         resolve({
-          headers: ['Description', 'Goal', 'Suggestion'],
+          headers: [
+            {
+              name: 'description',
+              title: 'Description',
+            },
+            // {
+            //   name: 'goal',
+            //   title: 'Goal',
+            // },
+            {
+              name: 'suggestion',
+              title: 'Suggestion',
+            },
+          ],
           data: dataItems,
         });
       }, 1000); // Simulating network delay
@@ -67,40 +89,62 @@ export default function WarningTable({
   suburb_id,
   consumer_id,
 }: WarningTableProps) {
-  const [headers, setHeaders] = useState<string[]>([]);
-  const [data, setData] = useState<DataItem[]>([]);
+  // Construct the query parameters dynamically
+  const params = new URLSearchParams();
 
-  useEffect(() => {
-    async function getData() {
-      try {
-        const { headers, data } = await fetchHeadersAndData(
-          suburb_id,
-          consumer_id
-        );
-        setHeaders(headers);
-        setData(data);
-      } catch (error) {
-        console.error('Failed to fetch data', error);
-      }
-    }
+  let url = `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings`;
 
-    // Initial fetch
-    getData();
+  if (suburb_id) {
+    url = `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings?suburb_id=${suburb_id}`
+  }
+  if (consumer_id) {
+    url = `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings?consumer_id=${consumer_id}`
+  }
 
-    // Set up polling
-    const interval = setInterval(() => {
-      getData();
-    }, 50000); // Adjust the interval as needed
+  // Generate the full URL with optional parameters
+ 
+  const { data, error } = useSWR(url, fetcher, {
+    refreshInterval: 50000, // Adjust the polling interval as needed
+  });
 
-    // Clean up interval on component unmount
-    return () => clearInterval(interval);
-  }, []);
+  if (error) {
+    console.error('Failed to fetch data', error);
+    return <div className="text-white">Failed to load data</div>;
+  }
+
+  if (!data) {
+    return <div className="text-white">Loading...</div>;
+  }
+
+  const headers = [
+    {
+      name: 'description',
+      title: 'Description',
+    },
+    {
+      name: 'goal',
+      title: 'Goal',
+    },
+    {
+      name: 'suggestion',
+      title: 'Suggestion',
+    },
+  ];
+
+  let warningsData: DataItem[];
+
+  warningsData = data.warnings.map((warning: any) => ({
+    category: warning.category,
+    description: warning.description,
+    suggestion: warning.suggestion,
+  }));
 
   return (
     <Table
       columns={headers}
-      data={data}
+      data={warningsData}
       link={null}
+      showPageControls={false}
     />
   );
 }

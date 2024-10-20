@@ -6,6 +6,7 @@ import GreenGoal from '@/components/infoBoxes/greenGoal';
 import GreenUsage from '@/components/infoBoxes/greenUsage';
 import InfoBox from '@/components/infoBoxes/infoBox';
 import PageHeading from '@/components/pageHeading';
+import ReportFormButton from '@/components/reportFormButton';
 import WarningTable from '@/components/table/warningTable';
 import { fetcher, generateDateRange } from '@/utils';
 import ConsumerSpendChart from '@/components/charts/consumerSpendChart';
@@ -17,8 +18,7 @@ import { DropdownOption } from '@/components/charts/dropDownFilter';
 import EnergyChart from '@/components/charts/energyChart';
 import { fetchEnergyConsumption } from '@/api/getEnergyConsumption';
 import { POLLING_RATE } from '@/config';
-import reportFormButton from '@/components/reportFormButton'
-import ReportFormButton from '@/components/reportFormButton';
+import { fetchSpending } from '@/api/getSpending';
 
 interface Consumer {
   suburb_id: number;
@@ -56,6 +56,11 @@ export default function UserDashboard({ params }: { params: { id: number } }) {
     end: string;
     granularity: string;
   }>(generateDateRange('last_year'));
+  const [spendingChartDateRange, setSpendingChartDateRange] = useState<{
+    start: string;
+    end: string;
+    granularity: string;
+  }>(generateDateRange('last_year'));
 
   const energyConsumptionData = fetchEnergyConsumption(
     energyChartDateRange.start,
@@ -83,6 +88,8 @@ export default function UserDashboard({ params }: { params: { id: number } }) {
     setEnergyChartDateRange(dateRange);
   };
 
+  const stringID = params.id.toString();
+
   const { data: warningData, error: warningError } = useSWR(
     `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings?consumer_id=${params.id}`,
     fetcher,
@@ -98,13 +105,21 @@ export default function UserDashboard({ params }: { params: { id: number } }) {
     }
   );
 
+  const spendingData = fetchSpending(spendingChartDateRange.start, params.id);
+
+  const onSpendingDateRangeChange = (value: DropdownOption) => {
+    const dateRange = generateDateRange(value);
+
+    setSpendingChartDateRange(dateRange);
+  };
+
   const energySources = fetchSources(
     energySourcesDateRange.start,
     params.id,
     'consumer'
   );
 
-  const onEnergySourceTimeRangeChange = (value: DropdownOption) => {
+  const onEnergySourceDateRangeChange = (value: DropdownOption) => {
     const dateRange = generateDateRange(value);
 
     setEnergySourcesDateRange(dateRange);
@@ -145,11 +160,19 @@ export default function UserDashboard({ params }: { params: { id: number } }) {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
+        <div>
           <PageHeading title={title} />
-          {isInOutage && (
-            <div className="text-[rgb(255,0,0)] font-bold">POWER OUTAGE</div>
+          {isInOutage && <div className="text-red font-bold">POWER OUTAGE</div>}
+          {consumerData?.consumers?.[0]?.high_priority && (
+            <div className="text-red text-left font-semibold">
+              HIGH PRIORITY
+            </div>
           )}
-          <ReportFormButton id={params.id.toString()} type={'consumer'}/>
+        </div>
+        <ReportFormButton
+          id={stringID}
+          type="consumer"
+        />
       </div>
 
       <div className="flex gap-6">
@@ -181,7 +204,7 @@ export default function UserDashboard({ params }: { params: { id: number } }) {
               consumerData ? consumerData?.consumers[0].suburb_name + "'s " : ''
             }Energy Generation Source Breakdown`}
             energySources={energySources?.sources}
-            onTimeRangeChange={onEnergySourceTimeRangeChange}
+            onTimeRangeChange={onEnergySourceDateRangeChange}
             showTimeRangeDropdown={true}
           />
         </div>
@@ -196,11 +219,10 @@ export default function UserDashboard({ params }: { params: { id: number } }) {
           />
           <ConsumerSpendChart
             chartTitle="Consumer Spending"
-            consumptionData={energyConsumptionData?.energy}
-            onTimeRangeChange={onEnergyChartDateRangeChange}
+            spendingData={spendingData?.spending}
+            onTimeRangeChange={onSpendingDateRangeChange}
             showTimeRangeDropdown={true}
-            granularity={energyChartDateRange.granularity}
-            buyingPrice={Number(buyPrce)}
+            granularity={spendingChartDateRange.granularity}
           />
 
           {/* Uncomment and add styles for ConsumerEnergyChart if needed */}

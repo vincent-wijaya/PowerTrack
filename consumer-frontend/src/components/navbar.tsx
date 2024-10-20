@@ -7,57 +7,58 @@ import GoalsIcon from './icons/goalsIcon';
 import ReportsIcon from './icons/reportsIcon';
 import LogoutIcon from './icons/logoutIcon';
 import LiveIcon from './icons/liveIcon';
-import Home from '@/app/page';
-import { useState } from 'react';
 
-interface InfoBoxProps {
+interface NavbarProps {
   isOpen: boolean;
+  onClose: () => void;
+  id: string;
 }
 
-export default function Navbar({ isOpen }: InfoBoxProps) {
+export default function Navbar({ isOpen, onClose, id }: NavbarProps) {
   return (
     <>
-      {!isOpen && ( // Only render the Navbar if isHidden is false
-        <div className="h-screen inline-flex flex-col justify-between items-start border-navbarbg bg-navbarbg">
-          {/* start of top of search bar */}
-          <div className="flex flex-col items-start self-stretch">
-            {/* start of top of profile */}
+      {isOpen && (
+        <div
+          className="w-full sm:w-1/6 absolute inset-0 z-50 bg-navbarbg flex flex-col justify-between transition-opacity duration-300"
+          style={{ opacity: isOpen ? 1 : 0 }}
+        >
+          {/* top section */}
+          <div>
             <div className="flex items-center p-4">
-              {/* start of avatar */}
-              {/* end of avatar */}
               <div className="flex flex-col justify-center items-start">
                 <div className="text-white text-base font-bold">Retailer</div>
                 <div className="text-gray">Retailer@Aus</div>
               </div>
             </div>
-            <div className="flex flex-col items-start">
+            <div className="flex flex-col justify-center items-start">
               <ListMenu
-                icon={<HomeIcon />}
+                icon={<HomeIcon aria-label="Home icon" />}
                 description="Home"
-                href="/main/mainDashboard"
+                href={`/main/mainDashboard/${id}`}
               />
               <ListMenu
-                icon={<GoalsIcon />}
-                description="Goals"
-                href="/main/goals"
-              />
-              <ListMenu
-                icon={<WarningIcon />}
-                description="Warnings"
-                href="/main/warnings"
-              />
-              <ListMenu
-                icon={<ReportsIcon />}
+                icon={<ReportsIcon aria-label="Reports icon" />}
                 description="Reports"
-                href="/main/reportsDashboard"
+                href={`/main/reportsDashboard/${id}`}
               />
             </div>
           </div>
-          <div className="flex flex-col items-start self-stretch">
+          {/* Close Button on Right Side */}
+          <div className="absolute top-0 right-0 p-4">
+            <button
+              onClick={onClose}
+              className="text-white text-lg focus:outline-none hover:text-gray-400 transition duration-200"
+              aria-label="Close menu"
+            >
+              &times;
+            </button>
+          </div>
+          {/* bottom section */}
+          <div className="flex flex-col">
             <ListMenu
-              icon={<LogoutIcon />}
+              icon={<LogoutIcon aria-label="Logout icon" />}
               description="Logout"
-              href="/logIn"
+              href="/login"
             />
           </div>
         </div>

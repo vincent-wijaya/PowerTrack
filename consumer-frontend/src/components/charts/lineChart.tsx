@@ -1,6 +1,9 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { Line } from 'react-chartjs-2';
+import 'chartjs-adapter-date-fns';
+import { enUS } from 'date-fns/locale';
+
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -10,6 +13,7 @@ import {
   Title,
   Tooltip,
   Legend,
+  TimeScale,
 } from 'chart.js';
 import Dropdown from './dropDownFilter';
 
@@ -21,24 +25,26 @@ ChartJS.register(
   LineElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  TimeScale
 );
 
 interface Dataset {
   label: string;
-  data: number[];
+  data: { x: string; y: number | string }[];
   borderColor: string;
   backgroundColor: string;
 }
 
 interface Props {
-  chartTitle: string;
+  chartTitle: String;
   xAxisLabels?: string[];
   datasets: Dataset[];
   xAxisTitle: string;
   yAxisTitle: string;
-  showDateRangeDropdown: boolean;
-  onDateRangeChange: (value: string) => void;
+  xAxisUnit: string;
+  showDateRangeDropdown?: boolean;
+  onDateRangeChange?: (value: string) => void;
 }
 
 const LineChart: React.FC<Props> = ({
@@ -47,6 +53,7 @@ const LineChart: React.FC<Props> = ({
   datasets,
   xAxisTitle,
   yAxisTitle,
+  xAxisUnit,
   showDateRangeDropdown,
   onDateRangeChange,
 }) => {
@@ -88,9 +95,17 @@ const LineChart: React.FC<Props> = ({
     },
     scales: {
       x: {
-        type: 'category' as const,
+        type: 'time' as const,
         ticks: {
           color: 'white', // Set x-axis tick text color to white
+        },
+        adapters: {
+          date: {
+            locale: enUS,
+          },
+        },
+        time: {
+          unit: xAxisUnit,
         },
         title: {
           display: true,
@@ -109,18 +124,18 @@ const LineChart: React.FC<Props> = ({
           color: 'white', // Set y-axis title text color to white
         },
         grid: {
-          color: 'rgba(255, 255, 255, 0.2)', // Set y-axis gridlines color to white with opacity
+          color: 'rgba(255, 255, 255, 0.5)', // Set y-axis gridlines color to white with opacity
         },
         border: {
-          dash: [3, 3],
+          dash: [2, 3],
         },
       },
     },
   };
 
   return (
-    <div className="flex flex-grow">
-      <div className="flex flex-row justify-between w-100 bg-green-500">
+    <div>
+      <div className="flex flex-row justify-between">
         <p className=" text-white font-semibold pt-4 px-2">{chartTitle}</p>
         <div>
           {showDateRangeDropdown && onDateRangeChange ? (

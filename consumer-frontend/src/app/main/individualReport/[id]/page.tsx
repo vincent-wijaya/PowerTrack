@@ -73,7 +73,6 @@ export default function IndividualReport({
   const reportId = parseInt(params.id, 10);
   const [averageProfitkwh, setAverageProfitkwh] = useState(0);
   const [averageProfitMargin, setAverageProfitMargin] = useState(0);
-  const [greenEnergyUsage, setgreenEnergyUsage] = useState(0);
   const [totalProfit, setTotalProfit] = useState(0);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [consumptionData, setConsumptionData] = useState<
@@ -83,16 +82,12 @@ export default function IndividualReport({
     EnergyGenerationAmount[]
   >([]);
   const [energyChartTitle, setEnergyChartTitle] = useState('');
-  const [profitChartData, setProfitChartData] = useState<ProfitMarginData>();
-  const [profitChartTitle, setprofitChartTitle] = useState('');
   const [isExporting, setIsExporting] = useState(false); // New state for exporting
   const [energySources, setEnergySources] = useState<EnergySource[]>([]);
 
   const [granularity, setGranularity] = useState<string>();
 
   const [title, setTitle] = useState('');
-
-  const [highPriority, setHighPriority] = useState(false);
 
   // Fetch the report here
   const { data, error } = useSWR<Report>(
@@ -125,70 +120,12 @@ export default function IndividualReport({
     }
   );
 
-  // Set the data to display for suburb case here
-  useEffect(() => {
-    if (!data) return;
-
-    if (data?.for.consumer_id === null && suburbData) {
-      // Title
-      setTitle(
-        `${suburbData.name}, ${suburbData.postcode}, ${suburbData.state}`
-      );
-
-      // // Green energy usage
-      // const totalGreenEnergy = data.sources.reduce((acc, source) => {
-      //   return source.renewable ? acc + source.amount : acc;
-      // }, 0);
-
-      // const totalEnergy = data.sources.reduce(
-      //   (acc, source) => acc + source.amount,
-      //   0
-      // );
-
-      // setgreenEnergyUsage((totalGreenEnergy / totalEnergy) * 100);
-
-      setConsumptionData(data.energy.consumption);
-      setGenerationData(data.energy.generation);
-
-      setEnergyChartTitle('Energy Consumption/Generation');
-      setEnergySources(data.energy.sources);
-
-      // Total Revenue
-      const totalRevenue = data.energy.generation?.reduce(
-        (acc: number, item: { date: string; amount: number }) => {
-          return acc + Number(data.selling_prices.at(-1)) * item.amount;
-        },
-        0
-      );
-
-      setTotalRevenue(totalRevenue);
-    }
-
-    setGranularity(getTemporalGranularity(data.start_date, data.end_date));
-
-    setProfitChartData({
-      start_date: data.start_date,
-      values: {
-        selling_prices: data.selling_prices,
-        spot_prices: data.spot_prices,
-        profits: data.profits,
-      },
-    });
-    // Total Profit
-  }, [data, suburbData]);
-
   // Set the data to display for consumer case here
   useEffect(() => {
     if (data?.for.consumer_id && consumerData) {
       const consumer = consumerData.consumers[0];
-      const highPriority = true; // Directly use the boolean value
 
-      // Update the title with "High Priority" if applicable
       setTitle(`${consumer.address}, ${consumer.suburb_post_code}`);
-
-      setHighPriority(true);
-
-      console.log(data);
 
       const spendingPrice = data.energy.consumption?.map((item) => ({
         date: item.date,
@@ -196,8 +133,6 @@ export default function IndividualReport({
       }));
 
       setConsumptionData(data.energy.consumption);
-      // setSpendingPriceData(spendingPrice);
-      setprofitChartTitle('Consumer Spending');
 
       setEnergyChartTitle('Energy Consumption');
 
@@ -241,31 +176,6 @@ export default function IndividualReport({
       </div>
       <div className="grid grid-flow-col grid-cols-2 gap-3">
         <div className="flex flex-col gap-3">
-          {data?.for.consumer_id === null && suburbData ? ( // For suburb
-            <div className="flex justify-between gap-3 h-[128px]">
-              <InfoBox
-                title={formatCurrency(averageProfitkwh)}
-                description="Average Profit per kWh sold when bought"
-              />
-              <InfoBox
-                title={formatCurrency(averageProfitMargin)}
-                description="Average Profit Margin"
-              />
-              <GreenUsage />
-
-              <InfoBox
-                title={formatCurrency(totalProfit)}
-                description="Profitted"
-              />
-              <InfoBox
-                title={formatCurrency(totalRevenue)}
-                description="Revenue made"
-              />
-            </div>
-          ) : (
-            <div>{/* <InfoBox /> */}</div>
-          )}
-          {/*<EnergySourceBreakdown energySources={data.sources} />*/}
           <EnergySourceBreakdown
             chartTitle={`${suburbData?.name}'s Energy Generation Source Breakdown`}
             energySources={energySources}
@@ -279,56 +189,14 @@ export default function IndividualReport({
             energyConsumptionData={consumptionData}
             granularity={granularity ?? 'year'}
           />
-          {data?.for.consumer_id === null && suburbData ? ( // For suburb
-            <ProfitChart
-              chartTitle={profitChartTitle}
-              profitMarginData={profitChartData}
-              granularity={granularity ?? 'year'}
-            />
-          ) : (
-            // For consumer
-            <ConsumerSpendChart
-              chartTitle="Spending"
-              consumptionData={consumptionData}
-              buyingPrice={Number(data.selling_prices.at(-1)?.amount)}
-              granularity={granularity ?? 'year'}
-            />
-          )}
-
-          {/*         <ProfitChart />
-          <EnergyChart className="" />*/}
+          <ConsumerSpendChart
+            chartTitle="Spending"
+            consumptionData={consumptionData}
+            buyingPrice={Number(data.selling_prices.at(-1)?.amount)}
+            granularity={granularity ?? 'year'}
+          />
         </div>
-        {/* <div className="p-4 bg-itembg border border-stroke rounded-lg">
-          <EnergyChart />
-        </div>
-        <div className="p-4 bg-itembg border border-stroke rounded-lg">
-          <ProfitChart />
-        </div> */}
       </div>
-
-      {/* <div className="h-screen px-10 grid grid-cols-2 gap-8 py-10">
-        <div className="gap-8 py-10">
-          <div className="h-1/6 gap-2 grid grid-cols-3">
-            <InfoBox title="48%" description="of green energy goal met" />
-            <InfoBox title="3" description="Warnings" />
-            <InfoBox title="3" description="Suggestions" />
-          </div>
-          <div className="h-1/3 mt-8 p-4 bg-itembg border border-stroke rounded-lg">
-            <Map />
-          </div>
-          <div className="h-1/3 gap-2 py-10">
-            <WarningTable />
-          </div>
-        </div>
-        <div className="gap-8 py-10">
-          <div className="ml-8 p-4 bg-itembg border border-stroke rounded-lg">
-            <EnergyChart />
-          </div>
-          <div className="ml-8 mt-4 p-4 bg-itembg border border-stroke rounded-lg">
-            <ProfitChart />
-          </div>
-        </div>
-      </div> */}
     </div>
   );
 }
