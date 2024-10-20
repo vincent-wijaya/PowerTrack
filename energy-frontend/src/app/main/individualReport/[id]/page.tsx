@@ -2,17 +2,15 @@
 import EnergySourceBreakdown from '@/components/energySourceBreakdown';
 import InfoBox from '@/components/infoBoxes/infoBox';
 import PageHeading from '@/components/pageHeading';
-import ReportsConsumptionChart from '@/components/charts/reportsConsumptionChart';
 import { POLLING_RATE } from '@/config';
 import { fetcher, getTemporalGranularity } from '@/utils';
 import { DateTime } from 'luxon';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { exportToPDF } from '@/utils'; // Import the utility function
 import useSWR from 'swr';
 import GreenUsage from '@/components/infoBoxes/greenUsage';
 import { formatCurrency } from '@/utils';
 import { EnergySource } from '@/api/getSources';
-import { DropdownOption } from '@/components/charts/dropDownFilter';
 import ProfitChart from '@/components/charts/profitChart';
 import { Price, ProfitMarginData } from '@/api/getProfitMargin';
 import EnergyChart from '@/components/charts/energyChart';
@@ -40,6 +38,7 @@ interface Report {
   selling_prices: Price[];
   spot_prices: Price[];
   profits: Price[];
+  spending: Price[];
 }
 
 interface SuburbData {
@@ -52,10 +51,10 @@ interface SuburbData {
 }
 
 interface Consumer {
-  suburb_id: number;
+  suburb_id: number | string;
   suburb_name: string;
-  suburb_post_code: string;
-  id: number;
+  suburb_post_code: number | string;
+  id: number | string;
   address: string;
   high_priority: boolean;
 }
@@ -75,6 +74,7 @@ export default function IndividualReport({
   const [averageProfitMargin, setAverageProfitMargin] = useState(0);
   const [greenEnergyUsage, setgreenEnergyUsage] = useState(0);
   const [totalProfit, setTotalProfit] = useState(0);
+  const [totalSpending, setTotalSpending] = useState(0);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [consumptionData, setConsumptionData] = useState<
     EnergyConsumptionAmount[]
@@ -84,6 +84,7 @@ export default function IndividualReport({
   >([]);
   const [energyChartTitle, setEnergyChartTitle] = useState('');
   const [profitChartData, setProfitChartData] = useState<ProfitMarginData>();
+  const [spendingData, setSpendingData] = useState<Price[]>([]);
   const [profitChartTitle, setprofitChartTitle] = useState('');
   const [isExporting, setIsExporting] = useState(false); // New state for exporting
   const [energySources, setEnergySources] = useState<EnergySource[]>([]);
@@ -107,21 +108,22 @@ export default function IndividualReport({
   const consumerId = data?.for.consumer_id;
 
   const { data: suburbData, error: suburbError } = useSWR<SuburbData>(
-    suburbId ? `${mainurl}/retailer/suburbs/${suburbId}` : null,
-    fetcher,
-    {
-      refreshInterval: 0,
-    }
-  );
-
-  const consumerID = data?.for.consumer_id;
-  const { data: consumerData, error: consumerError } = useSWR<ConsumerResponse>(
-    consumerId
-      ? `${mainurl}/retailer/consumers?consumer_id=${consumerID}`
+    suburbId !== undefined && suburbId !== null
+      ? `${mainurl}/retailer/suburbs/${suburbId}`
       : null,
     fetcher,
     {
-      refreshInterval: 0,
+      refreshInterval: POLLING_RATE,
+    }
+  );
+
+  const { data: consumerData, error: consumerError } = useSWR<ConsumerResponse>(
+    consumerId !== undefined && consumerId !== null
+      ? `${mainurl}/retailer/consumers?consumer_id=${consumerId}`
+      : null,
+    fetcher,
+    {
+      refreshInterval: POLLING_RATE,
     }
   );
 
@@ -129,7 +131,7 @@ export default function IndividualReport({
   useEffect(() => {
     if (!data) return;
 
-    if (data?.for.consumer_id === null && suburbData) {
+    if (data?.for.suburb_id !== null && suburbData) {
       // Title
       setTitle(
         `${suburbData.name}, ${suburbData.postcode}, ${suburbData.state}`
@@ -179,7 +181,10 @@ export default function IndividualReport({
 
   // Set the data to display for consumer case here
   useEffect(() => {
-    if (data?.for.consumer_id && consumerData) {
+    if (!data) return;
+    console.log(data);
+
+    if (data?.for.consumer_id !== null && consumerData) {
       const consumer = consumerData.consumers[0];
       const highPriority = true; // Directly use the boolean value
 
@@ -188,16 +193,16 @@ export default function IndividualReport({
 
       setHighPriority(true);
 
-      console.log(data);
+      setSpendingData(data.spending);
 
-      const spendingPrice = data.energy.consumption?.map((item) => ({
-        date: item.date,
-        amount: item.amount * Number(data.selling_prices.at(-1)?.amount),
-      }));
+      const totalSpending =
+        data.spending?.reduce((total, s) => {
+          return total + s.amount;
+        }, 0) ?? 0;
+      setTotalSpending(totalSpending);
 
       setConsumptionData(data.energy.consumption);
       // setSpendingPriceData(spendingPrice);
-      setprofitChartTitle('Consumer Spending');
 
       setEnergyChartTitle('Energy Consumption');
 
@@ -233,13 +238,16 @@ export default function IndividualReport({
           {isExporting ? 'Exporting...' : 'Export to PDF'}
         </button>
       </div>
+      {consumerData?.consumers?.[0]?.high_priority && (
+        <div className="text-red text-left font-semibold">HIGH PRIORITY</div>
+      )}
       <div className="text-white pb-2">
         {DateTime.fromISO(data.start_date).toFormat('D')} -{' '}
         {DateTime.fromISO(data.end_date).toFormat('D')}
         <br></br>
         {title}
       </div>
-      <div className="grid grid-flow-col grid-cols-2 gap-3">
+      <div className="grid grid-flow-col grid-cols-2 gap-6">
         <div className="flex flex-col gap-3">
           {data?.for.consumer_id === null && suburbData ? ( // For suburb
             <div className="flex justify-between gap-3 h-[128px]">
@@ -252,7 +260,6 @@ export default function IndividualReport({
                 description="Average Profit Margin"
               />
               <GreenUsage />
-
               <InfoBox
                 title={formatCurrency(totalProfit)}
                 description="Profitted"
@@ -263,8 +270,15 @@ export default function IndividualReport({
               />
             </div>
           ) : (
-            <div>{/* <InfoBox /> */}</div>
+            <div className="flex justify-between gap-3 h-[128px]">
+              <InfoBox
+                title={formatCurrency(totalSpending)}
+                description="Spent"
+              />
+              <GreenUsage />
+            </div>
           )}
+
           {/*<EnergySourceBreakdown energySources={data.sources} />*/}
           <EnergySourceBreakdown
             chartTitle={`${suburbData?.name}'s Energy Generation Source Breakdown`}
@@ -281,7 +295,7 @@ export default function IndividualReport({
           />
           {data?.for.consumer_id === null && suburbData ? ( // For suburb
             <ProfitChart
-              chartTitle={profitChartTitle}
+              chartTitle="Profit Analysis"
               profitMarginData={profitChartData}
               granularity={granularity ?? 'year'}
             />
@@ -289,8 +303,7 @@ export default function IndividualReport({
             // For consumer
             <ConsumerSpendChart
               chartTitle="Spending"
-              consumptionData={consumptionData}
-              buyingPrice={Number(data.selling_prices.at(-1)?.amount)}
+              spendingData={spendingData}
               granularity={granularity ?? 'year'}
             />
           )}

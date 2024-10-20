@@ -16,9 +16,11 @@ export default function LoginPage() {
                 required
               />
             </div>
-            <div className="bg-purple text-center rounded-lg p-2">
-              <Link href={'/main/mainDashboard'}>Login</Link>
-            </div>
+            <Link href={'/main/mainDashboard'}>
+              <div className="bg-purple text-center rounded-lg mt-2 p-2">
+                Login
+              </div>
+            </Link>
           </div>
         </div>
       </div>

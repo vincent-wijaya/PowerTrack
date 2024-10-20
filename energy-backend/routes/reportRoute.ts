@@ -7,6 +7,7 @@ import {
   getEnergySourceBreakdown,
   getGreenEnergy,
   getProfitMargin,
+  getSpending,
 } from '../utils/dbUtils';
 
 const router = express.Router();
@@ -191,12 +192,18 @@ router.post('/', async (req, res) => {
  *      "percentage": 0.0419,
  *      "amount": 67
  *    }
+ *  ],
+ *  "spending": [
+ *     {
+ *       "date": "2024-04-16T09:06:41Z",
+ *       "amount": 10,
+ *     }
+ *   ]
  *  ]
  * }
  */
 router.get('/:id', async (req, res) => {
-  const { Report, EnergyGenerator, EnergyGeneration, SuburbConsumption } =
-    req.app.get('models');
+  const { Report } = req.app.get('models');
   const models = req.app.get('models');
   const id = req.params.id;
 
@@ -236,7 +243,7 @@ router.get('/:id', async (req, res) => {
     models,
     report.start_date,
     report.end_date,
-    report.suburb_id
+    reportSuburbId
   );
 
   const energySources = await getEnergySourceBreakdown(
@@ -252,13 +259,20 @@ router.get('/:id', async (req, res) => {
     report.end_date
   );
 
+  const consumerSpendingData = await getSpending(
+    models,
+    report.start_date,
+    report.end_date,
+    report.consumer_id
+  );
+
   const finalReport = {
     id,
     start_date: report.start_date,
     end_date: report.end_date,
     for: {
-      suburb_id: report.suburb_id,
-      consumer_id: report.consumer_id,
+      suburb_id: report.suburb_id ? Number(report.suburb_id) : null,
+      consumer_id: report.consumer_id ? Number(report.consumer_id) : null,
     },
     energy: {
       ...(report.suburb_id && { generation: energyGeneration }),
@@ -269,9 +283,12 @@ router.get('/:id', async (req, res) => {
         green_usage_percent: greenEnergy.greenUsagePercent,
       },
     },
-    selling_prices: profitMarginData.sellingPrices,
-    spot_prices: profitMarginData.spotPrices,
-    profits: profitMarginData.profits,
+    ...(report.suburb_id && {
+      selling_prices: profitMarginData.sellingPrices,
+      spot_prices: profitMarginData.spotPrices,
+      profits: profitMarginData.profits,
+    }),
+    ...(report.consumer_id && { spending: consumerSpendingData }),
   };
 
   // Return the data for the report

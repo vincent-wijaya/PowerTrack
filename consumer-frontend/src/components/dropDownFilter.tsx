@@ -3,10 +3,9 @@ import React from 'react';
 
 interface DropdownProps {
   onChange: (value: string) => void;
-  chartTitle: String;
 }
 
-const Dropdown: React.FC<DropdownProps> = ({ onChange, chartTitle }) => {
+const Dropdown: React.FC<DropdownProps> = ({ onChange }) => {
   const options = [
     { label: 'Last year', value: 'last_year' },
     { label: 'Last 6 months', value: 'last_six_months' },
@@ -21,7 +20,6 @@ const Dropdown: React.FC<DropdownProps> = ({ onChange, chartTitle }) => {
 
   return (
     <div className="flex w-full py-4 px-2 justify-between">
-      <p className=" text-white font-semibold">{chartTitle}</p>
       <select
         onChange={handleChange}
         className="flex bg-mainbg border-2 border-chartBorder text-white hover:border-gray-500 rounded shadow leading-tight focus:outline-none focus:shadow-outline"

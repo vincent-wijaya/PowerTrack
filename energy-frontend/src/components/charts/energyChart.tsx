@@ -1,30 +1,21 @@
 'use client';
-import React, { useState } from 'react';
-import Dropdown, { DropdownOption } from './dropDownFilter'; // Adjust the path based on your folder structure
+import React from 'react';
 import LineChart from './lineChart';
 import { EnergyConsumptionAmount } from '@/api/getEnergyConsumption';
-
 import { EnergyGenerationAmount } from '@/api/getEnergyGeneration';
-import { generateDateRange } from '@/utils';
 
 interface EnergyChartProps {
   chartTitle: string;
   energyConsumptionData: EnergyConsumptionAmount[];
   energyGenerationData?: EnergyGenerationAmount[];
   showTimeRangeDropdown?: boolean;
-  onTimeRangeChange?: (value: DropdownOption) => void;
+  onTimeRangeChange?: (value: string) => void;
   granularity: string;
   className?: string;
 }
 
 function EnergyChart(props: EnergyChartProps) {
-  const [energyChartDateRange, setEnergyChartDateRange] = useState<{
-    start: string;
-    end: string;
-    granularity: string;
-  }>(generateDateRange('last_year'));
-
-  let datasets = [
+  const datasets = [
     {
       label: 'Energy Consumption kWh',
       data:
@@ -55,18 +46,14 @@ function EnergyChart(props: EnergyChartProps) {
     <div>
       <div className="flex flex-grow justify-center items-center ">
         <div className="w-full bg-itembg border border-stroke rounded-lg p-4">
-          {props.showTimeRangeDropdown && props.onTimeRangeChange ? (
-            <Dropdown
-              onChange={props.onTimeRangeChange}
-              chartTitle={props.chartTitle}
-            />
-          ) : null}
           <LineChart
-            chartTitle=""
+            chartTitle={props.chartTitle}
             datasets={datasets}
             xAxisTitle="Date"
             yAxisTitle="Amount (kWh)"
-            xAxisUnit={energyChartDateRange.granularity}
+            xAxisUnit={props.granularity}
+            showDateRangeDropdown={true}
+            onDateRangeChange={props.onTimeRangeChange}
           />
         </div>
       </div>

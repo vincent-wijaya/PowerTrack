@@ -56,12 +56,9 @@ function ProfitChart(props: { className?: string }) {
     >
       <div className="justify-center items-center">
         <div className="drop-shadow-md border-chartBorder ">
-          <Dropdown
-            onChange={handleTimeRangeChange}
-            chartTitle={'Profit Analysis'}
-          />
+          <p className=" text-white font-semibold pt-4 px-2">Profit Analysis</p>
+          <Dropdown onChange={handleTimeRangeChange} />
           <LineChart
-            chartTitle=""
             xAxisLabels={profitData.map((_, index) => `Day ${index + 1}`)}
             datasets={[
               {
