@@ -26,12 +26,14 @@ async function fetchHeadersAndData(
   // Initialize an array to store DataItem objects
   const dataItems: DataItem[] = [];
 
-  let link = `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings`;
+  let link
 
   if (suburb_id) {
     link = `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings?suburb_id=${suburb_id}`;
   } else if (consumer_id) {
     link = `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings?consumer_id=${consumer_id}`;
+  } else {
+    link = `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings`;
   }
 
   try {
@@ -89,12 +91,18 @@ export default function WarningTable({
 }: WarningTableProps) {
   // Construct the query parameters dynamically
   const params = new URLSearchParams();
-  if (suburb_id) params.append('suburb_id', suburb_id.toString());
-  if (consumer_id) params.append('consumer_id', consumer_id.toString());
+
+  let url = `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings`;
+
+  if (suburb_id) {
+    url = `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings?suburb_id=${suburb_id}`
+  }
+  if (consumer_id) {
+    url = `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings?consumer_id=${consumer_id}`
+  }
 
   // Generate the full URL with optional parameters
-  const url = `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings`;
-
+ 
   const { data, error } = useSWR(url, fetcher, {
     refreshInterval: 50000, // Adjust the polling interval as needed
   });

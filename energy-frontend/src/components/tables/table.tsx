@@ -93,7 +93,7 @@ export default function Table({
               ))}
             </tr>
           </thead>
-          <tbody className="items-start flex-shrink-0 self-stretch bg-tablebg">
+          <tbody className="items-start flex-shrink-0 self-stretch bg-itembg">
             {pageItems.length === 0 ? (
               <tr className="flex items-start flex-shrink-0 self-stretch">
                 <td
