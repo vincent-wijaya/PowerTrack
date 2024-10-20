@@ -1,6 +1,6 @@
 'use client';
 import React, { useEffect, useState } from 'react';
-import Table from './table';
+import Table from '../table/table';
 
 type DataItem = {
   id: number;

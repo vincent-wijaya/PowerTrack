@@ -23,16 +23,16 @@ interface ReportItem {
 }
 
 // Function to fetch headers and data
-async function fetchHeadersAndData(): Promise<{
+async function fetchHeadersAndData(consumerId: number): Promise<{
   headers: { name: string; title: string }[];
   data: ReportItem[];
 }> {
   const response = await axios.get(
-    `${process.env.NEXT_PUBLIC_API_URL}/retailer/reports`
+    `${process.env.NEXT_PUBLIC_API_URL}/retailer/reports?consumer_id=${consumerId}` // Use consumerId in the URL
   );
 
   const reports: ReportsFetchType[] = response.data.reports;
-  
+
   const mappedDataItems: ReportItem[] = reports.map((report) => ({
     id: report.id,
     start_date: new Date(report.start_date).toLocaleDateString(),
@@ -53,7 +53,12 @@ async function fetchHeadersAndData(): Promise<{
   };
 }
 
-export default function ReportsTable() {
+// Props interface to accept consumer_id
+interface ReportsTableProps {
+  consumer_id: number; // Add consumer_id prop
+}
+
+export default function ReportsTable({ consumer_id }: ReportsTableProps) {
   const [headers, setHeaders] = useState<{ name: string; title: string }[]>([]);
   const [data, setData] = useState<ReportItem[]>([]);
   const [filteredData, setFilteredData] = useState<ReportItem[]>([]);
@@ -62,7 +67,7 @@ export default function ReportsTable() {
   useEffect(() => {
     async function getData() {
       try {
-        const { headers, data } = await fetchHeadersAndData();
+        const { headers, data } = await fetchHeadersAndData(consumer_id); // Pass consumer_id to the fetch function
         setHeaders(headers);
         setData(data);
         setFilteredData(data);
@@ -81,7 +86,7 @@ export default function ReportsTable() {
 
     // Clean up interval on component unmount
     return () => clearInterval(interval);
-  }, []);
+  }, [consumer_id]); // Add consumer_id as a dependency
 
   useEffect(() => {
     // Filter data based on search input

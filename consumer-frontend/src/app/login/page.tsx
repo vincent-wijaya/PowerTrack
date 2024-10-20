@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 
 export default function LoginPage() {
-  const [userId, setUserId] = useState<number | null>(null);
+  const [userId, setUserId] = useState<number>();
   return (
     <>
       <div className="bg-background">

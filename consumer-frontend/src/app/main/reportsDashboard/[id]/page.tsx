@@ -1,15 +1,14 @@
 import Headings from '@/app/main/template';
 import PageHeading from '@/components/pageHeading';
+import ReportsTable from '@/components/table/reportsTable';
 
-export default function ReportsDashboard() {
+
+export default function ReportsDashboard({ params }: { params: { id: number } }) {
+  console.log("ID:", params.id)
   return (
     <>
-      <div className="flex flex-col">
-        <PageHeading title="Reports" />
-        <div>
-          {/* <InfoBox title="X Urgent Warnings" description="of all warnings" />*/}
-        </div>
-      </div>
+      <PageHeading title="Reports" />
+      <ReportsTable consumer_id={params.id}/>
     </>
   );
 }

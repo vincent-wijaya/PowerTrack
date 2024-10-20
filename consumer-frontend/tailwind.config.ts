@@ -9,6 +9,7 @@ module.exports = {
     extend: {
       colors: {
         mainbg: '#011625',
+        calendarbg: '#001d31',
         itembg: '#001D31',
         stroke: '#36434E',
         purple: '#9747FF',
@@ -18,6 +19,7 @@ module.exports = {
         lightgray: '#EFEFEF',
         gray: '#C0BFBD',
         chartBorder: '#36434E',
+        red: '#E53E3E',
       },
       fontFamily: {
         sans: ['Arial', 'Helvetica', 'sans-serif'],
