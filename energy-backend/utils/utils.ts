@@ -1,4 +1,10 @@
-import { differenceInMonths, differenceInWeeks } from 'date-fns';
+import {
+  differenceInMonths,
+  isBefore,
+  isValid,
+  differenceInWeeks,
+  parseISO,
+} from 'date-fns';
 
 /**
  * Determines the temporal granularity based on the period between start and end dates.
@@ -64,4 +70,76 @@ export function kWhConversionMultiplier(granularity: string): number {
       console.error('Temporal granularity type invalid.');
       return 0;
   }
+}
+
+export function validateDateInputs(startDate: String, endDate?: String) {
+  // If no date range is provided, return error 400
+  if (!startDate || startDate === 'undefined') {
+    return {
+      error: {
+        status: 400,
+        message: 'Start date must be provided.',
+      },
+    };
+  }
+
+  // Validate format of start_date
+  if (!isValid(parseISO(String(startDate)))) {
+    return {
+      error: {
+        status: 400,
+        message:
+          'Invalid start date format. Provide dates in ISO string format.',
+      },
+    };
+  }
+  const parsedStartDate = new Date(String(startDate));
+
+  let parsedEndDate;
+  if (endDate && endDate !== 'undefined') {
+    // Validate format of end_date
+    if (!isValid(parseISO(String(endDate)))) {
+      return {
+        error: {
+          status: 400,
+          message:
+            'Invalid end date format. Provide dates in ISO string format.',
+        },
+      };
+    }
+    parsedEndDate = new Date(String(endDate));
+  } else {
+    // Set end_date to now if not provided
+    parsedEndDate = new Date();
+  }
+
+  // Validate that end_date is after start_date
+  if (isBefore(parsedEndDate, parsedStartDate)) {
+    return {
+      error: {
+        status: 400,
+        message: 'Start date must be before end date.',
+      },
+    };
+  }
+
+  if (isBefore(new Date(), parsedEndDate)) {
+    return {
+      error: {
+        status: 400,
+        message: 'End date must not be in the future.',
+      },
+    };
+  }
+
+  return {
+    data: {
+      startDate: parsedStartDate,
+      endDate: parsedEndDate,
+    },
+  };
+}
+
+export function isValidId(id: number | string) {
+  return Number.isInteger(Number(id));
 }

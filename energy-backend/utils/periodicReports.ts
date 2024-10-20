@@ -4,7 +4,7 @@ import axios from 'axios';
 import { defineModels } from '../databaseModels';
 import { subMonths, subWeeks } from 'date-fns';
 
-export const executePeriodicReports = async () => {
+export async function executePeriodicReports() {
   const sequelize = new Sequelize(process.env.DATABASE_URI!, {
     dialect: 'postgres',
     protocol: 'postgres',
@@ -28,7 +28,7 @@ export const executePeriodicReports = async () => {
     subMonths(currentTime, 1).toISOString(),
     currentTime
   );
-};
+}
 
 /**
  * Generates periodic reports for all consumers
@@ -36,11 +36,11 @@ export const executePeriodicReports = async () => {
  * @param startTime Start time of the reports
  * @param endTime End time of the reports
  */
-export const generatePeriodicReports = async (
+export async function generatePeriodicReports(
   sequelize: Sequelize,
   startTime: string,
   endTime: string
-) => {
+) {
   // Define models
   const models = defineModels(sequelize);
   const { Report, Consumer } = models;
@@ -86,7 +86,7 @@ export const generatePeriodicReports = async (
     const body = `Dear customer,\n\nPlease visit the PowerTrack dashboard to see the latest report, for the period from ${startTime} to ${endTime}.\n\nRegards,\nPowerTrack`;
     await sendEmail(consumer.email_address!, subject, body);
   });
-};
+}
 
 /**
  * Sends an email using the SendGrid API
@@ -94,11 +94,7 @@ export const generatePeriodicReports = async (
  * @param subject Subject of the email
  * @param body Body of the email
  */
-const sendEmail = async (
-  emailAddress: string,
-  subject: string,
-  body: string
-) => {
+async function sendEmail(emailAddress: string, subject: string, body: string) {
   const sendgridApiKey = process.env.SENDGRID_API_KEY;
   const fromEmailAddress = 'powertrackofficial@gmail.com';
   const fromName = 'PowerTrack';
@@ -136,7 +132,7 @@ const sendEmail = async (
     .catch((error) => {
       console.error('Error sending email: ', JSON.stringify(error));
     });
-};
+}
 
 if (require.main === module) {
   // Execute the following if this file is run from the command line

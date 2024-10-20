@@ -12,6 +12,7 @@ export const connectToTestDb = async () => {
   let rootSequelize = new Sequelize(process.env.DATABASE_URI!, {
     dialect: 'postgres',
     protocol: 'postgres',
+    logging: false,
     define: { timestamps: false }, // remove created and updated timestamps from models
     dialectOptions: {},
   });
@@ -25,6 +26,7 @@ export const connectToTestDb = async () => {
     {
       dialect: 'postgres',
       protocol: 'postgres',
+      logging: false,
       define: { timestamps: false }, // remove created and updated timestamps from models
       dialectOptions: {},
     }
