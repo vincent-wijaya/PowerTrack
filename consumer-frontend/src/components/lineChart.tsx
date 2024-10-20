@@ -11,6 +11,7 @@ import {
   Tooltip,
   Legend,
 } from 'chart.js';
+import Dropdown from './dropDownFilter';
 
 // Register Chart.js components
 ChartJS.register(
@@ -36,6 +37,8 @@ interface Props {
   datasets: Dataset[];
   xAxisTitle: string;
   yAxisTitle: string;
+  showDateRangeDropdown: boolean;
+  onDateRangeChange: (value: string) => void;
 }
 
 const LineChart: React.FC<Props> = ({
@@ -44,6 +47,8 @@ const LineChart: React.FC<Props> = ({
   datasets,
   xAxisTitle,
   yAxisTitle,
+  showDateRangeDropdown,
+  onDateRangeChange,
 }) => {
   const [chartData, setChartData] = useState({
     labels: xAxisLabels,
@@ -78,7 +83,6 @@ const LineChart: React.FC<Props> = ({
       },
       title: {
         display: true,
-        text: chartTitle,
         color: 'white', // Set title text color to white
       },
     },
@@ -116,11 +120,18 @@ const LineChart: React.FC<Props> = ({
 
   return (
     <div className="flex flex-grow">
+      <div className="flex flex-row justify-between w-100 bg-green-500">
+        <p className=" text-white font-semibold pt-4 px-2">{chartTitle}</p>
+        <div>
+          {showDateRangeDropdown && onDateRangeChange ? (
+            <Dropdown onChange={onDateRangeChange} />
+          ) : null}
+        </div>
+      </div>
       <Line
         options={options}
         data={chartData}
       />
-      ;
     </div>
   );
 };

@@ -9,6 +9,12 @@ import {
 import { differenceInHours } from 'date-fns';
 
 type DbModelType = ReturnType<typeof defineModels>;
+
+interface Price {
+  date: string;
+  amount: number;
+}
+
 /**
  * Retrieves consumer data.
  * @param models sequalize models
@@ -627,3 +633,188 @@ export async function getProfitMargin(
     profits,
   };
 }
+
+/**
+ * Calculates the amount the user spent on energy consumption hourly, daily, or weekly in a date range.
+ * Energy consumed and energy buying price are aggregated by the temporal granularity and values from the corresponding dates are multiplied together.
+ * In cases where energy consumption or energy price are unavailable for the certain truncated date, the previous value will be used instead in the multiplication.
+ * In the case where no data exists for both models, and when either one does not have any values historically, an empty array is returned
+ * @param models sequelize models
+ * @param startDate start of date range
+ * @param endDate end of date range
+ * @param consumerId ID of consumer (optional)
+ * @returns array of amounts the consumer spent on energy consumption
+ */
+export const getSpending = async (
+  models: DbModelType,
+  startDate: Date,
+  endDate: Date,
+  consumerId?: number
+) => {
+  const { ConsumerConsumption, SellingPrice } = models;
+
+  console.log(consumerId);
+
+  // Set up date range for query
+  const dateWhere = {
+    [Op.and]: {
+      [Op.gt]: startDate,
+      [Op.lte]: endDate,
+    },
+  };
+
+  // Determine the date granularity based on the date range
+  let dateGranularity = getTemporalGranularity(
+    startDate.toISOString(),
+    endDate.toISOString()
+  );
+
+  let consumptions = await getEnergyConsumption(
+    models,
+    startDate,
+    endDate,
+    undefined,
+    consumerId
+  );
+
+  const sellingPricesData = (await SellingPrice.findAll({
+    attributes: [
+      [fn('AVG', col('amount')), 'amount'], // Averages the amount of energy generated
+      [
+        fn('date_trunc', dateGranularity.sequelize, col('date')),
+        'truncatedDate',
+      ], // Truncate the date based on the date granularity
+    ],
+    group: ['truncatedDate'],
+    where: {
+      date: dateWhere,
+    },
+    order: [['truncatedDate', 'ASC']],
+  })) as unknown as {
+    date?: string;
+    truncatedDate?: string;
+    amount: number;
+  }[];
+
+  // Return empty arrays if no data is retrieved
+  if (consumptions.length === 0 && sellingPricesData.length === 0) {
+    return [];
+  }
+
+  // Get the last value before the query period if there are no consumption data in this search
+  if (consumptions.length === 0) {
+    const singleConsumption = await ConsumerConsumption.findOne({
+      where: {
+        date: {
+          [Op.lt]: startDate,
+        },
+        consumer_id: consumerId,
+      },
+      order: [['consumer_id', 'DESC']],
+    });
+
+    if (singleConsumption) {
+      consumptions.push({
+        date: singleConsumption.date,
+        amount: Number(singleConsumption.amount),
+      });
+    }
+  }
+
+  // Get the last value before the query period if there are no selling data in this search
+  if (sellingPricesData.length === 0) {
+    const singleSellingPrice = await SellingPrice.findOne({
+      where: {
+        date: {
+          [Op.lt]: startDate,
+        },
+      },
+      order: [['id', 'DESC']],
+    });
+
+    if (singleSellingPrice) {
+      sellingPricesData.push({
+        date: singleSellingPrice.date,
+        amount: Number(singleSellingPrice.amount),
+      });
+    }
+  }
+
+  // Return empty arrays if either values are still empty
+  if (consumptions.length === 0 || sellingPricesData.length === 0) {
+    return [];
+  }
+
+  const sellingPrices: Price[] = sellingPricesData.map((sellingPrice: any) => ({
+    date: sellingPrice.dataValues.truncatedDate.toISOString(),
+    amount: Number(sellingPrice.amount),
+  }));
+
+  // Obtain unique dates of combined consumption and selling prices by storing in a set
+  let combinedDatesSet = new Set<String>();
+  consumptions.forEach((sp) => {
+    combinedDatesSet.add(sp.date);
+  });
+  sellingPrices.forEach((sp) => {
+    combinedDatesSet.add(sp.date);
+  });
+
+  const combinedDatesArray = Array.from(combinedDatesSet).sort((a, b) => {
+    const dateA = new Date(a as string);
+    const dateB = new Date(b as string);
+    return dateA.getTime() - dateB.getTime();
+  });
+  /* Calculate Spending */
+  // Convert consumptions into a map so that its key can be used for easier access
+  const consumptionsMap: Map<string, Energy> = consumptions.reduce(
+    (map: Map<string, Energy>, consumption: Energy) => {
+      const date = consumption.date;
+      map.set(date, {
+        date,
+        amount: Number(consumption.amount),
+      });
+
+      return map;
+    },
+    new Map<string, Price>()
+  );
+
+  // Convert selling prices into a map so that its key can be used for easier access
+  const sellingPricesMap: Map<string, Price> = sellingPrices.reduce(
+    (map: Map<string, Price>, sellingPrice: Price) => {
+      const date = sellingPrice.date;
+      map.set(date, {
+        date,
+        amount: Number(sellingPrice.amount),
+      });
+
+      return map;
+    },
+    new Map<string, Price>()
+  );
+
+  let spending: Price[] = [];
+  let lastSellingPrice: number = Number(sellingPricesData[0]?.amount); // Store last available selling price for following calculations where selling price is missing but spot price exists for a particular date
+  let lastConsumptionAmount: number = Number(consumptions[0]?.amount); // Store last available consumption for following calculations where consumption data is missing
+  // Iterate through the granular dates in the period and get the profit by getting the difference between the selling price and spot price
+  for (const date of combinedDatesArray) {
+    const consumptionEntry = consumptionsMap.get(date as string);
+    const sellingPriceEntry = sellingPricesMap.get(date as string);
+
+    // If spot price or selling price is missing, take the last available value
+    const consumption: number =
+      consumptionEntry?.amount ?? lastConsumptionAmount;
+    const sellingPrice: number = sellingPriceEntry?.amount ?? lastSellingPrice;
+
+    spending.push({
+      date: date as string,
+      amount: Number(consumption) * Number(sellingPrice),
+    });
+
+    // Store current prices as last selling/spot prices to be used on subsequent calculations for missing values
+    lastConsumptionAmount = consumption;
+    lastSellingPrice = sellingPrice;
+  }
+
+  return spending;
+};

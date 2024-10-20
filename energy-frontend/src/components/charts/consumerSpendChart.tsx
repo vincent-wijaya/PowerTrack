@@ -1,40 +1,29 @@
 'use client';
-import React, { useState } from 'react';
-import Dropdown, { DropdownOption } from './dropDownFilter'; // Adjust the path based on your folder structure
+import React from 'react';
 import LineChart from './lineChart';
-import { EnergyConsumptionAmount } from '@/api/getEnergyConsumption';
-
-import { generateDateRange } from '@/utils';
+import { Price } from '@/api/getProfitMargin';
 
 interface ConsumerSpendChartProps {
   chartTitle: string;
-  consumptionData: EnergyConsumptionAmount[];
+  spendingData: Price[];
   showTimeRangeDropdown?: boolean;
-  onTimeRangeChange?: (value: DropdownOption) => void;
+  onTimeRangeChange?: (value: string) => void;
   granularity: string;
   className?: string;
-  buyingPrice: number;
 }
 
 function ConsumerSpendChart(props: ConsumerSpendChartProps) {
-  const [consumerSpendChartDateRange, setConsumerSpendChartDateRange] =
-    useState<{
-      start: string;
-      end: string;
-      granularity: string;
-    }>(generateDateRange('last_year'));
-
   let datasets = [
     {
-      label: 'Spending',
+      label: 'Spending $',
       data:
-        props.consumptionData?.map((c: EnergyConsumptionAmount) => {
+        props.spendingData?.map((c: Price) => {
           return {
             x: c.date,
-            y: (Number(c.amount) * props.buyingPrice).toFixed(2),
+            y: c.amount.toFixed(2),
           };
         }) ?? [],
-      borderColor: 'red',
+      borderColor: 'green',
       backgroundColor: 'white',
     },
   ];
@@ -43,18 +32,14 @@ function ConsumerSpendChart(props: ConsumerSpendChartProps) {
     <div>
       <div className="flex flex-grow justify-center items-center ">
         <div className="w-full bg-itembg border border-stroke rounded-lg p-4">
-          {props.showTimeRangeDropdown && props.onTimeRangeChange ? (
-            <Dropdown
-              onChange={props.onTimeRangeChange}
-              chartTitle={props.chartTitle}
-            />
-          ) : null}
           <LineChart
-            chartTitle="Spending"
+            chartTitle={props.chartTitle}
             datasets={datasets}
             xAxisTitle="Date"
             yAxisTitle="Amount (AUD $)"
-            xAxisUnit={consumerSpendChartDateRange.granularity}
+            xAxisUnit={props.granularity}
+            showDateRangeDropdown={true}
+            onDateRangeChange={props.onTimeRangeChange}
           />
         </div>
       </div>

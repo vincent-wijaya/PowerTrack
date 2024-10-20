@@ -54,12 +54,7 @@ function EnergyChart(props: { className?: string }) {
     <div>
       <div className="flex justify-center items-center ">
         <div className="w-full bg-itembg border border-stroke rounded-lg p-4">
-          <Dropdown
-            onChange={handleTimeRangeChange}
-            chartTitle={'Energy Consumption/Generation'}
-          />
           <LineChart
-            chartTitle=""
             xAxisLabels={consumptionData.map((_, index) => `Day ${index + 1}`)}
             datasets={[
               {

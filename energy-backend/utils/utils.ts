@@ -72,6 +72,10 @@ export function kWhConversionMultiplier(granularity: string): number {
   }
 }
 
+export function isValidId(id: number | string) {
+  return Number.isInteger(Number(id));
+}
+
 export function validateDateInputs(startDate: String, endDate?: String) {
   // If no date range is provided, return error 400
   if (!startDate || startDate === 'undefined') {
@@ -138,8 +142,4 @@ export function validateDateInputs(startDate: String, endDate?: String) {
       endDate: parsedEndDate,
     },
   };
-}
-
-export function isValidId(id: number | string) {
-  return Number.isInteger(Number(id));
 }

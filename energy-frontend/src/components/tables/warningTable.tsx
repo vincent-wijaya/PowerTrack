@@ -26,7 +26,7 @@ async function fetchHeadersAndData(
   // Initialize an array to store DataItem objects
   const dataItems: DataItem[] = [];
 
-  let link
+  let link;
 
   if (suburb_id) {
     link = `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings?suburb_id=${suburb_id}`;
@@ -95,14 +95,14 @@ export default function WarningTable({
   let url = `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings`;
 
   if (suburb_id) {
-    url = `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings?suburb_id=${suburb_id}`
+    url = `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings?suburb_id=${suburb_id}`;
   }
   if (consumer_id) {
-    url = `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings?consumer_id=${consumer_id}`
+    url = `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings?consumer_id=${consumer_id}`;
   }
 
   // Generate the full URL with optional parameters
- 
+
   const { data, error } = useSWR(url, fetcher, {
     refreshInterval: 50000, // Adjust the polling interval as needed
   });

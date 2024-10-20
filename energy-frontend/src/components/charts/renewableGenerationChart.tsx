@@ -1,34 +1,19 @@
 'use client';
-import React, { useState } from 'react';
+import React from 'react';
 import Dropdown, { DropdownOption } from './dropDownFilter'; // Adjust the path based on your folder structure
 import LineChart from './lineChart';
-import {
-  RenewableEnergyGenerationData,
-  RenewableEnergyGenerationAmount,
-} from '@/api/getRenewableEnergyGeneration';
-
-import {
-  EnergyGenerationAmount,
-  EnergyGenerationData,
-} from '@/api/getEnergyGeneration';
-import { generateDateRange } from '@/utils';
+import { RenewableEnergyGenerationAmount } from '@/api/getRenewableEnergyGeneration';
 
 interface EnergyChartProps {
   chartTitle: string;
   energyGenerationData?: RenewableEnergyGenerationAmount[];
   showTimeRangeDropdown?: boolean;
-  onTimeRangeChange?: (value: DropdownOption) => void;
+  onTimeRangeChange?: (value: string) => void;
   granularity: string;
   className?: string;
 }
 
 function RenewableEnergyChart(props: EnergyChartProps) {
-  const [energyChartDateRange, setEnergyChartDateRange] = useState<{
-    start: string;
-    end: string;
-    granularity: string;
-  }>(generateDateRange('last_year'));
-
   let datasets = [
     {
       label: 'Energy Generation kWh',
@@ -50,18 +35,14 @@ function RenewableEnergyChart(props: EnergyChartProps) {
     <div>
       <div className="flex flex-grow justify-center items-center ">
         <div className="w-full bg-itembg border border-stroke rounded-lg p-4">
-          {props.showTimeRangeDropdown && props.onTimeRangeChange ? (
-            <Dropdown
-              onChange={props.onTimeRangeChange}
-              chartTitle={props.chartTitle}
-            />
-          ) : null}
           <LineChart
-            chartTitle=""
+            chartTitle={props.chartTitle}
             datasets={datasets}
             xAxisTitle="Date"
             yAxisTitle="Amount (kWh)"
-            xAxisUnit={energyChartDateRange.granularity}
+            xAxisUnit={props.granularity}
+            showDateRangeDropdown={true}
+            onDateRangeChange={props.onTimeRangeChange}
           />
         </div>
       </div>

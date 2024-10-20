@@ -229,7 +229,7 @@ describe('POST /retailer/reports', () => {
   });
 });
 
-describe('GET /retailer/reports/:id Suburb', () => {
+describe('GET /retailer/reports/:id', () => {
   let sequelize: Sequelize;
   let appInstance: Application;
   const testSuburbs = [
@@ -257,6 +257,22 @@ describe('GET /retailer/reports/:id Suburb', () => {
       latitude: 115,
       longitude: 110,
     },
+  ];
+  const testConsumer = {
+    id: 1,
+    street_address: 'Test Address 1',
+    latitude: 100,
+    longitude: 100,
+    high_priority: false,
+    suburb_id: 1,
+  };
+  const testConsumerConsumptions = [
+    { date: '2024-02-02T00:00:00.000Z', amount: 1, consumer_id: 1 },
+    { date: '2024-02-03T00:00:00.000Z', amount: 1, consumer_id: 1 },
+    { date: '2024-02-04T00:00:00.000Z', amount: 1, consumer_id: 1 },
+    { date: '2024-02-05T00:00:00.000Z', amount: 1, consumer_id: 1 },
+    { date: '2024-02-06T00:00:00.000Z', amount: 1, consumer_id: 1 },
+    { date: '2024-02-07T00:00:00.000Z', amount: 1, consumer_id: 1 },
   ];
   const testSuburbConsumptions = [
     { date: '2024-02-02T00:00:00.000Z', amount: 1, suburb_id: 1 },
@@ -334,50 +350,46 @@ describe('GET /retailer/reports/:id Suburb', () => {
   ];
   const testEnergyGeneration = [
     //coal energy
-    { date: '2024-02-02T00:00:00.000Z', amount: 1, energy_generator_id: 0 },
-    { date: '2024-02-03T00:00:00.000Z', amount: 1, energy_generator_id: 0 },
-    { date: '2024-02-04T00:00:00.000Z', amount: 1, energy_generator_id: 0 },
-    { date: '2024-02-05T00:00:00.000Z', amount: 1, energy_generator_id: 0 },
-    { date: '2024-02-06T00:00:00.000Z', amount: 1, energy_generator_id: 0 },
-    { date: '2024-02-07T00:00:00.000Z', amount: 1, energy_generator_id: 0 },
+    { date: '2024-02-02T09:00:00.000Z', amount: 1, energy_generator_id: 0 },
+    { date: '2024-02-03T09:00:00.000Z', amount: 1, energy_generator_id: 0 },
+    { date: '2024-02-04T09:00:00.000Z', amount: 1, energy_generator_id: 0 },
+    { date: '2024-02-05T09:00:00.000Z', amount: 1, energy_generator_id: 0 },
+    { date: '2024-02-06T09:00:00.000Z', amount: 1, energy_generator_id: 0 },
+    { date: '2024-02-07T09:00:00.000Z', amount: 1, energy_generator_id: 0 },
     //outside of range energy
-    { date: '2024-05-06T00:00:00.000Z', amount: 1, energy_generator_id: 0 },
-    { date: '2024-05-07T00:00:00.000Z', amount: 1, energy_generator_id: 0 },
-
+    { date: '2024-05-06T09:00:00.000Z', amount: 1, energy_generator_id: 0 },
+    { date: '2024-05-07T09:00:00.000Z', amount: 1, energy_generator_id: 0 },
     //solar 1 energy
-    { date: '2024-02-02T00:00:00.000Z', amount: 1, energy_generator_id: 1 },
-    { date: '2024-02-03T00:00:00.000Z', amount: 1, energy_generator_id: 1 },
-    { date: '2024-02-04T00:00:00.000Z', amount: 1, energy_generator_id: 1 },
-    { date: '2024-02-05T00:00:00.000Z', amount: 1, energy_generator_id: 1 },
-    { date: '2024-02-06T00:00:00.000Z', amount: 1, energy_generator_id: 1 },
-    { date: '2024-02-07T00:00:00.000Z', amount: 1, energy_generator_id: 1 },
+    { date: '2024-02-02T09:00:00.000Z', amount: 1, energy_generator_id: 1 },
+    { date: '2024-02-03T09:00:00.000Z', amount: 1, energy_generator_id: 1 },
+    { date: '2024-02-04T09:00:00.000Z', amount: 1, energy_generator_id: 1 },
+    { date: '2024-02-05T09:00:00.000Z', amount: 1, energy_generator_id: 1 },
+    { date: '2024-02-06T09:00:00.000Z', amount: 1, energy_generator_id: 1 },
+    { date: '2024-02-07T09:00:00.000Z', amount: 1, energy_generator_id: 1 },
     //outside of range energy
-    { date: '2024-05-06T00:00:00.000Z', amount: 1, energy_generator_id: 1 },
-    { date: '2024-05-07T00:00:00.000Z', amount: 1, energy_generator_id: 1 },
-
+    { date: '2024-05-06T09:00:00.000Z', amount: 1, energy_generator_id: 1 },
+    { date: '2024-05-07T09:00:00.000Z', amount: 1, energy_generator_id: 1 },
     // solar 2 energy
-    { date: '2024-02-02T00:00:00.000Z', amount: 1, energy_generator_id: 2 },
-    { date: '2024-02-03T00:00:00.000Z', amount: 1, energy_generator_id: 2 },
-    { date: '2024-02-04T00:00:00.000Z', amount: 1, energy_generator_id: 2 },
-    { date: '2024-02-05T00:00:00.000Z', amount: 1, energy_generator_id: 2 },
-    { date: '2024-02-06T00:00:00.000Z', amount: 1, energy_generator_id: 2 },
-    { date: '2024-02-07T00:00:00.000Z', amount: 1, energy_generator_id: 2 },
-
+    { date: '2024-02-02T09:00:00.000Z', amount: 1, energy_generator_id: 2 },
+    { date: '2024-02-03T09:00:00.000Z', amount: 1, energy_generator_id: 2 },
+    { date: '2024-02-04T09:00:00.000Z', amount: 1, energy_generator_id: 2 },
+    { date: '2024-02-05T09:00:00.000Z', amount: 1, energy_generator_id: 2 },
+    { date: '2024-02-06T09:00:00.000Z', amount: 1, energy_generator_id: 2 },
+    { date: '2024-02-07T09:00:00.000Z', amount: 1, energy_generator_id: 2 },
     // wind energy
-    { date: '2024-02-02T00:00:00.000Z', amount: 1, energy_generator_id: 3 },
-    { date: '2024-02-03T00:00:00.000Z', amount: 1, energy_generator_id: 3 },
-    { date: '2024-02-04T00:00:00.000Z', amount: 1, energy_generator_id: 3 },
-    { date: '2024-02-05T00:00:00.000Z', amount: 1, energy_generator_id: 3 },
-    { date: '2024-02-06T00:00:00.000Z', amount: 1, energy_generator_id: 3 },
-    { date: '2024-02-07T00:00:00.000Z', amount: 1, energy_generator_id: 3 },
-
+    { date: '2024-02-02T09:00:00.000Z', amount: 1, energy_generator_id: 3 },
+    { date: '2024-02-03T09:00:00.000Z', amount: 1, energy_generator_id: 3 },
+    { date: '2024-02-04T09:00:00.000Z', amount: 1, energy_generator_id: 3 },
+    { date: '2024-02-05T09:00:00.000Z', amount: 1, energy_generator_id: 3 },
+    { date: '2024-02-06T09:00:00.000Z', amount: 1, energy_generator_id: 3 },
+    { date: '2024-02-07T09:00:00.000Z', amount: 1, energy_generator_id: 3 },
     // extra wind energy that shouldn't appear in any reports
-    { date: '2024-02-02T00:00:00.000Z', amount: 1, energy_generator_id: 4 },
-    { date: '2024-02-03T00:00:00.000Z', amount: 1, energy_generator_id: 4 },
-    { date: '2024-02-04T00:00:00.000Z', amount: 1, energy_generator_id: 4 },
-    { date: '2024-02-05T00:00:00.000Z', amount: 1, energy_generator_id: 4 },
-    { date: '2024-02-06T00:00:00.000Z', amount: 1, energy_generator_id: 4 },
-    { date: '2024-02-07T00:00:00.000Z', amount: 1, energy_generator_id: 4 },
+    { date: '2024-02-02T09:00:00.000Z', amount: 1, energy_generator_id: 4 },
+    { date: '2024-02-03T09:00:00.000Z', amount: 1, energy_generator_id: 4 },
+    { date: '2024-02-04T09:00:00.000Z', amount: 1, energy_generator_id: 4 },
+    { date: '2024-02-05T09:00:00.000Z', amount: 1, energy_generator_id: 4 },
+    { date: '2024-02-06T09:00:00.000Z', amount: 1, energy_generator_id: 4 },
+    { date: '2024-02-07T09:00:00.000Z', amount: 1, energy_generator_id: 4 },
   ];
 
   const testReports = [
@@ -386,7 +398,7 @@ describe('GET /retailer/reports/:id Suburb', () => {
       id: '0',
       start_date: '2024-02-01T00:00:00.000Z',
       end_date: '2024-03-01T00:00:00.000Z',
-      suburb_id: '0',
+      suburb_id: 0,
       consumer_id: null,
     },
     // This report's dates will have no data
@@ -394,7 +406,7 @@ describe('GET /retailer/reports/:id Suburb', () => {
       id: '1',
       start_date: '2024-01-01T00:00:00.000Z',
       end_date: '2024-02-01T00:00:00.000Z',
-      suburb_id: '1',
+      suburb_id: 1,
       consumer_id: null,
     },
     // This report will have data
@@ -402,8 +414,15 @@ describe('GET /retailer/reports/:id Suburb', () => {
       id: '2',
       start_date: '2024-02-01T00:00:00.000Z',
       end_date: '2024-03-01T00:00:00.000Z',
-      suburb_id: '1',
+      suburb_id: 1,
       consumer_id: null,
+    },
+    {
+      id: '3',
+      start_date: '2024-02-01T00:00:00.000Z',
+      end_date: '2024-03-01T00:00:00.000Z',
+      suburb_id: null,
+      consumer_id: 1,
     },
   ];
 
@@ -414,6 +433,8 @@ describe('GET /retailer/reports/:id Suburb', () => {
 
     // Create mock data
     await models.Suburb.bulkCreate(testSuburbs);
+    await models.Consumer.create(testConsumer);
+    await models.ConsumerConsumption.bulkCreate(testConsumerConsumptions);
     await models.SuburbConsumption.bulkCreate(testSuburbConsumptions);
 
     await models.SellingPrice.bulkCreate(testSellingPrice);
@@ -493,7 +514,7 @@ describe('GET /retailer/reports/:id Suburb', () => {
     });
   });
 
-  it('Should return a full report', async () => {
+  it('Should return a full suburb report', async () => {
     const testReport = testReports[2];
     const response = await request(appInstance).get(
       `/retailer/reports/${testReport.id}`
@@ -517,22 +538,22 @@ describe('GET /retailer/reports/:id Suburb', () => {
       energy: {
         consumption: [
           {
-            amount: 168,
             date: '2024-01-29T00:00:00.000Z',
+            amount: 168,
           },
           {
-            amount: 168,
             date: '2024-02-05T00:00:00.000Z',
+            amount: 168,
           },
         ],
         generation: [
           {
-            amount: 168,
             date: '2024-01-29T00:00:00.000Z',
+            amount: 168,
           },
           {
-            amount: 168,
             date: '2024-02-05T00:00:00.000Z',
+            amount: 168,
           },
         ],
         green_energy: {
@@ -560,10 +581,6 @@ describe('GET /retailer/reports/:id Suburb', () => {
           },
         ],
       },
-      profits: [
-        { date: '2024-01-29T00:00:00.000Z', amount: 0 },
-        { date: '2024-02-05T00:00:00.000Z', amount: 0 },
-      ],
       selling_prices: [
         { date: '2024-01-29T00:00:00.000Z', amount: 1 },
         { date: '2024-02-05T00:00:00.000Z', amount: 1 },
@@ -571,6 +588,85 @@ describe('GET /retailer/reports/:id Suburb', () => {
       spot_prices: [
         { date: '2024-01-29T00:00:00.000Z', amount: 1 },
         { date: '2024-02-05T00:00:00.000Z', amount: 1 },
+      ],
+      profits: [
+        {
+          date: '2024-01-29T00:00:00.000Z',
+          amount: 0,
+        },
+        {
+          date: '2024-02-05T00:00:00.000Z',
+          amount: 0,
+        },
+      ],
+    });
+  });
+
+  it('Should return a full consumer report', async () => {
+    const testReport = testReports[3];
+    const response = await request(appInstance).get(
+      `/retailer/reports/${testReport.id}`
+    );
+
+    const hourDifference = differenceInHours(
+      testReport.end_date,
+      testReport.start_date
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({
+      id: testReport.id,
+      start_date: testReport.start_date,
+      end_date: testReport.end_date,
+      for: {
+        suburb_id: testReport.suburb_id,
+        consumer_id: testReport.consumer_id,
+      },
+      energy: {
+        consumption: [
+          {
+            date: '2024-01-29T00:00:00.000Z',
+            amount: 168,
+          },
+          {
+            date: '2024-02-05T00:00:00.000Z',
+            amount: 168,
+          },
+        ],
+        green_energy: {
+          green_usage_percent: 0.75,
+          green_goal_percent: 1.5,
+        },
+        sources: [
+          {
+            category: 'Brown Coal',
+            renewable: false,
+            percentage: 0.25,
+            amount: 1 * hourDifference,
+          },
+          {
+            category: 'Solar',
+            renewable: true,
+            percentage: 0.5,
+            amount: 2 * hourDifference,
+          },
+          {
+            category: 'Wind',
+            renewable: true,
+            percentage: 0.25,
+            amount: 1 * hourDifference,
+          },
+        ],
+      },
+      spending: [
+        {
+          date: '2024-01-29T00:00:00.000Z',
+          amount: 168,
+        },
+        {
+          date: '2024-02-05T00:00:00.000Z',
+          amount: 168,
+        },
       ],
     });
   });
