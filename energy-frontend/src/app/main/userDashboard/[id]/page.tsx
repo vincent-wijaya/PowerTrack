@@ -32,6 +32,20 @@ interface ConsumerResponse {
   consumers: Consumer[];
 }
 
+
+type Cluster = {
+  consumers: Consumer[];
+};
+
+type PowerOutages = {
+  clusters: Cluster[];
+  consumers: Consumer[];
+};
+
+type OutageData = {
+  power_outages: PowerOutages;
+}
+
 export default function UserDashboard({ params }: { params: { id: number } }) {
   const [energySourcesDateRange, setEnergySourcesDateRange] = useState<{
     start: string;
@@ -78,7 +92,6 @@ export default function UserDashboard({ params }: { params: { id: number } }) {
       refreshInterval: 0,
     }
   );
-
   const { data: consumerData, error: consumerError } = useSWR<ConsumerResponse>(
     `${process.env.NEXT_PUBLIC_API_URL}/retailer/consumers?consumer_id=${params.id}`,
     fetcher,
@@ -106,10 +119,47 @@ export default function UserDashboard({ params }: { params: { id: number } }) {
     title = 'Loading...';
   }
 
+  const { data: outageData }: { data: OutageData } = useSWR(
+    `${process.env.NEXT_PUBLIC_API_URL}/retailer/powerOutages`,
+    fetcher,
+    {
+      refreshInterval: POLLING_RATE,
+    }
+  );
+
+  const isConsumerInOutage = (consumerId: number, outageData: OutageData | undefined): boolean => {
+    if (!outageData) return false;
+  
+    const { power_outages } = outageData;
+    const consumers = power_outages.consumers
+    const Id = Number(consumerId)
+
+    // Check if consumer ID exists in the top-level consumers array
+    let relevantConsumers = consumers.filter(consumer => consumer.id === Id);
+    return relevantConsumers.length === 1;    
+  };
+
+
+  const isInOutage = isConsumerInOutage(params.id, outageData);
+
+
+
   return (
     <>
       <div className="flex justify-between items-center mb-6">
+        <div>
         <PageHeading title={title} />
+        {isInOutage && (
+          <div className='text-red font-bold'>
+            POWER OUTAGE
+          </div>
+        )}
+        {consumerData?.consumers?.[0]?.high_priority && (
+          <div className="text-red text-left font-semibold">
+            HIGH PRIORITY
+          </div>
+        )}
+        </div>
         <ReportFormButton
           id={stringID}
           type="consumer"
