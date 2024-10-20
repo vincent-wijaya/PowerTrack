@@ -1,9 +1,6 @@
 import express from 'express';
-import { defineModels } from '../databaseModels';
-import { col, fn, Op } from 'sequelize';
 
 const router = express.Router();
-type DbModelType = ReturnType<typeof defineModels>;
 
 router.get('/buyingPrice', async (req, res) => {
   try {

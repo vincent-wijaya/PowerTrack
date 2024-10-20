@@ -3,9 +3,6 @@ import request from 'supertest';
 import { Sequelize } from 'sequelize';
 import app from '../app';
 import { connectToTestDb, dropTestDb } from './testDb';
-import { defineModels } from '../databaseModels';
-
-type DbModelType = ReturnType<typeof defineModels>;
 
 describe('GET /consumer/buyingPrice', () => {
   let sequelize: Sequelize;
