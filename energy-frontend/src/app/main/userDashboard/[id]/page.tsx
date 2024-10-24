@@ -222,11 +222,6 @@ export default function UserDashboard({ params }: { params: { id: number } }) {
             showTimeRangeDropdown={true}
             granularity={spendingChartDateRange.granularity}
           />
-
-          {/* Uncomment and add styles for ConsumerEnergyChart if needed */}
-          {/* <div className="p-4 bg-itembg border border-stroke rounded-lg">
-            <ConsumerEnergyChart />
-          </div> */}
         </div>
       </div>
     </div>

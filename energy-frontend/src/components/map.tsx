@@ -12,6 +12,7 @@ import 'leaflet-defaulticon-compatibility/dist/leaflet-defaulticon-compatibility
 import { Feature, FeatureCollection } from 'geojson'; // Ensure correct import for geojson types
 import Legend from './mapLegend';
 
+// The types below are based on the /map route in the backend api specification.
 type MapItem = {
   suburb_id: number;
   consumption: number;
@@ -44,9 +45,10 @@ type OutageData = {
   power_outages: PowerOutages;
 };
 
+// Function to determine color based on consumption data for each suburb
 function getColorBasedOnConsumption(consumption: number | undefined): string {
   if (consumption == null) {
-    return 'black';
+    return 'black'; // Default color if consumption is not available
   }
 
   const minConsumption = 0;
@@ -59,8 +61,9 @@ function getColorBasedOnConsumption(consumption: number | undefined): string {
   const factor =
     (clampedConsumption - minConsumption) / (maxConsumption - minConsumption);
 
-  const startColor = { r: 144, g: 238, b: 144 };
-  const endColor = { r: 0, g: 0, b: 139 };
+  // Linear interpolation between two colors
+  const startColor = { r: 144, g: 238, b: 144 }; // Light green
+  const endColor = { r: 0, g: 0, b: 139 }; // Dark blue
 
   const red = Math.round(startColor.r + factor * (endColor.r - startColor.r));
   const green = Math.round(startColor.g + factor * (endColor.g - startColor.g));
@@ -69,8 +72,11 @@ function getColorBasedOnConsumption(consumption: number | undefined): string {
   return `rgb(${red}, ${green}, ${blue})`;
 }
 
+// Main Map component
 export default function Map(props: { className?: string }) {
   const router = useRouter();
+  
+  // State to store power outage data and suburb GeoJSON features
   const [powerOutageData, setPowerOutageData] = useState<
     { latLng: LatLng; id: number; suburb_id: number }[]
   >([]);
@@ -81,11 +87,13 @@ export default function Map(props: { className?: string }) {
     features: [],
   });
 
+  // Define the map bounds for Victoria, Australia
   const bounds = new LatLngBounds(
     { lat: -37.5, lng: 140 },
     { lat: -39, lng: 148 }
   );
 
+  // Fetch map and outage data using SWR with a polling interval
   const { data: mapData }: { data: MapData } = useSWR(
     `${process.env.NEXT_PUBLIC_API_URL}/retailer/map`,
     fetcher,
@@ -102,6 +110,7 @@ export default function Map(props: { className?: string }) {
     }
   );
 
+  // Fetch suburb and consumption data, process it into GeoJSON format, and store it in state
   useEffect(() => {
     async function fetchData() {
       if (mapData && outageData) {
@@ -115,7 +124,7 @@ export default function Map(props: { className?: string }) {
 
         const suburbs: FeatureCollection<any, any> = await response.json();
 
-        // Process consumption data to turn into GeoJSON features for the map
+        // Process consumption data to GeoJSON features
         const consumptionGeoJSONPromises = consumptionResults.energy.map(
           async (item) => {
             const feature = suburbs.features.find(
@@ -134,6 +143,7 @@ export default function Map(props: { className?: string }) {
           consumptionGeoJSONPromises
         );
 
+        // Merge consumption data into GeoJSON features
         const consumptionFeatures = consumptionGeoJSONResults.map(
           (consumptionResult) => {
             consumptionResult.geoJSON.properties = {
@@ -144,7 +154,7 @@ export default function Map(props: { className?: string }) {
           }
         );
 
-        // Process outage data to turn each consumer into a marker
+        // Process power outage data to create map markers
         const outageMarkers = outageResults.consumers.map((consumer) => {
           if (!consumer.latitude || !consumer.longitude) {
             throw new Error(
@@ -158,25 +168,27 @@ export default function Map(props: { className?: string }) {
           };
         });
 
+        // Combine consumption features and update state
         const allFeatures = [...consumptionFeatures];
-
         const featureCollection: FeatureCollection<any, any> = {
           type: 'FeatureCollection',
           features: allFeatures,
         };
 
         setVictorianSuburbs(featureCollection);
-        setPowerOutageData(outageMarkers); // Set all consumer coordinates as outage markers
+        setPowerOutageData(outageMarkers); // Update outage markers state
       }
     }
 
     fetchData();
   }, [mapData, outageData]);
 
+  // Function to handle clicking on a suburb feature
   function handleSuburbClick(suburb_id: string) {
     router.push(`/main/regionalDashboard/${suburb_id}`);
   }
 
+  // Event handler for each GeoJSON feature (suburb) on the map
   const useOnEachFeature = (feature: Feature<any>, layer: any) => {
     const suburbId = feature.properties?.id;
     const outageConsumersCount = powerOutageData.filter(
@@ -197,7 +209,7 @@ export default function Map(props: { className?: string }) {
       `<div>
            <p>Suburb: ${feature.properties?.name}</p>
            <p>Consumption (kW): ${feature.properties?.amount}</p>
-            <p>Outages: ${outageConsumersCount} consumer(s)</p>
+           <p>Outages: ${outageConsumersCount} consumer(s)</p>
          </div>`
     );
 
@@ -259,3 +271,4 @@ export default function Map(props: { className?: string }) {
     </div>
   );
 }
+

@@ -19,9 +19,9 @@ const app = (sequelize: Sequelize) => {
   const app = express();
   app.use(express.json());
 
-  if (process.env.NODE_ENV === 'development') {
-    app.use(cors());
-  }
+  // if (process.env.NODE_ENV === 'development') {
+  app.use(cors());
+  // }
 
   app.set('models', models);
 

@@ -68,45 +68,38 @@ export default function IndividualReport({
 }: {
   params: { id: string };
 }) {
-  const mainurl = process.env.NEXT_PUBLIC_API_URL;
-  const reportId = parseInt(params.id, 10);
-  const [averageProfitkwh, setAverageProfitkwh] = useState(0);
-  const [averageProfitMargin, setAverageProfitMargin] = useState(0);
-  const [greenEnergyUsage, setgreenEnergyUsage] = useState(0);
-  const [totalProfit, setTotalProfit] = useState(0);
-  const [totalSpending, setTotalSpending] = useState(0);
-  const [totalRevenue, setTotalRevenue] = useState(0);
-  const [consumptionData, setConsumptionData] = useState<
-    EnergyConsumptionAmount[]
-  >([]);
-  const [generationData, setGenerationData] = useState<
-    EnergyGenerationAmount[]
-  >([]);
-  const [energyChartTitle, setEnergyChartTitle] = useState('');
-  const [profitChartData, setProfitChartData] = useState<ProfitMarginData>();
-  const [spendingData, setSpendingData] = useState<Price[]>([]);
-  const [profitChartTitle, setprofitChartTitle] = useState('');
-  const [isExporting, setIsExporting] = useState(false); // New state for exporting
-  const [energySources, setEnergySources] = useState<EnergySource[]>([]);
+  const mainurl = process.env.NEXT_PUBLIC_API_URL; // API base URL
+  const reportId = parseInt(params.id, 10); // Parse the report ID from the route parameter
+  const [averageProfitkwh, setAverageProfitkwh] = useState(0); // State for average profit per kWh
+  const [averageProfitMargin, setAverageProfitMargin] = useState(0); // State for average profit margin
+  const [totalProfit, setTotalProfit] = useState(0); // State for total profit
+  const [totalSpending, setTotalSpending] = useState(0); // State for total spending
+  const [totalRevenue, setTotalRevenue] = useState(0); // State for total revenue
+  const [consumptionData, setConsumptionData] = useState<EnergyConsumptionAmount[]>([]); // State for energy consumption data
+  const [generationData, setGenerationData] = useState<EnergyGenerationAmount[]>([]); // State for energy generation data
+  const [energyChartTitle, setEnergyChartTitle] = useState(''); // State for the energy chart title
+  const [profitChartData, setProfitChartData] = useState<ProfitMarginData>(); // State for profit chart data
+  const [spendingData, setSpendingData] = useState<Price[]>([]); // State for consumer spending data
+  const [isExporting, setIsExporting] = useState(false); // State to track exporting status
+  const [energySources, setEnergySources] = useState<EnergySource[]>([]); // State for energy sources
+  const [granularity, setGranularity] = useState<string>(); // State for data granularity (e.g., daily, monthly)
+  const [title, setTitle] = useState(''); // State for the page title
+  const [highPriority, setHighPriority] = useState(false); // State to indicate if the consumer is high priority
 
-  const [granularity, setGranularity] = useState<string>();
-
-  const [title, setTitle] = useState('');
-
-  const [highPriority, setHighPriority] = useState(false);
-
-  // Fetch the report here
+  // Fetch the report data
   const { data, error } = useSWR<Report>(
     `${mainurl}/retailer/reports/${reportId}`,
     fetcher,
     {
-      refreshInterval: POLLING_RATE,
+      refreshInterval: POLLING_RATE, // Polling interval for refreshing data
     }
   );
 
+  // Extract suburb and consumer IDs from the report data
   const suburbId = data?.for.suburb_id;
   const consumerId = data?.for.consumer_id;
 
+  // Fetch suburb data based on suburbId
   const { data: suburbData, error: suburbError } = useSWR<SuburbData>(
     suburbId !== undefined && suburbId !== null
       ? `${mainurl}/retailer/suburbs/${suburbId}`
@@ -117,6 +110,7 @@ export default function IndividualReport({
     }
   );
 
+  // Fetch consumer data based on consumerId
   const { data: consumerData, error: consumerError } = useSWR<ConsumerResponse>(
     consumerId !== undefined && consumerId !== null
       ? `${mainurl}/retailer/consumers?consumer_id=${consumerId}`
@@ -127,47 +121,31 @@ export default function IndividualReport({
     }
   );
 
-  // Set the data to display for suburb case here
+  // Set data for the suburb case when report is available
   useEffect(() => {
-    if (!data) return;
+    if (!data) return; // Exit if no data is available
 
     if (data?.for.suburb_id !== null && suburbData) {
-      // Title
-      setTitle(
-        `${suburbData.name}, ${suburbData.postcode}, ${suburbData.state}`
-      );
+      setTitle(`${suburbData.name}, ${suburbData.postcode}, ${suburbData.state}`); // Set title for suburb
+      setConsumptionData(data.energy.consumption); // Set energy consumption data
+      setGenerationData(data.energy.generation); // Set energy generation data
+      setEnergyChartTitle('Energy Consumption/Generation'); // Set chart title
+      setEnergySources(data.energy.sources); // Set energy sources
 
-      // // Green energy usage
-      // const totalGreenEnergy = data.sources.reduce((acc, source) => {
-      //   return source.renewable ? acc + source.amount : acc;
-      // }, 0);
-
-      // const totalEnergy = data.sources.reduce(
-      //   (acc, source) => acc + source.amount,
-      //   0
-      // );
-
-      // setgreenEnergyUsage((totalGreenEnergy / totalEnergy) * 100);
-
-      setConsumptionData(data.energy.consumption);
-      setGenerationData(data.energy.generation);
-
-      setEnergyChartTitle('Energy Consumption/Generation');
-      setEnergySources(data.energy.sources);
-
-      // Total Revenue
+      // Calculate total revenue from energy generation and selling prices
       const totalRevenue = data.energy.generation?.reduce(
         (acc: number, item: { date: string; amount: number }) => {
           return acc + Number(data.selling_prices.at(-1)) * item.amount;
         },
         0
       );
-
-      setTotalRevenue(totalRevenue);
+      setTotalRevenue(totalRevenue); // Set total revenue
     }
 
+    // Set data granularity based on the report date range
     setGranularity(getTemporalGranularity(data.start_date, data.end_date));
 
+    // Prepare profit chart data
     setProfitChartData({
       start_date: data.start_date,
       values: {
@@ -176,47 +154,37 @@ export default function IndividualReport({
         profits: data.profits,
       },
     });
-    // Total Profit
   }, [data, suburbData]);
 
-  // Set the data to display for consumer case here
+  // Set data for the consumer case when report is available
   useEffect(() => {
-    if (!data) return;
-    console.log(data);
+    if (!data) return; // Exit if no data is available
 
     if (data?.for.consumer_id !== null && consumerData) {
-      const consumer = consumerData.consumers[0];
-      const highPriority = true; // Directly use the boolean value
+      const consumer = consumerData.consumers[0]; // Get the consumer details
+      setTitle(`${consumer.address}, ${consumer.suburb_post_code}`); // Set title for the consumer
+      setHighPriority(true); // Mark consumer as high priority if applicable
+      setSpendingData(data.spending); // Set consumer spending data
 
-      // Update the title with "High Priority" if applicable
-      setTitle(`${consumer.address}, ${consumer.suburb_post_code}`);
-
-      setHighPriority(true);
-
-      setSpendingData(data.spending);
-
+      // Calculate total spending
       const totalSpending =
-        data.spending?.reduce((total, s) => {
-          return total + s.amount;
-        }, 0) ?? 0;
-      setTotalSpending(totalSpending);
+        data.spending?.reduce((total, s) => total + s.amount, 0) ?? 0;
+      setTotalSpending(totalSpending); // Set total spending
 
-      setConsumptionData(data.energy.consumption);
-      // setSpendingPriceData(spendingPrice);
-
-      setEnergyChartTitle('Energy Consumption');
-
-      setEnergySources(data.energy.sources);
+      setConsumptionData(data.energy.consumption); // Set energy consumption data
+      setEnergyChartTitle('Energy Consumption'); // Set chart title
+      setEnergySources(data.energy.sources); // Set energy sources
     }
   }, [data, consumerData]);
 
-  // Handle PDF Export
+  // Handle PDF export of the report
   const handleExport = async () => {
-    setIsExporting(true); // Set exporting state to true
-    await exportToPDF('contentToExport'); // Call export function
-    setIsExporting(false); // Set exporting state back to false after export
+    setIsExporting(true); // Indicate export in progress
+    await exportToPDF('contentToExport'); // Trigger PDF export
+    setIsExporting(false); // Reset export state once done
   };
 
+  // Handle error states and loading states
   if (error) return <div>Error loading report.</div>;
   if (!data) return <div className="text-white">Loading...</div>;
   if (data === null) return <div>No report found.</div>;
@@ -307,41 +275,8 @@ export default function IndividualReport({
               granularity={granularity ?? 'year'}
             />
           )}
-
-          {/*         <ProfitChart />
-          <EnergyChart className="" />*/}
         </div>
-        {/* <div className="p-4 bg-itembg border border-stroke rounded-lg">
-          <EnergyChart />
-        </div>
-        <div className="p-4 bg-itembg border border-stroke rounded-lg">
-          <ProfitChart />
-        </div> */}
       </div>
-
-      {/* <div className="h-screen px-10 grid grid-cols-2 gap-8 py-10">
-        <div className="gap-8 py-10">
-          <div className="h-1/6 gap-2 grid grid-cols-3">
-            <InfoBox title="48%" description="of green energy goal met" />
-            <InfoBox title="3" description="Warnings" />
-            <InfoBox title="3" description="Suggestions" />
-          </div>
-          <div className="h-1/3 mt-8 p-4 bg-itembg border border-stroke rounded-lg">
-            <Map />
-          </div>
-          <div className="h-1/3 gap-2 py-10">
-            <WarningTable />
-          </div>
-        </div>
-        <div className="gap-8 py-10">
-          <div className="ml-8 p-4 bg-itembg border border-stroke rounded-lg">
-            <EnergyChart />
-          </div>
-          <div className="ml-8 mt-4 p-4 bg-itembg border border-stroke rounded-lg">
-            <ProfitChart />
-          </div>
-        </div>
-      </div> */}
     </div>
   );
 }
