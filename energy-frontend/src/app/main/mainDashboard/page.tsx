@@ -24,65 +24,75 @@ import { fetchSources } from '@/api/getSources';
 import EnergySourceBreakdown from '@/components/energySourceBreakdown';
 import RenewableGenerationChart from '@/components/charts/renewableGenerationChart';
 
-// Dynamically import the Map component with SSR disabled
+// Dynamically import the Map component with client-side rendering only (ssr: false)
+// While loading, display the message "Loading map..."
 const Map = dynamic(() => import('@/components/map'), {
   ssr: false,
   loading: () => <p>Loading map...</p>,
 });
 
 export default function MainDashboard() {
+  // Set default date ranges for energy sources, energy chart, and profit chart using a utility function
   const [energySourcesDateRange, setEnergySourcesDateRange] = useState<{
     start: string;
     end: string;
-  }>(generateDateRange('last_year'));
+  }>(generateDateRange('last_year')); // Default to the last year
+
   const [energyChartDateRange, setEnergyChartDateRange] = useState<{
     start: string;
     end: string;
     granularity: string;
-  }>(generateDateRange('last_year'));
+  }>(generateDateRange('last_year')); // Default energy chart range to the last year
+
   const [profitChartDateRange, setProfitChartDateRange] = useState<{
     start: string;
     end: string;
     granularity: string;
-  }>(generateDateRange('last_year'));
+  }>(generateDateRange('last_year')); // Default profit chart range to the last year
 
-  // Access the warnings array directly
+  // Fetch warning data using SWR hook, data is not auto-refreshed (refreshInterval: 0)
   const { data: warningData, error: warningError } = useSWR(
     `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings`,
     fetcher,
     {
-      refreshInterval: 0,
+      refreshInterval: 0, // No polling, fetch data only once
     }
   );
 
+  // Fetch energy consumption data for the current energy chart date range
   const energyConsumptionData = fetchEnergyConsumption(
     energyChartDateRange.start
   );
+
+  // Fetch energy generation data for the current energy chart date range
   const energyGenerationData = fetchEnergyGeneration(
     energyChartDateRange.start
   );
 
+  // Fetch profit margin data for the current profit chart date range
   const profitMarginData = fetchProfitMargin(profitChartDateRange.start);
 
+  // Handle changes in the energy chart date range (e.g., when the user selects a different range)
   const onEnergyChartDateRangeChange = (value: DropdownOption) => {
-    const dateRange = generateDateRange(value);
-
-    setEnergyChartDateRange(dateRange);
+    const dateRange = generateDateRange(value); // Generate the new date range based on user selection
+    setEnergyChartDateRange(dateRange); // Update the state with the new range
   };
 
+  // Handle changes in the profit chart date range
   const onProfitChartDateRangeChange = (value: DropdownOption) => {
-    const dateRange = generateDateRange(value);
-
-    setProfitChartDateRange(dateRange);
+    const dateRange = generateDateRange(value); // Generate the new date range based on user selection
+    setProfitChartDateRange(dateRange); // Update the state with the new range
   };
 
+  // Fetch energy sources data for the current energy sources date range
   const energySources = fetchSources(energySourcesDateRange.start);
 
+  // Handle changes in the energy sources time range (e.g., when the user selects a different time range)
   const onEnergySourceTimeRangeChange = (value: DropdownOption) => {
-    const dateRange = generateDateRange(value);
-
-    setEnergySourcesDateRange(dateRange);
+    const dateRange = generateDateRange(value); // Generate the new date range based on user selection
+    setEnergySourcesDateRange(dateRange); // Update the state with the new range
   };
+
 
   return (
     <>

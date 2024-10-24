@@ -20,6 +20,7 @@ import { fetchEnergyConsumption } from '@/api/getEnergyConsumption';
 import { POLLING_RATE } from '@/config';
 import { fetchSpending } from '@/api/getSpending';
 
+//Consumer object
 interface Consumer {
   suburb_id: number;
   suburb_name: string;
@@ -29,6 +30,7 @@ interface Consumer {
   high_priority: boolean;
 }
 
+// response for fetching consumers
 interface ConsumerResponse {
   consumers: Consumer[];
 }
@@ -46,22 +48,29 @@ type OutageData = {
   power_outages: PowerOutages;
 };
 
+// Main Component for main db
 export default function UserDashboard({ params }: { params: { id: number } }) {
+  // State for managing energy sources date range
   const [energySourcesDateRange, setEnergySourcesDateRange] = useState<{
     start: string;
     end: string;
   }>(generateDateRange('last_year'));
+
+  // State for managing energy consumption chart date range
   const [energyChartDateRange, setEnergyChartDateRange] = useState<{
     start: string;
     end: string;
     granularity: string;
   }>(generateDateRange('last_year'));
+
+  // State for managing consumer spending chart date range
   const [spendingChartDateRange, setSpendingChartDateRange] = useState<{
     start: string;
     end: string;
     granularity: string;
   }>(generateDateRange('last_year'));
 
+  // Fetch energy consumption data for the consumer
   const energyConsumptionData = fetchEnergyConsumption(
     energyChartDateRange.start,
     params.id,
@@ -76,12 +85,16 @@ export default function UserDashboard({ params }: { params: { id: number } }) {
     }
   );
 
-  const [buyPrce, setBuyPrce] = useState(0);
+  
+  const [buyPrice, setBuyPrice] = useState(0);   // Local state for storing buying price
 
+  // Update buying price whenever the SWR data changes
   useEffect(() => {
     if (!buyingPrice) return;
-    setBuyPrce(buyingPrice.amount);
+    setBuyPrice(buyingPrice.amount);
   }, [buyingPrice]);
+  
+  // Event handler to update the energy chart date range
   const onEnergyChartDateRangeChange = (value: DropdownOption) => {
     const dateRange = generateDateRange(value);
 
@@ -90,6 +103,7 @@ export default function UserDashboard({ params }: { params: { id: number } }) {
 
   const stringID = params.id.toString();
 
+  // Fetch warnings data for the consumer
   const { data: warningData, error: warningError } = useSWR(
     `${process.env.NEXT_PUBLIC_API_URL}/retailer/warnings?consumer_id=${params.id}`,
     fetcher,
@@ -97,6 +111,8 @@ export default function UserDashboard({ params }: { params: { id: number } }) {
       refreshInterval: 0,
     }
   );
+
+  // Fetch consumer data for the specific consumer
   const { data: consumerData, error: consumerError } = useSWR<ConsumerResponse>(
     `${process.env.NEXT_PUBLIC_API_URL}/retailer/consumers?consumer_id=${params.id}`,
     fetcher,
@@ -105,26 +121,29 @@ export default function UserDashboard({ params }: { params: { id: number } }) {
     }
   );
 
+  // Fetch spending data for the consumer
   const spendingData = fetchSpending(spendingChartDateRange.start, params.id);
 
+  // Event handler to update the spending chart date range
   const onSpendingDateRangeChange = (value: DropdownOption) => {
     const dateRange = generateDateRange(value);
-
     setSpendingChartDateRange(dateRange);
   };
 
+  // Fetch energy sources data for the consumer
   const energySources = fetchSources(
     energySourcesDateRange.start,
     params.id,
     'consumer'
   );
 
+  // Event handler to update the energy source breakdown chart date range
   const onEnergySourceDateRangeChange = (value: DropdownOption) => {
     const dateRange = generateDateRange(value);
-
     setEnergySourcesDateRange(dateRange);
   };
 
+  // Set the page title based on the consumer's address
   let title;
   if (consumerData) {
     title = consumerData.consumers[0].address;
@@ -132,14 +151,16 @@ export default function UserDashboard({ params }: { params: { id: number } }) {
     title = 'Loading...';
   }
 
+  // Fetch power outage data for the consumer
   const { data: outageData }: { data: OutageData } = useSWR(
     `${process.env.NEXT_PUBLIC_API_URL}/retailer/powerOutages`,
     fetcher,
     {
-      refreshInterval: POLLING_RATE,
+      refreshInterval: POLLING_RATE, // Set polling interval for power outage data
     }
   );
 
+  // Function to check if the consumer is part of an ongoing outage
   const isConsumerInOutage = (
     consumerId: number,
     outageData: OutageData | undefined
@@ -155,6 +176,7 @@ export default function UserDashboard({ params }: { params: { id: number } }) {
     return relevantConsumers.length === 1;
   };
 
+  // Check if the current consumer is in an outage
   const isInOutage = isConsumerInOutage(params.id, outageData);
 
   return (
@@ -224,11 +246,6 @@ export default function UserDashboard({ params }: { params: { id: number } }) {
             showTimeRangeDropdown={true}
             granularity={spendingChartDateRange.granularity}
           />
-
-          {/* Uncomment and add styles for ConsumerEnergyChart if needed */}
-          {/* <div className="p-4 bg-itembg border border-stroke rounded-lg">
-            <ConsumerEnergyChart />
-          </div> */}
         </div>
       </div>
     </div>
