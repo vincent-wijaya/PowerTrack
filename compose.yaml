@@ -1,0 +1,37 @@
+services:
+  server:
+    extends:
+      file: ./energy-backend/compose.yaml
+      service: server
+  db:
+    extends:
+      file: ./energy-backend/compose.yaml
+      service: db
+  kafka:
+    extends:
+      file: ./energy-backend/compose.yaml
+      service: kafka
+  zoo:
+    extends:
+      file: ./energy-backend/compose.yaml
+      service: zoo
+  eventconsumer:
+    extends:
+      file: ./energy-backend/compose.yaml
+      service: eventconsumer
+
+  frontend:
+    extends:
+      file: ./energy-frontend/compose.yaml
+      service: frontend
+    depends_on:
+      server:
+        condition: service_healthy
+
+  consumerfrontend:
+    extends:
+      file: ./consumer-frontend/compose.yaml
+      service: consumerfrontend
+    depends_on:
+      server:
+        condition: service_healthy

@@ -1,0 +1,52 @@
+services:
+  debug-eventconsumer:
+    build:
+      context: .
+    environment:
+      NODE_ENV: development
+      DATABASE_URI: ${DATABASE_URI:-postgres://postgres:password@debug-db:5432/retailerEnergy}
+      TEST_DATABASE_CLUSTER: ${TEST_DATABASE_CLUSTER:-postgres://postgres:password@debug-db:5432/}
+      KAFKA_CLIENT_ID: ${KAFKA_CLIENT_ID:-PowerTrack_Retailer}
+      LOCAL_BROKER_IP: ${LOCAL_BROKER_IP:-kafka:19092}
+    command: >
+      sh -c "npm run debugConsumer"
+    depends_on:
+      debug-db:
+        condition: service_healthy
+
+  debug-server:
+    build:
+      context: .
+    environment:
+      NODE_ENV: development
+      DATABASE_URI: ${DATABASE_URI:-postgres://postgres:password@debug-db:5432/retailerEnergy}
+      TEST_DATABASE_CLUSTER: ${TEST_DATABASE_CLUSTER:-postgres://postgres:password@debug-db:5432/}
+      DB_SETUP_FILE: ${DB_SETUP_FILE:-dbSetupInfo.json}
+      SERVER_PORT: ${SERVER_PORT:-3001}
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY:-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}
+    ports:
+      - 3001:3001
+      - 9229:9229
+    command: >
+      sh -c "npm run database && npm run debug"
+    depends_on:
+      debug-db:
+        condition: service_healthy
+    healthcheck:
+      test: wget --no-verbose --tries=1 --spider http://localhost:3001|| exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  debug-db:
+    extends:
+      file: compose.yaml
+      service: db
+  kafka:
+    extends:
+      file: compose.yaml
+      service: kafka
+  zoo:
+    extends:
+      file: compose.yaml
+      service: zoo
