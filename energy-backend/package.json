@@ -2,15 +2,44 @@
   "name": "energy-backend",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "index.ts",
   "scripts": {
-    "test": "jest"
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "debug": "node --inspect=0.0.0.0:9229 dist/index.js",
+    "database": "node dist/setup_database.js",
+    "debugDatabase": "node --inspect=0.0.0.0:9229 dist/setup_database.js",
+    "test": "jest",
+    "eventConsumer": "node dist/kafkaConsumer.js",
+    "debugConsumer": "node --inspect=0.0.0.0:9229 dist/kafkaConsumer.js",
+    "periodicReports": "node dist/utils/periodicReports.js"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@turf/helpers": "^7.0.0",
+    "@turf/turf": "^7.0.0",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jest": "^29.5.12",
+    "@types/node": "^20.12.7",
+    "@types/sequelize": "^4.28.20",
+    "@types/supertest": "^6.0.2",
+    "@types/uuid": "^9.0.8",
+    "axios": "^1.7.7",
+    "cors": "^2.8.5",
+    "date-fns": "^4.1.0",
     "express": "^4.19.2",
-    "jest": "^29.7.0",
-    "supertest": "^6.3.4"
+    "kafkajs": "^2.2.4",
+    "pg": "^8.11.5",
+    "pg-hstore": "^2.3.4",
+    "sequelize": "^6.37.4",
+    "supertest": "^6.3.4",
+    "ts-jest": "^29.1.2",
+    "typescript": "^5.4.5",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "prettier": "3.3.2"
   }
 }

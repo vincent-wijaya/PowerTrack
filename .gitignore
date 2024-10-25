@@ -10,6 +10,14 @@ npm-debug.log
 .env
 .DS_Store
 
+# Jest stuff
+coverage
+
 # Vs code stuff
 .vscode
 .history/
+
+# Secrets
+dbpassword.txt
+
+dist

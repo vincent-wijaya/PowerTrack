@@ -1,0 +1,23 @@
+workflow:
+  rules: # Run this script when any of the following happens
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event' # A merge request
+    - if: $CI_COMMIT_TAG # A tagged commit
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH # A commit to the default branch
+
+default:
+  before_script:
+    - docker-compose -f ./energy-backend/compose.yaml build server
+
+stages:
+  - test
+
+job_test:
+  stage: test
+  script:
+    - docker-compose -f ./energy-backend/compose.yaml run --rm server npm test
+  artifacts:
+    when: always
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: energy-backend/coverage/cobertura-coverage.xml
